@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["ufcpredictor"]
+
+[tool.setuptools.dynamic]
+version = {attr = "ufcpredictor.__version__"}
+dependencies = {file = ["requirements.txt"]}
+
+[project]
+name = "ufcpredictor"
+readme = "README.md"
+requires-python = ">=3.9.13"
+dynamic = ["version"]
+

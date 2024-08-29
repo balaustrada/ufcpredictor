@@ -438,7 +438,10 @@ len(valid_fights)
 ###################################################################
 def from_id_to_fight(id_, print_fighters=False, print_odds=False):
     # Get fighters
-    fight = data_aggregated[data_aggregated["fight_id"] == id_].iloc[0]
+    fights = data_aggregated[data_aggregated["fight_id"] == id_]
+    fight = fights.iloc[0]
+    fight_opponent = fights.iloc[1]
+    
     f1 = fight["fighter_id"]
     f2 = fight["opponent_id"]
     date = fight["event_date"]
@@ -472,10 +475,15 @@ def from_id_to_fight(id_, print_fighters=False, print_odds=False):
     # if np.isnan(x1).any():
     #     import pdb; pdb.set_trace()
 
+
+    odds_1 = fight["opening"]
+    odds_2 = fight_opponent["opening"]
+    
     return (
         torch.FloatTensor(x1),
         torch.FloatTensor(x2),
         torch.FloatTensor([float(winner != fight["fighter_id"])]),
+        torch.FloatTensor([odds_1, odds_2]),
     )
 
 
@@ -489,7 +497,8 @@ class CustomDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        X1, X2, Y = self.data[idx]
+        X1, X2, Y, odds = self.data[idx] # Ignore odds here
+        odds1, odds2 = odds
 
         ################################
         # Randomly flip fighters, I think the veterans
@@ -499,20 +508,21 @@ class CustomDataset(Dataset):
         if np.random.random() >= 0.5:
             X1, X2 = X2, X1
             Y = 1 - Y
+            odds1, odds2 = odds2, odds1
 
         if self.mode == "train":
-            return X1, X2, Y
+            return X1, X2, odds1, odds2, Y
         else:
-            return X1, X2
+            return X1, X2, odds1, odds2
 
 
 # %%
-train_fights = (
+train_fights = sorted(
     data_aggregated["fight_id"][data_aggregated["event_date"] < "2024-01-01"]
     .unique()
     .tolist()
 )
-test_fights = (
+test_fights = sorted(
     data_aggregated["fight_id"][data_aggregated["event_date"] >= "2024-01-01"]
     .unique()
     .tolist()
@@ -529,13 +539,17 @@ validation_fights = test_fights
 #############################################
 
 train_data = []
-for id_ in sorted(train_fights):
+valid_train_fights = []
+for id_ in train_fights:
     if id_ in valid_fights:
+        valid_train_fights.append(id_)
         train_data.append(from_id_to_fight(id_))
 
 test_data = []
-for id_ in sorted(test_fights):
+valid_test_fights = []
+for id_ in test_fights:
     if id_ in valid_fights:
+        valid_test_fights.append(id_)
         test_data.append(from_id_to_fight(id_))
 
 val_data = test_data
@@ -566,7 +580,7 @@ class FighterNet(nn.Module):
         self.fc2 = nn.Linear(128, 256)
         self.fc3 = nn.Linear(256, 512)
         self.fc4 = nn.Linear(512, 256)
-        self.fc5 = nn.Linear(256, 128)
+        self.fc5 = nn.Linear(256, 127)
 
         # Use the global dropout probability
         self.dropout1 = nn.Dropout(p=DROPOUT_PROB)
@@ -610,10 +624,15 @@ class SymmetricFightNet(nn.Module):
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
 
-    def forward(self, X1, X2):
+    def forward(self, X1, X2, odds1, odds2):
         out1 = self.fighter_net(X1)
         out2 = self.fighter_net(X2)
 
+        # import pdb; pdb.set_trace()
+        
+        out1 = torch.cat((out1, odds1.reshape(-1, 1)), dim=1)
+        out2 = torch.cat((out2, odds2.reshape(-1, 1)), dim=1)
+        
         x = torch.cat((out1 - out2, out2 - out1), dim=1)
 
         x = self.relu(self.fc1(x))
@@ -646,12 +665,12 @@ def train(
         model.train()
         train_loss = []
 
-        for X1, X2, Y in tqdm(iter(train_dataloader)):
-            X1, X2 = X1.to(device), X2.to(device)
+        for X1, X2, odds1, odds2, Y in tqdm(iter(train_dataloader)):
+            X1, X2, odds1, odds2 = X1.to(device), X2.to(device), odds1.to(device), odds2.to(device)
             Y = Y.to(device)
 
             optimizer.zero_grad()
-            target_logit = model(X1, X2)
+            target_logit = model(X1, X2, odds1, odds2)
             # target_logit_2 = model(X2, X1)
 
             # target_logit = (target_logit + (1-target_logit_2)) / 2
@@ -720,11 +739,11 @@ def validation(model, val_dataloader, criterion, device):
     count = []
 
     with torch.no_grad():
-        for X1, X2, Y in tqdm(iter(val_dataloader)):
-            X1, X2 = X1.to(device), X2.to(device)
+        for X1, X2, odds1, odds2, Y in tqdm(iter(val_dataloader)):
+            X1, X2, odds1, odds2 = X1.to(device), X2.to(device), odds1.to(device), odds2.to(device)
             Y = Y.to(device)
 
-            target_logit = model(X1, X2)
+            target_logit = model(X1, X2, odds1, odds2)
             # target_logit_2 = model(X2, X1)
 
             # target_logit_2 = 1 - target_logit_2
@@ -771,17 +790,30 @@ infer_model = train(
 
 # %%
 
+# %% [markdown]
+# ### Now let's predict the quantity to bet
+
 # %%
 def compare_fighters_from_id(id_):
-    x1, x2, y = from_id_to_fight(id_, print_fighters=True, print_odds=False)
+    x1, x2, y, (odds1, odds2) = from_id_to_fight(
+        id_, print_fighters=True, print_odds=False
+    )
 
+    # odds1 = odds[0]
+    # odds2 = odds[1]
+
+    # odds1 = torch.FloatTensor([odds[0]]).reshape((1, -1))
+    # odds2 = torch.FloatTensor([odds[1]]).reshape((1, -1))
+
+    odds1 = torch.reshape(odds1, (1, -1))
+    odds2 = torch.reshape(odds2, (1, -1))
     x1 = torch.reshape(x1, (1, -1))
     x2 = torch.reshape(x2, (1, -1))
 
     model.eval()
     with torch.no_grad():
-        value1 = float(model(x1, x2))
-        value2 = 1 - float(model(x2, x1))
+        value1 = float(model(x1, x2, odds1, odds2))
+        value2 = 1 - float(model(x2, x1, odds2, odds1))
 
     value = (value1 + value2) / 2
 
@@ -886,19 +918,6 @@ def bet_result(fight, fighter, bet):
 # %%
 
 # %%
-index = 0
-fight_id = validation_fights[index]
-
-# %%
-device = "cpu"
-with torch.no_grad():
-    X1, X2, Y = val_data[index]
-    X1, X2 = X1.to(device), X2.to(device)
-    Y = Y.to(device)
-
-    target_logit = model(X1.reshape(1, -1), X2.reshape(1, -1))
-
-# %%
 import jupyter_black
 
 jupyter_black.load()
@@ -923,16 +942,21 @@ def simulate_bets(min_confidence=0, max_diff=0.2, max_bet=5, print_info=False):
 
     X2 = torch.tensor(np.asarray([val_data[i][1] for i in range(len(val_data))]))
 
+    odds1 = torch.tensor(np.asarray([val_data[i][3][0] for i in range(len(val_data))]))
+    odds2 = torch.tensor(np.asarray([val_data[i][3][1] for i in range(len(val_data))]))
+
     Ys = torch.tensor(np.asarray([val_data[i][2] for i in range(len(val_data))]))
 
-    predictions_1 = model(X1, X2).detach().numpy()
-    predictions_2 = 1 - model(X2, X1).detach().numpy()
+    model.eval()
+    with torch.no_grad():
+        predictions_1 = model(X1, X2, odds1, odds2).detach().numpy()
+        predictions_2 = 1 - model(X2, X1, odds2, odds1).detach().numpy()
 
     if print_info:
         print("")
 
     for fight_id, Y, prediction_1, prediction_2 in zip(
-        validation_fights,
+        valid_test_fights,
         Ys.reshape(-1),
         predictions_1.reshape(-1),
         predictions_2.reshape(-1),
@@ -948,10 +972,10 @@ def simulate_bets(min_confidence=0, max_diff=0.2, max_bet=5, print_info=False):
 
         prediction = 0.5 * (prediction_1 + prediction_2)
         confidence = np.abs(prediction - 0.5)
-        if confidence < min_confidence:
-            continue
-        elif diff > max_diff:
-            continue
+        # if confidence < min_confidence:
+        #     continue
+        # elif diff > max_diff:
+        #     continue
 
         if print_info:
             if winner == f1:
@@ -1023,7 +1047,56 @@ def simulate_bets(min_confidence=0, max_diff=0.2, max_bet=5, print_info=False):
 
 
 # %%
-_ = simulate_bets(min_confidence=0.05, max_diff=0.05, max_bet=10000, print_info=True)
+_ = simulate_bets(min_confidence=0, max_diff=0.1, max_bet=10000, print_info=True)
+# _ = simulate_bets(min_confidence=0.05, max_diff=0.05, max_bet=10000, print_info=True)
 # _ = simulate_bets(min_confidence=0, max_diff=0.1, max_bet=1000, print_info=True)
+
+# %%
+
+# %%
+X1 = torch.tensor(np.asarray([val_data[i][0] for i in range(len(val_data))]))
+
+X2 = torch.tensor(np.asarray([val_data[i][1] for i in range(len(val_data))]))
+
+odds1 = torch.tensor(np.asarray([val_data[i][3][0] for i in range(len(val_data))]))
+odds2 = torch.tensor(np.asarray([val_data[i][3][1] for i in range(len(val_data))]))
+
+Ys = torch.tensor(np.asarray([val_data[i][2] for i in range(len(val_data))]))
+
+# %%
+model.eval()
+with torch.no_grad():
+    predictions_1 = model(X1, X2, odds1, odds2).detach().numpy()
+    predictions_2 = 1 - model(X2, X1, odds2, odds1).detach().numpy()
+
+# %%
+print(0.5 * (predictions_1 + predictions_2)[0])
+print(predictions_1[0] - predictions_2[0])
+
+# %%
+X1[0]
+
+# %%
+x1, x2, y, (odds1, odds2) = from_id_to_fight(sorted(validation_fights)[0])
+
+# %%
+x1
+
+# %%
+odds1 = torch.reshape(odds1, (1, -1))
+odds2 = torch.reshape(odds2, (1, -1))
+x1 = torch.reshape(x1, (1, -1))
+x2 = torch.reshape(x2, (1, -1))
+
+# %%
+model.eval()
+with torch.no_grad():
+    value1 = float(model(x1, x2, odds1, odds2))
+    value2 = 1 - float(model(x2, x1, odds2, odds1))
+
+# %%
+value = (value1 + value2) / 2
+
+print(round(value, 3), round(np.abs(value1 - value2), 3))
 
 # %%

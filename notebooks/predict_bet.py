@@ -19,7 +19,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import datetime
-plt.style.use('tableau-colorblind10')
+
+plt.style.use("tableau-colorblind10")
 
 
 # Show all columns for each dataframe (horizontal scroll)
@@ -30,23 +31,20 @@ pd.set_option("display.max_columns", None)
 data_folder = Path("/home/cramirez/kaggle/ufc_scraper/data")
 
 # %%
-fight_data = pd.read_csv(
-    data_folder / "fight_data.csv"
-)
+fight_data = pd.read_csv(data_folder / "fight_data.csv")
 
 
 # %%
-round_data = pd.read_csv(
-    data_folder / "round_data.csv"
-)
+round_data = pd.read_csv(data_folder / "round_data.csv")
 
 ###########################################################
 # Now we are going to group the round data to get stats
 # per match for each player
 ###########################################################
 
+
 # Fix the column ctrl time to show time in seconds
-def convert_to_seconds(time_str:str) -> int:
+def convert_to_seconds(time_str: str) -> int:
     if time_str == "--":
         return 0
     elif time_str in (None, "NULL") or pd.isna(time_str):
@@ -55,13 +53,12 @@ def convert_to_seconds(time_str:str) -> int:
         minutes, seconds = map(int, time_str.split(":"))
         return minutes * 60 + seconds
 
+
 round_data["ctrl_time"] = round_data["ctrl_time"].apply(convert_to_seconds)
 
 
 # %%
-fighter_data = pd.read_csv(
-    data_folder / "fighter_data.csv"
-)
+fighter_data = pd.read_csv(data_folder / "fighter_data.csv")
 
 # Adding the name by combingin first and last name
 fighter_data["fighter_name"] = (
@@ -286,6 +283,12 @@ data["age"]  = (data["event_date"] - data["fighter_dob"]).dt.days / 365
  
 
 data = data.sort_values(by=["fighter_id", "event_date"])
+
+# %%
+data = data.sort_values(by=["fighter_id", "event_date"])
+
+# %%
+data[data["fighter_name"].str.contains("Holloway")]
 
 # %%
 ##########################################################################

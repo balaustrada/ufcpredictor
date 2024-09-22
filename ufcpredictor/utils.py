@@ -16,8 +16,10 @@ weight_dict = {
 }
 
 def convert_minutes_to_seconds(time_str: str) -> int:
-    if time_str in (None, "Null", "--") or pd.isna(time_str):
+    if time_str == "--":
+        return 0
+    elif time_str in (None, "NULL") or pd.isna(time_str):
         return None
     else:
-        minutes, seconds = map(int, time_str.split(':'))
+        minutes, seconds = map(int, time_str.split(":"))
         return minutes * 60 + seconds

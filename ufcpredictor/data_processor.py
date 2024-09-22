@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import datetime
 import numpy as np
 import pandas as pd
 import torch
@@ -21,75 +22,12 @@ from ufcscraper.odds_scraper import BestFightOddsScraper
 from ufcpredictor.utils import convert_minutes_to_seconds, weight_dict
 
 if TYPE_CHECKING:  # pragma: no cover
-    import datetime
     from typing import Any, Callable, List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
 
 
 class DataProcessor:
-    input_fields = [
-        "knockdowns_per_min",
-        "strikes_att_per_min",
-        "strikes_succ_per_min",
-        "head_strikes_att_per_min",
-        "head_strikes_succ_per_min",
-        "body_strikes_att_per_min",
-        "body_strikes_succ_per_min",
-        "leg_strikes_att_per_min",
-        "leg_strikes_succ_per_min",
-        "distance_strikes_att_per_min",
-        "distance_strikes_succ_per_min",
-        "ground_strikes_att_per_min",
-        "ground_strikes_succ_per_min",
-        "clinch_strikes_att_per_min",
-        "clinch_strikes_succ_per_min",
-        "total_strikes_att_per_min",
-        "total_strikes_succ_per_min",
-        "takedown_att_per_min",
-        "takedown_succ_per_min",
-        "submission_att_per_min",
-        "reversals_per_min",
-        "ctrl_time_per_min",
-        "KO_per_min",
-        "KO_opp_per_min",
-        "Sub_per_min",
-        "Sub_opp_per_min",
-        "win_per_min",
-        "time_since_last_fight",
-    ]
-    averaged_columns = [
-        "knockdowns",
-        "strikes_att",
-        "strikes_succ",
-        "head_strikes_att",
-        "head_strikes_succ",
-        "body_strikes_att",
-        "body_strikes_succ",
-        "leg_strikes_att",
-        "leg_strikes_succ",
-        "distance_strikes_att",
-        "distance_strikes_succ",
-        "ground_strikes_att",
-        "ground_strikes_succ",
-        "clinch_strikes_att",
-        "clinch_strikes_succ",
-        "total_strikes_att",
-        "total_strikes_succ",
-        "takedown_att",
-        "takedown_succ",
-        "submission_att",
-        "reversals",
-        "ctrl_time",
-        "num_rounds",
-        "total_time",
-        "KO",
-        "KO_opp",
-        "Sub",
-        "Sub_opp",
-        "win",
-    ]
-
     def __init__(self, data_folder: Path | str) -> None:
         self.data_folder = data_folder
         self.bfo_scraper = BestFightOddsScraper(
@@ -100,138 +38,307 @@ class DataProcessor:
             data_folder=self.data_folder,
         )
 
-    def prepare_fight_data(self) -> pd.DataFrame:
-        # We prepare UFCStats data
-        data = self.bfo_scraper.get_ufcstats_data()
+    def load_data(self) -> None:
+        data = self.join_dataframes()
+        data = self.fix_date_and_time_fields(data)
+        data = self.convert_odds_to_european(data)
+        data = self.fill_weight(data)
+        data = self.add_key_stats(data)
+        data = self.apply_filters(data)
+        self.data = self.group_round_data(data)
 
-        # Now we add odds information
-        data = data.merge(
-            self.bfo_scraper.data,
-            on=["fight_id", "fighter_id"],
-        )
-
-        # We now join with round data, which we previously
-        # sum by fight to get full fight statistics
-        # (we don't yet handle round information separately)
+    def join_dataframes(self) -> pd.DataFrame:
+        fight_data = self.scraper.fight_scraper.data
         round_data = self.scraper.fight_scraper.rounds_handler.data
-        round_data["ctrl_time"] = round_data["ctrl_time"].apply(
-            convert_minutes_to_seconds
+        fighter_data = self.scraper.fighter_scraper.data
+        event_data = self.scraper.event_scraper.data
+
+        odds_data = self.bfo_scraper.data
+
+        ###########################################################
+        # I want to create two rows per match, one row for each fighter
+        ###########################################################
+        # Hence I need to duplicate the current fight data
+        # Assigning fighter and opponent to each other
+        data = pd.concat(
+            [
+                fight_data.rename(
+                    columns={"fighter_1": "opponent_id", "fighter_2": "fighter_id"}
+                ),
+                fight_data.rename(
+                    columns={"fighter_2": "opponent_id", "fighter_1": "fighter_id"}
+                ),
+            ]
+        )
+
+        # I am merging the fighter data to the previous table
+        # This includes height, reach etc...
+        fighter_fields = ["fighter_id", "fighter_name", "fighter_nickname"]
+        fighter_data["fighter_name"] = (
+            fighter_data["fighter_f_name"]
+            + " "
+            + fighter_data["fighter_l_name"].fillna("")
         )
         data = data.merge(
-            round_data.groupby(["fight_id", "fighter_id"])
-            .sum()
-            .reset_index()
-            .drop("round", axis=1),
+            fighter_data,  # [fighter_fields],
+            on="fighter_id",
+            how="left",
+        )
+
+        data = data.merge(
+            fighter_data[["fighter_id", "fighter_name", "fighter_nickname"]],
+            left_on="opponent_id",
+            right_on="fighter_id",
+            how="left",
+            suffixes=("", "_opponent"),
+        )
+
+        #############################################################
+        # Add round data.
+        #############################################################
+
+        # Merging columns
+        round_data = pd.merge(
+            round_data,
+            round_data,
+            on=["fight_id", "round"],
+            suffixes=("", "_opponent"),
+        )
+
+        # And then remove the match of the fighter with itself
+        round_data = round_data[
+            round_data["fighter_id"] != round_data["fighter_id_opponent"]
+        ]
+
+        data = data.merge(
+            round_data,
+            on=[
+                "fight_id",
+                "fighter_id",
+                "fighter_id_opponent",
+            ],
+        )
+
+        ##############################################################
+        # Add odds data
+        ###############################################################
+        data = data.merge(
+            odds_data,
             on=["fight_id", "fighter_id"],
         )
 
-        # We now join with fight data to get winner,
-        # winner round, gender, weight,  etc...
+        # Add the date of the event to the dataframe
         data = data.merge(
-            self.scraper.fight_scraper.data[
-                [
-                    "fight_id",
-                    "winner",
-                    "num_rounds",
-                    "weight_class",
-                    "gender",
-                    "result",
-                    "result_details",
-                    "finish_round",
-                    "finish_time",
-                    "time_format",
-                ]
-            ],
-            on=["fight_id"],
+            event_data[["event_id", "event_date"]],  # I only need the date for now,
+            on="event_id",
+        )
+
+        return data
+
+    @staticmethod
+    def fix_date_and_time_fields(data: pd.DataFrame) -> pd.DataFrame:
+        data["ctrl_time"] = data["ctrl_time"].apply(convert_minutes_to_seconds)
+        data["ctrl_time_opponent"] = data["ctrl_time_opponent"].apply(
+            convert_minutes_to_seconds
         )
         data["finish_time"] = data["finish_time"].apply(convert_minutes_to_seconds)
         data["total_time"] = (data["finish_round"] - 1) * 5 * 60 + data["finish_time"]
-        # This means we only support the now usual 2 formats.
-        data = data[data["time_format"].isin(["3 Rnd (5-5-5)", "5 Rnd (5-5-5-5-5)"])]
+        data["event_date"] = pd.to_datetime(data["event_date"])
+        data["fighter_dob"] = pd.to_datetime(data["fighter_dob"])
 
-        # Remove catch, open and invalid weights
+        data = data.sort_values(by=["fighter_id", "event_date"])
+
+        return data
+
+    @staticmethod
+    def convert_odds_to_european(data: pd.DataFrame) -> pd.DataFrame:
+        for field in "opening", "closing_range_min", "closing_range_max":
+            msk = data[field] > 0
+
+            data.loc[msk, field] = data.loc[msk, field] / 100 + 1
+            data.loc[~msk, field] = 100 / -data.loc[~msk, field] + 1
+
+        return data
+
+    @staticmethod
+    def fill_weight(data: pd.DataFrame) -> pd.DataFrame:
+        data.loc[:, "weight"] = data["weight_class"].map(weight_dict)
+
+        ##################################################################################
+        # Remmove null weight classes, or open weight or catch weight (agreed weight outside a weight class)
+        ##################################################################################
         data = data[
             (data["weight_class"] != "NULL")
             & (data["weight_class"] != "Catch Weight")
             & (data["weight_class"] != "Open Weight")
         ]
 
-        # Translate weight into lbs
-        data.loc[:, "weight"] = data["weight_class"].map(weight_dict)
+        return data
 
-        data = data[data["gender"] == "M"]
-
-        # Remove disqualified and doctor's stoppage
-        data = data[data["result"].isin(["Decision", "KO/TKO", "Submission"])]
-
-        # Add extra fields for KO Sub and win
+    @staticmethod
+    def add_key_stats(data: pd.DataFrame) -> pd.DataFrame:
+        #############################################
+        # Add some missing stats
+        # KO, Submission and Win
+        #############################################
+        # Whether fighter has KOd his opponent
         data["KO"] = np.where(
             (data["result"].str.contains("KO"))
             & (data["winner"] == data["fighter_id"]),
             1,
             0,
         )
-        data["KO_opp"] = np.where(
+
+        # Whether the fighter has been KOd by his opponent
+        data["KO_opponent"] = np.where(
             (data["result"].str.contains("KO"))
             & (data["winner"] != data["fighter_id"]),
             1,
             0,
         )
+
+        # Same for submission
         data["Sub"] = np.where(
             (data["result"].str.contains("Submission"))
             & (data["winner"] == data["fighter_id"]),
             1,
             0,
         )
-        data["Sub_opp"] = np.where(
+
+        data["Sub_opponent"] = np.where(
             (data["result"].str.contains("Submission"))
             & (data["winner"] != data["fighter_id"]),
             1,
             0,
         )
+
         data["win"] = np.where(data["winner"] == data["fighter_id"], 1, 0)
+        data["win_opponent"] = np.where(data["winner"] != data["fighter_id"], 1, 0)
+        data["age"] = (data["event_date"] - data["fighter_dob"]).dt.days / 365
 
-        # We preserve only one name (this is just for ease of use)
-        data["UFC_names"] = data["UFC_names"].apply(lambda x: x[0])
-        data["opponent_UFC_names"] = data["opponent_UFC_names"].apply(lambda x: x[0])
+        return data
 
-        # Start adding aggregated info
-        data = data.sort_values(by=["fighter_id", "event_date"])
-        data["num_fight"] = data.groupby("fighter_id").cumcount() + 1
-        data["prev_fight_date"] = data.groupby("fighter_id")["event_date"].shift(1)
-        data["time_since_last_fight"] = (
-            data["event_date"] - data["prev_fight_date"]
+    @staticmethod
+    def apply_filters(data: pd.DataFrame) -> pd.DataFrame:
+        # Remove old fights since I don't have odds for these
+        data = data[data["event_date"].dt.date >= datetime.date(2008, 8, 1)]
+
+        # Remove non-standard fight format
+        data = data[data["time_format"].isin(["3 Rnd (5-5-5)", "5 Rnd (5-5-5-5-5)"])]
+
+        # Remove female fights
+        data = data[data["gender"] == "M"]
+
+        # Remove disqualified and doctor's stoppage
+        data = data[data["result"].isin(["Decision", "KO/TKO", "Submission"])]
+
+        return data
+
+    @property
+    def round_stat_names(self) -> List[str]:
+        return [
+            c
+            for c in self.scraper.fight_scraper.rounds_handler.columns
+            if c not in ["fight_id", "fighter_id", "round"]
+        ] + [
+            c + "_opponent"
+            for c in self.scraper.fight_scraper.rounds_handler.columns
+            if c not in ["fight_id", "fighter_id", "round"]
+        ]
+
+    @property
+    def stat_names(self):
+        stat_names = self.round_stat_names
+        for field in ("KO", "Sub", "win"):
+            stat_names += [field, field + "_opponent"]
+
+        return stat_names
+
+    @property
+    def aggregated_fields(self):
+        return self.stat_names
+
+    @property
+    def normalized_fields(self):
+        normalized_fields = ["age", "time_since_last_fight", "fighter_height_cm"]
+
+        for field in self.aggregated_fields:
+            normalized_fields += [field, field + "_per_minute", field + "_per_fight"]
+
+        return normalized_fields
+
+    def group_round_data(self, data: pd.DataFrame) -> pd.DataFrame:
+        fixed_fields = [
+            c
+            for c in data.columns
+            if c
+            not in self.round_stat_names
+            + [
+                "round",
+            ]
+        ]
+
+        return (
+            data.groupby(
+                fixed_fields, dropna=False
+            )  # Important to group nans as valid values.
+            .sum()
+            .reset_index()
+            .drop("round", axis=1)
+        ).sort_values(by=["fighter_id", "event_date"])
+
+    def aggregate_data(self):
+        logger.info(f"Fields to be aggregated: {self.aggregated_fields}")
+
+        data_aggregated = self.data.copy()
+        data_aggregated["num_fight"] = (
+            data_aggregated.groupby("fighter_id").cumcount() + 1
+        )
+
+        data_aggregated["previous_fight_date"] = data_aggregated.groupby("fighter_id")[
+            "event_date"
+        ].shift(1)
+        data_aggregated["time_since_last_fight"] = (
+            data_aggregated["event_date"] - data_aggregated["previous_fight_date"]
         ).dt.days
 
-        for column in self.averaged_columns:
-            data[column] = data[column].astype(float)
-            data[column] = data.groupby("fighter_id")[column].cumsum()
+        for column in self.aggregated_fields:
+            data_aggregated[column] = data_aggregated[column].astype(float)
+            data_aggregated[column] = data_aggregated.groupby("fighter_id")[
+                column
+            ].cumsum()
 
-        # Average required columns
+        data_aggregated["total_time"] = data_aggregated.groupby("fighter_id")[
+            "total_time"
+        ].cumsum()
+
+        self.data_aggregated = data_aggregated
+
+    def add_per_minute_and_fight_stats(self):
         new_columns = {}
-        for column in self.averaged_columns:
-            new_columns[f"{column}_per_min"] = data[column] / data["total_time"]
-            new_columns[f"{column}_per_fight"] = data[column] / data["num_fight"]
 
-        data = pd.concat([data, pd.DataFrame(new_columns)], axis=1)
+        for column in self.aggregated_fields:
+            new_columns[column + "_per_minute"] = (
+                self.data_aggregated[column] / self.data_aggregated["total_time"]
+            )
+            new_columns[column + "_per_fight"] = (
+                self.data_aggregated[column] / self.data_aggregated["num_fight"]
+            )
 
-        # Remove invalid fights
-        invalid_fights = set(
-            data[data["total_strikes_succ_per_min"].isna()]["fight_id"].tolist()
-        )
-        if len(invalid_fights) > 0:
-            raise ValueError("Invalid fights found")
-        
-        invalid_fights.update(
-            data[data["num_fight"] < 3]["fight_id"].tolist()
-        )
+        self.data_aggregated = pd.concat(
+            [self.data_aggregated, pd.DataFrame(new_columns)], axis=1
+        ).copy()
 
-        self.valid_fights = set(data["fight_id"]) - set(invalid_fights)
+    def normalize_data(self):
+        data_normalized = self.data_aggregated.copy()
 
-        # Normalize input fields
-        for column in self.input_fields:
-            data[column] = data[column] / data[column].mean()
-        self.data = data
+        logger.info(f"Fields to be normalized: {self.normalized_fields}")
+
+        for column in self.normalized_fields:
+            mean = self.data_aggregated[column].mean()
+            data_normalized[column] = data_normalized[column] / mean
+
+        self.data_normalized = data_normalized
 
     def from_id_to_fight(self, X_set: List[str], id_: str, print_info: bool = False):
         # Get fighters
@@ -316,8 +423,7 @@ class DataProcessor:
                     return X1, X2
 
         return CustomDataset(data)
-    
+
     def get_data_loader(self, fight_ids: List[str], X_set: List[str], *args, **kwargs):
         dataset = self.get_dataset(fight_ids, X_set)
         return DataLoader(dataset, *args, **kwargs)
-    

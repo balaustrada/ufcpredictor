@@ -415,6 +415,9 @@ for x in input_set:
 input_set += opponent_stats
 
 # %%
+input_set
+
+# %%
 
 # %%
 from pyspark.sql.dataframe import DataFrame
@@ -474,7 +477,7 @@ def from_id_to_fight(id_, print_fighters=False, print_odds=False):
     x2 = [f2p[x] for x in input_set]
 
     if print_fighters:
-        print(fight["fighter_name"], " vs ", fight["fighter_name_opponent"])
+        print(fight["fighter_name"]<, " vs ", fight["fighter_name_opponent"])
 
     if print_odds:
         fight_mask = odds_data["fight_id"] == id_
@@ -558,8 +561,8 @@ validation_fights = test_fights
 
 # %%
 #############################################
-# Get the input data as pytorch arrays
-# for training and test
+# Get the input data as pytorch arrays      #
+# for training and test                     #
 #############################################
 
 train_data = []

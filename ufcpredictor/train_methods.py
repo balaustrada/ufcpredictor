@@ -12,7 +12,7 @@ from ufcscraper.ufc_scraper import UFCScraper
 from ufcscraper.odds_scraper import BestFightOddsScraper
 from ufcpredictor.utils import convert_minutes_to_seconds, weight_dict
 from ufcpredictor.data_processor import DataProcessor
-from ufcpredictor.networks import SymmetricFightNet
+from ufcpredictor.models import SymmetricFightNet
 import torch
 from torch import nn
 import torch.nn.functional as F

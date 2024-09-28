@@ -153,6 +153,8 @@ class BasicDataset:
             torch.FloatTensor(fight_data["opening_y"].values),
         ]
 
+        self.fight_data = fight_data
+
     def __len__(self):
         return len(self.data[0])
 

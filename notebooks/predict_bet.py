@@ -1107,7 +1107,7 @@ def simulate_bets(min_confidence=0, max_diff=0.2, max_bet=5, print_info=False):
         # if diff >= 0.3:
         #     continue
 
-    # print("                                                          ", end="\r")
+    # print("                ", end="\r")
     # print(f"{min_confidence:.2f}\t{bets}\t{earnings:.2f}\t{nbets}", end="\r")
     return earnings, bets, nbets, corrects, fights, fight_ids
 

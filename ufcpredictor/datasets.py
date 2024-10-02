@@ -28,8 +28,10 @@ if TYPE_CHECKING:  # pragma: no cover
 
 logger = logging.getLogger(__name__)
 
+class Dataset:
+    pass
 
-class BasicDataset:
+class BasicDataset(Dataset):
     X_set = [
         "knockdowns_per_minute",
         "strikes_att_per_minute",
@@ -91,12 +93,15 @@ class BasicDataset:
         "win_opponent_per_fight",
     ]
 
-    def __init__(self, data_processor: DataProcessor, fight_ids: List[str]) -> None:
+    def __init__(self, data_processor: DataProcessor, fight_ids: List[str], X_set: List[str]=None) -> None:
         """
         fight_ids: Fight ids to load (usually train fights or test fights)
         """
         self.data_processor = data_processor
         self.fight_ids = fight_ids
+
+        if X_set is not None:
+            self.X_set = X_set
 
         not_found = []
         for column in self.X_set:
@@ -174,3 +179,32 @@ class BasicDataset:
             odds_1, odds_2 = odds_2, odds_1
 
         return X, Y, winner.reshape(-1), odds_1.reshape(-1), odds_2.reshape(-1)
+
+    def get_fight_data_from_ids(self, fight_ids: Optional[List[str]] = None) -> Tuple[torch.Tensor]:
+        if fight_ids is not None:
+            fight_data = self.fight_data[
+                self.fight_data["fight_id"].isin(fight_ids)
+            ]
+        else:
+            fight_data = self.fight_data.copy()
+        
+        data = [
+            torch.FloatTensor(
+                np.asarray([fight_data[x + "_x"].values for x in self.X_set]).T
+            ),
+            torch.FloatTensor(
+                np.asarray([fight_data[x + "_y"].values for x in self.X_set]).T
+            ),
+            torch.FloatTensor(
+                (fight_data["winner_x"] != fight_data["fighter_id_x"]).values
+            ),
+            torch.FloatTensor(fight_data["opening_x"].values),
+            torch.FloatTensor(fight_data["opening_y"].values),
+        ]
+        
+        fighter_names = fight_data["fighter_name_x"].values
+        opponent_names = fight_data["fighter_name_y"].values
+        
+        X1, X2, Y, odds1, odds2 = data
+
+        return X1, X2, Y, odds1, odds2, fighter_names, opponent_names

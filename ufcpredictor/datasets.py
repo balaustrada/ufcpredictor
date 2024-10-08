@@ -1,26 +1,24 @@
 from __future__ import annotations
 
 import logging
-
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-
-from ufcscraper.ufc_scraper import UFCScraper
-from ufcscraper.odds_scraper import BestFightOddsScraper
-from ufcpredictor.utils import convert_minutes_to_seconds, weight_dict
-from ufcpredictor.data_processor import DataProcessor
-from ufcpredictor.models import SymmetricFightNet
 import torch
-from torch import nn
 import torch.nn.functional as F
+from sklearn.metrics import f1_score
+from torch import nn
+from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
-from torch.optim import Adam
-from sklearn.metrics import f1_score
+from ufcscraper.odds_scraper import BestFightOddsScraper
+from ufcscraper.ufc_scraper import UFCScraper
 
+from ufcpredictor.data_processor import DataProcessor
+from ufcpredictor.models import SymmetricFightNet
+from ufcpredictor.utils import convert_minutes_to_seconds, weight_dict
 
 if TYPE_CHECKING:  # pragma: no cover
     import datetime
@@ -28,8 +26,10 @@ if TYPE_CHECKING:  # pragma: no cover
 
 logger = logging.getLogger(__name__)
 
+
 class Dataset:
     pass
+
 
 class BasicDataset(Dataset):
     X_set = [
@@ -93,7 +93,12 @@ class BasicDataset(Dataset):
         "win_opponent_per_fight",
     ]
 
-    def __init__(self, data_processor: DataProcessor, fight_ids: List[str], X_set: List[str]=None) -> None:
+    def __init__(
+        self,
+        data_processor: DataProcessor,
+        fight_ids: List[str],
+        X_set: List[str] = None,
+    ) -> None:
         """
         fight_ids: Fight ids to load (usually train fights or test fights)
         """
@@ -113,7 +118,7 @@ class BasicDataset(Dataset):
 
         self.load_data()
 
-    def load_data(self):
+    def load_data(self) -> None:
         reduced_data = self.data_processor.data_normalized.copy()
 
         # We shift stats because the input for the model should be the
@@ -180,14 +185,14 @@ class BasicDataset(Dataset):
 
         return X, Y, winner.reshape(-1), odds_1.reshape(-1), odds_2.reshape(-1)
 
-    def get_fight_data_from_ids(self, fight_ids: Optional[List[str]] = None) -> Tuple[torch.Tensor]:
+    def get_fight_data_from_ids(
+        self, fight_ids: Optional[List[str]] = None
+    ) -> Tuple[torch.Tensor]:
         if fight_ids is not None:
-            fight_data = self.fight_data[
-                self.fight_data["fight_id"].isin(fight_ids)
-            ]
+            fight_data = self.fight_data[self.fight_data["fight_id"].isin(fight_ids)]
         else:
             fight_data = self.fight_data.copy()
-        
+
         data = [
             torch.FloatTensor(
                 np.asarray([fight_data[x + "_x"].values for x in self.X_set]).T
@@ -201,10 +206,110 @@ class BasicDataset(Dataset):
             torch.FloatTensor(fight_data["opening_x"].values),
             torch.FloatTensor(fight_data["opening_y"].values),
         ]
-        
+
         fighter_names = fight_data["fighter_name_x"].values
         opponent_names = fight_data["fighter_name_y"].values
-        
+
         X1, X2, Y, odds1, odds2 = data
 
         return X1, X2, Y, odds1, odds2, fighter_names, opponent_names
+
+
+class ForecastDataset(Dataset):
+    X_set = BasicDataset.X_set
+
+    def __init__(
+        self,
+        data_processor: DataProcessor,
+        X_set: List[str] = None,
+    ) -> None:
+        self.data_processor = data_processor
+
+        if X_set is not None:
+            self.X_set = X_set
+
+        not_found = []
+        for column in self.X_set:
+            if column not in self.data_processor.data_normalized.columns:
+                not_found.append(column)
+
+        if len(not_found) > 0:
+            raise ValueError(f"Columns not found in normalized data: {not_found}")
+
+    def get_forecast_prediction(
+        self,
+        fighter_ids: List[str],
+        opponent_ids: List[str],
+        event_dates: List[str | datetime.date],
+        fighter_odds: List[float],
+        opponent_odds: List[float],
+        model: nn.Module,
+    ):
+        match_data = pd.DataFrame(
+            {
+                "fighter_id": fighter_ids + opponent_ids,
+                "event_date_forecast": event_dates * 2,
+                "opening": np.concatenate((fighter_odds, opponent_odds)),
+            }
+        )
+
+        match_data = match_data.merge(
+            self.data_processor.data_normalized,
+            left_on="fighter_id",
+            right_on="fighter_id",
+        )
+
+        match_data = match_data[
+            match_data["event_date"] < match_data["event_date_forecast"]
+        ]
+        match_data = match_data.sort_values(
+            by=["fighter_id", "event_date"],
+            ascending=[True, False],
+        )
+        match_data = match_data.drop_duplicates(
+            subset=["fighter_id", "event_date_forecast"],
+            keep="first",
+        )
+        match_data["id_"] = (
+            match_data["fighter_id"].astype(str)
+            + "_"
+            + match_data["event_date_forecast"].astype(str)
+        )
+
+        # This data dict is used to facilitate the construction of the tensors
+        data_dict = {
+            id_: data
+            for id_, data in zip(
+                match_data["id_"].values,
+                np.asarray([match_data[x] for x in self.X_set]).T,
+            )
+        }
+
+        data = [
+            torch.FloatTensor(
+                np.asarray(
+                    [
+                        data_dict[fighter_id + "_" + event_date]
+                        for fighter_id, event_date in zip(fighter_ids, event_dates)
+                    ]
+                )
+            ),  # X1
+            torch.FloatTensor(
+                np.asarray(
+                    [
+                        data_dict[fighter_id + "_" + event_date]
+                        for fighter_id, event_date in zip(opponent_ids, event_dates)
+                    ]
+                )
+            ),  # X2
+            torch.FloatTensor(np.asarray(fighter_odds)).reshape(-1, 1),  # Odds1,
+            torch.FloatTensor(np.asarray(opponent_odds)).reshape(-1, 1),  # Odds2
+        ]
+
+        X1, X2, odds1, odds2 = data
+        model.eval()
+        with torch.no_grad():
+            predictions_1 = model(X1, X2, odds1, odds2).detach().numpy()
+            predictions_2 = 1 - model(X2, X1, odds2, odds1).detach().numpy()
+
+        return predictions_1, predictions_2

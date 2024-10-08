@@ -428,12 +428,15 @@ class DataProcessor:
         dataset = self.get_dataset(fight_ids, X_set)
         return DataLoader(dataset, *args, **kwargs)
 
+
 class OSRDataProcessor(DataProcessor):
     def aggregate_data(self):
         super().aggregate_data()
 
         # Adding OSR information
-        df = self.data_aggregated[["fighter_id", "fight_id", "opponent_id", "event_date"]].copy()
+        df = self.data_aggregated[
+            ["fighter_id", "fight_id", "opponent_id", "event_date"]
+        ].copy()
         df["S"] = self.data_aggregated["win"] / self.data_aggregated["num_fight"]
         df["OSR"] = df["S"]
 
@@ -443,30 +446,125 @@ class OSRDataProcessor(DataProcessor):
         while diff > 0.1:
             df["OSR"] = new_OSR
             df["OSR_past"] = df.groupby("fighter_id")["OSR"].shift(1)
-            
+
             merged_df = df.merge(
-                df, 
-                left_on="fighter_id", 
-                right_on="opponent_id", 
+                df,
+                left_on="fighter_id",
+                right_on="opponent_id",
                 suffixes=("_x", "_y"),
-                how="left"
+                how="left",
             )
 
             merged_df = merged_df[
                 (merged_df["event_date_x"] > merged_df["event_date_y"])
             ]
-            
-            OSR_opponent = merged_df.groupby(["fighter_id_x", "fight_id_x"])["OSR_y"].mean()
 
-            df = df[["fighter_id", "fight_id", "opponent_id", "event_date", "S", "OSR", "OSR_past"]].merge(
-                OSR_opponent,
-                left_on=["fighter_id", "fight_id"],
-                right_on=["fighter_id_x", "fight_id_x"],
-                how="left",
-            ).rename(columns={"OSR_y": "OSR_opp"})
+            OSR_opponent = merged_df.groupby(["fighter_id_x", "fight_id_x"])[
+                "OSR_y"
+            ].mean()
+
+            df = (
+                df[
+                    [
+                        "fighter_id",
+                        "fight_id",
+                        "opponent_id",
+                        "event_date",
+                        "S",
+                        "OSR",
+                        "OSR_past",
+                    ]
+                ]
+                .merge(
+                    OSR_opponent,
+                    left_on=["fighter_id", "fight_id"],
+                    right_on=["fighter_id_x", "fight_id_x"],
+                    how="left",
+                )
+                .rename(columns={"OSR_y": "OSR_opp"})
+            )
 
             new_OSR = df[["S", "OSR_opp", "OSR_past"]].mean(axis=1)
 
             diff = abs(new_OSR - df["OSR"]).sum()
-            
+
+        self.data_aggregated["OSR"] = new_OSR
+
+
+class WOSRDataProcessor(DataProcessor):
+    def __init__(self, data_folder: Path | str, weights: List[float] = [0.3, 0.3, 0.3]):
+        super().__init__(data_folder)
+
+        self.skills_weight, self.past_OSR_weight, self.opponent_OSR_weight = weights
+
+    def aggregate_data(self):
+        super().aggregate_data()
+
+        # Adding OSR information
+        df = self.data_aggregated[
+            ["fighter_id", "fight_id", "opponent_id", "event_date"]
+        ].copy()
+        df["S"] = self.data_aggregated["win"] / self.data_aggregated["num_fight"]
+        df["OSR"] = df["S"]
+
+        diff = 1
+        new_OSR = df["S"]
+
+        while diff > 0.1:
+            df["OSR"] = new_OSR
+            df["OSR_past"] = df.groupby("fighter_id")["OSR"].shift(1)
+
+            merged_df = df.merge(
+                df,
+                left_on="fighter_id",
+                right_on="opponent_id",
+                suffixes=("_x", "_y"),
+                how="left",
+            )
+
+            merged_df = merged_df[
+                (merged_df["event_date_x"] > merged_df["event_date_y"])
+            ]
+
+            OSR_opponent = merged_df.groupby(["fighter_id_x", "fight_id_x"])[
+                "OSR_y"
+            ].mean()
+
+            df = (
+                df[
+                    [
+                        "fighter_id",
+                        "fight_id",
+                        "opponent_id",
+                        "event_date",
+                        "S",
+                        "OSR",
+                        "OSR_past",
+                    ]
+                ]
+                .merge(
+                    OSR_opponent,
+                    left_on=["fighter_id", "fight_id"],
+                    right_on=["fighter_id_x", "fight_id_x"],
+                    how="left",
+                )
+                .rename(columns={"OSR_y": "OSR_opp"})
+            )
+
+            new_OSR = (
+                df["S"].fillna(0) * self.skills_weight
+                + df["OSR_past"].fillna(0) * self.past_OSR_weight
+                + df["OSR_opp"].fillna(0) * self.opponent_OSR_weight
+            )
+            weight_sum = (
+                (~df["S"].isna()) * self.skills_weight
+                + (~df["OSR_past"].isna()) * self.past_OSR_weight
+                + (~df["OSR_opp"].isna()) * self.opponent_OSR_weight
+            )
+            new_OSR /= weight_sum
+
+            # new_OSR = df[["S", "OSR_opp", "OSR_past"]].mean(axis=1)
+
+            diff = abs(new_OSR - df["OSR"]).sum()
+
         self.data_aggregated["OSR"] = new_OSR

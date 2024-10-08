@@ -19,15 +19,13 @@ class PredictionPlots:
     @staticmethod
     def show_fight_prediction_detail(
         model: nn.Module,
-        dataset: Dataset,
-        fight_ids: Optional[List[str]] = None,
+        data: Tuple[torch.Tensor],
         print_info: bool = False,
         show_plot: bool = False,
         ax: Optional[plt.Axes] = None,
     ):
-        X1, X2, Y, odds1, odds2, fighter_names, opponent_names = (
-            dataset.get_fight_data_from_ids(fight_ids)
-        )
+        X1, X2, Y, odds1, odds2, fighter_names, opponent_names = data
+
         with torch.no_grad():
             predictions_1 = (
                 model(X1, X2, odds1.reshape(-1, 1), odds2.reshape(-1, 1))
@@ -108,3 +106,24 @@ class PredictionPlots:
                 * 100,
             )
             ax.axhline(0, c="k")
+
+    @staticmethod
+    def show_fight_prediction_detail_from_dataset(
+        model: nn.Module,
+        dataset: Dataset,
+        fight_ids: Optional[List[str]] = None,
+        print_info: bool = False,
+        show_plot: bool = False,
+        ax: Optional[plt.Axes] = None,
+    ):
+        X1, X2, Y, odds1, odds2, fighter_names, opponent_names = (
+            dataset.get_fight_data_from_ids(fight_ids)
+        )
+
+        PredictionPlots.show_fight_prediction_detail(
+            model,
+            (X1, X2, Y, odds1, odds2, fighter_names, opponent_names),
+            print_info,
+            show_plot,
+            ax,
+        )

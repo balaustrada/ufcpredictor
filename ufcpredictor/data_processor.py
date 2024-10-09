@@ -28,14 +28,21 @@ logger = logging.getLogger(__name__)
 
 
 class DataProcessor:
-    def __init__(self, data_folder: Path | str) -> None:
-        self.data_folder = data_folder
-        self.bfo_scraper = BestFightOddsScraper(
-            data_folder=self.data_folder,
-            n_sessions=-1,
-        )
-        self.scraper = UFCScraper(
-            data_folder=self.data_folder,
+    def __init__(
+        self,
+        data_folder: Optional[Path | str],
+        ufc_scraper: Optional[UFCScraper] = None,
+        bfo_scraper: Optional[BestFightOddsScraper] = None,
+    ) -> None:
+        if data_folder is None and (ufc_scraper is None or bfo_scraper is None):
+            raise ValueError(
+                "If data_folder is None, both ufc_scraper and bfo_scraper "
+                "should be provided"
+            )
+
+        self.scraper = ufc_scraper or UFCScraper(data_folder=data_folder)
+        self.bfo_scraper = bfo_scraper or BestFightOddsScraper(
+            data_folder=self.data_folder, n_sessions=-1
         )
 
     def load_data(self) -> None:

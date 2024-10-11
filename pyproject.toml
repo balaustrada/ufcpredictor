@@ -5,6 +5,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["ufcpredictor"]
 
+[tool.mypy]
+exclude = '^tests/'
+
 [tool.setuptools.dynamic]
 version = {attr = "ufcpredictor.__version__"}
 dependencies = {file = ["requirements.txt"]}

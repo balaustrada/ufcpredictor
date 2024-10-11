@@ -13,7 +13,8 @@ name = "ufcpredictor"
 readme = "README.md"
 requires-python = ">=3.9.13"
 dynamic = ["version"]
-dependencies = [ 
+dependencies = [
+    "matplotlib",
     "scikit_learn",
     "torch",
     "tqdm",

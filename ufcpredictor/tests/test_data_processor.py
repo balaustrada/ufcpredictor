@@ -14,15 +14,16 @@ import unittest
 from unittest.mock import MagicMock, patch
 import pandas as pd
 from pathlib import Path
-from ufcpredictor.data_processor import DataProcessor  # Assuming the class is in 'your_module'
+from ufcpredictor.data_processor import DataProcessor, OSRDataProcessor, WOSRDataProcessor  # Assuming the class is in 'your_module'
 import datetime
 import numpy as np
 from unittest.mock import patch
 
 THIS_DIR = Path(__file__).parent
 
-@patch.object(DataProcessor, "__init__", lambda self, data_folder: None)
-class TestDataProcessor(unittest.TestCase):
+class BaseTestDataProcessor(object):
+    data_processor = DataProcessor
+    init_kwargs = dict()
 
     def setUp(self):
         """Set up a mock data folder and create a DataProcessor instance."""        
@@ -30,10 +31,11 @@ class TestDataProcessor(unittest.TestCase):
         ufc_scraper = MagicMock()
         bfo_scraper = MagicMock()
 
-        self.processor = DataProcessor(
+        self.processor = self.data_processor(
             data_folder = None,
             ufc_scraper = ufc_scraper,
             bfo_scraper = bfo_scraper,
+            **self.init_kwargs,
         )
 
 
@@ -77,6 +79,31 @@ class TestDataProcessor(unittest.TestCase):
         self.processor.scraper.fighter_scraper.data = self.mock_fighter_data
         self.processor.scraper.event_scraper.data = self.mock_event_data
         self.processor.bfo_scraper.data = self.mock_odds_data
+
+    def test_raise_error_if_data_folder_is_none(self):
+        """Test that raise_error_if_data_folder_is_none raises an error if data_folder is None."""
+        with self.assertRaises(ValueError):
+            self.data_processor(data_folder=None, ufc_scraper=None, bfo_scraper=None)
+
+    def test_load_data_calls_all_methods(self):
+        methods_to_patch = [
+            'join_dataframes',
+            'fix_date_and_time_fields',
+            'convert_odds_to_european',
+            'fill_weight',
+            'add_key_stats',
+            'apply_filters',
+            'group_round_data',
+        ]
+
+        with patch.multiple(
+            self.data_processor,
+            **{method: MagicMock() for method in methods_to_patch}
+        ):
+            self.processor.load_data()
+
+            for method in methods_to_patch:
+                getattr(self.processor, method).assert_called_once()
 
     def test_join_dataframes(self):
         """Test that join_dataframes correctly joins fight, fighter, event, and odds data."""
@@ -263,6 +290,7 @@ class TestDataProcessor(unittest.TestCase):
 
         pd.testing.assert_frame_equal(result, expected)
 
+class TestDataProcessor(BaseTestDataProcessor, unittest.TestCase):
     def test_aggregate_data(self):
         """Test the aggregate_data method."""
         data = pd.DataFrame({
@@ -413,5 +441,186 @@ class TestDataProcessor(unittest.TestCase):
             [2, 0, 1, 1,]
         )
 
-if __name__ == '__main__':
+class TestOSRDataProcessor(BaseTestDataProcessor, unittest.TestCase):
+    data_processor = OSRDataProcessor
+    def test_aggregate_data(self):
+        """Test the aggregate_data method."""
+        data = pd.DataFrame({
+            'fighter_id': ['f1', 'f2', 'f1', 'f2'],
+            'opponent_id': ['f2', 'f1', 'f2', 'f1'],
+            'fight_id': ['1', '1', '2', '2'],
+            'event_date': pd.to_datetime(['2020-01-01',]*2+['2020-01-02',]*2),
+            'total_time': [5, 5, 2, 2],
+            'strikes': [10, 5, 5, 10],
+            'strikes_opponent': [5, 10, 10, 5],
+            'takedowns': [2, 1, 1, 2],
+            'takedowns_opponent': [1, 2, 2, 1],
+            'KO': [1, 0, 0, 0],
+            'KO_opponent': [0, 1, 0, 0],
+            'Sub': [0, 0, 0, 1],
+            'Sub_opponent': [0, 0, 1, 0],
+            'win': [1, 0, 0, 1],
+            'win_opponent': [0, 1, 1, 0],
+        })
+        
+        self.processor.data = data.copy()
+
+        # Mock aggregated_fields
+        self.processor.scraper.fight_scraper.rounds_handler.columns = [
+            'fight_id', 'fighter_id', 'round', 'strikes', 'takedowns'
+        ]
+
+        self.processor.aggregate_data()
+        
+        expected = data.copy()
+        expected['num_fight'] = [1, 1, 2, 2]
+        expected['previous_fight_date'] = pd.to_datetime([pd.NaT, pd.NaT, '2020-01-01', '2020-01-01'])
+        expected['time_since_last_fight'] = [np.nan, np.nan, 1, 1]
+        expected['strikes'] = [10., 5., 15.0, 15.]
+        expected['strikes_opponent'] = [5., 10., 15., 15.]
+        expected['takedowns'] = [2., 1., 3., 3.]
+        expected['takedowns_opponent'] = [1., 2., 3., 3.]
+        expected['total_time'] = [5, 5, 7, 7]
+        expected['KO'] = [1., 0., 1., 0.]
+        expected['KO_opponent'] = [0., 1., 0., 1.]
+        expected['Sub'] = [0., 0., 0., 1.]
+        expected['Sub_opponent'] = [0., 0., 1., 0.]
+        expected['win'] = [1., 0., 1., 1.,]
+        expected['win_opponent'] = [0., 1., 1., 1.]
+        expected['OSR'] = [1., 0., 0.5, 0.5]
+
+        
+        pd.testing.assert_frame_equal(self.processor.data_aggregated, expected)
+
+class TestWOSRDataProcessor(BaseTestDataProcessor, unittest.TestCase):
+    data_processor = WOSRDataProcessor
+    init_kwargs = {
+        "weights": [0.1, 0.2, 0.7]
+    }
+    def test_aggregate_data(self):
+        """Test the aggregate_data method."""
+        data = pd.DataFrame({
+            'fighter_id': ['f1', 'f2', 'f1', 'f2'],
+            'opponent_id': ['f2', 'f1', 'f2', 'f1'],
+            'fight_id': ['1', '1', '2', '2'],
+            'event_date': pd.to_datetime(['2020-01-01',]*2+['2020-01-02',]*2),
+            'total_time': [5, 5, 2, 2],
+            'strikes': [10, 5, 5, 10],
+            'strikes_opponent': [5, 10, 10, 5],
+            'takedowns': [2, 1, 1, 2],
+            'takedowns_opponent': [1, 2, 2, 1],
+            'KO': [1, 0, 0, 0],
+            'KO_opponent': [0, 1, 0, 0],
+            'Sub': [0, 0, 0, 1],
+            'Sub_opponent': [0, 0, 1, 0],
+            'win': [1, 0, 0, 1],
+            'win_opponent': [0, 1, 1, 0],
+        })
+        
+        self.processor.data = data.copy()
+
+        # Mock aggregated_fields
+        self.processor.scraper.fight_scraper.rounds_handler.columns = [
+            'fight_id', 'fighter_id', 'round', 'strikes', 'takedowns'
+        ]
+
+        self.processor.aggregate_data()
+        
+        expected = data.copy()
+        expected['num_fight'] = [1, 1, 2, 2]
+        expected['previous_fight_date'] = pd.to_datetime([pd.NaT, pd.NaT, '2020-01-01', '2020-01-01'])
+        expected['time_since_last_fight'] = [np.nan, np.nan, 1, 1]
+        expected['strikes'] = [10., 5., 15.0, 15.]
+        expected['strikes_opponent'] = [5., 10., 15., 15.]
+        expected['takedowns'] = [2., 1., 3., 3.]
+        expected['takedowns_opponent'] = [1., 2., 3., 3.]
+        expected['total_time'] = [5, 5, 7, 7]
+        expected['KO'] = [1., 0., 1., 0.]
+        expected['KO_opponent'] = [0., 1., 0., 1.]
+        expected['Sub'] = [0., 0., 0., 1.]
+        expected['Sub_opponent'] = [0., 0., 1., 0.]
+        expected['win'] = [1., 0., 1., 1.,]
+        expected['win_opponent'] = [0., 1., 1., 1.]
+        expected['OSR'] = [1., 0., 0.25, 0.75]
+
+        
+        pd.testing.assert_frame_equal(self.processor.data_aggregated, expected)
+
+    # def test_from_id_to_fight(self):
+    #     # Mock the data attribute for the DataProcessor
+    #     self.processor.data = pd.DataFrame({
+    #         'fight_id': ['fight1', 'fight1', 'fight2', 'fight2'],
+    #         'fighter_id': ['f1', 'f2', 'f1','f2'],
+    #         'opponent_id': ['f2', 'f1', 'f2', 'f1'],
+    #         'event_date': [pd.Timestamp('2020-01-01'), pd.Timestamp('2020-01-01'), pd.Timestamp('2020-03-01'), pd.Timestamp('2020-03-01')],
+    #         'winner': ['f1', 'f1', 'f2', 'f2'],
+    #         'UFC_names': ['Fighter One', 'Fighter Two', 'Fighter One', 'Fighter Two'],
+    #         'opponent_UFC_names': ['Fighter Two', 'Fighter One', 'Fighter Two', 'Fighter One'],
+    #         'some_stat': [1, 2, 3, 6],
+    #         'other_stat': [4, 5, 6, 9],
+    #     })
+
+    #     # Mock the bfo_scraper data
+    #     self.processor.bfo_scraper = MagicMock()
+    #     self.processor.bfo_scraper.data = pd.DataFrame({
+    #         'fight_id': ['fight1', 'fight1', 'fight2', 'fight2'],
+    #         'fighter_id': ['f1', 'f2', 'f1', 'f2'],
+    #         'opening': [1.5, 2.0, 1.8, 3.0]
+    #     })
+
+    #     # Define the input set of stats to fetch
+    #     X_set = ['some_stat', 'other_stat']
+    #     fight_id = 'fight1'
+
+    #     # Call the method
+    #     x1, x2, outcome = self.processor.from_id_to_fight(X_set, fight_id)
+
+    #     # Check the values of the returned tensors
+    #     expected_x1 = [1, 4]  # fighter 'f1' stats
+    #     expected_x2 = [2, 5]  # fighter 'f3' (opponent 'f2') stats
+    #     expected_outcome = [1.0]  # 'f1' won, which is the winner in fight2
+
+    #     # Assert that the returned tensors match the expected values
+    #     self.assertTrue(torch.equal(x1, torch.FloatTensor(expected_x1)))
+    #     self.assertTrue(torch.equal(x2, torch.FloatTensor(expected_x2)))
+    #     self.assertTrue(torch.equal(outcome, torch.FloatTensor(expected_outcome)))
+
+    # def test_from_id_to_fight_with_print_info(self):
+
+    #     # Mock the data attribute for the DataProcessor
+    #     self.processor.data = pd.DataFrame({
+    #         'fight_id': ['fight1', 'fight2', 'fight3'],
+    #         'fighter_id': ['f1', 'f2', 'f1'],
+    #         'opponent_id': ['f2', 'f1', 'f3'],
+    #         'event_date': [pd.Timestamp('2020-01-01'), pd.Timestamp('2020-02-01'), pd.Timestamp('2020-03-01')],
+    #         'winner': ['f1', 'f2', 'f1'],
+    #         'UFC_names': ['Fighter One', 'Fighter Two', 'Fighter Three'],
+    #         'opponent_UFC_names': ['Opponent One', 'Opponent Two', 'Opponent Three'],
+    #         'some_stat': [1, 2, 3],
+    #         'other_stat': [4, 5, 6]
+    #     })
+
+    #     # Mock the bfo_scraper data
+    #     self.processor.bfo_scraper = MagicMock()
+    #     self.processor.bfo_scraper.data = pd.DataFrame({
+    #         'fight_id': ['fight1', 'fight2', 'fight3'],
+    #         'fighter_id': ['f1', 'f2', 'f1'],
+    #         'opening': [1.5, 2.0, 1.8]
+    #     })
+
+    #     # Define the input set of stats to fetch
+    #     X_set = ['some_stat', 'other_stat']
+    #     fight_id = 'fight2'
+
+    #     # Mock print function to check print output
+    #     with unittest.mock.patch('builtins.print') as mock_print:
+    #         # Call the method with print_info set to True
+    #         self.processor.from_id_to_fight(X_set, fight_id, print_info=True)
+            
+    #         # Check if the print function was called with the correct information
+    #         mock_print.assert_any_call('Fighter Two', ' vs ', 'Opponent Two')
+    #         mock_print.assert_any_call('2.0 vs 1.5')
+
+
+if __name__ == '__main__': # pragma: no cover
     unittest.main()

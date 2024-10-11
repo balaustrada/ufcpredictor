@@ -347,93 +347,93 @@ class DataProcessor:
 
         self.data_normalized = data_normalized
 
-    def from_id_to_fight(self, X_set: List[str], id_: str, print_info: bool = False):
-        # Get fighters
-        fight = self.data[self.data["fight_id"] == id_].iloc[0]
-        f1 = fight["fighter_id"]
-        f2 = fight["opponent_id"]
-        date = fight["event_date"]
-        winner = fight["winner"]
+    # def from_id_to_fight(self, X_set: List[str], id_: str, print_info: bool = False):
+    #     # Get fighters
+    #     fight = self.data[self.data["fight_id"] == id_].iloc[0]
+    #     f1 = fight["fighter_id"]
+    #     f2 = fight["opponent_id"]
+    #     date = fight["event_date"]
+    #     winner = fight["winner"]
 
-        # Get previous data to the match
-        # Getting all previous matches and getting information from the last match
-        # Remember this is cumulative data
-        f1p = self.data[
-            (self.data["event_date"] < date) & (self.data["fighter_id"] == f1)
-        ]
-        f1p = f1p.iloc[f1p["event_date"].argmax()]
+    #     # Get previous data to the match
+    #     # Getting all previous matches and getting information from the last match
+    #     # Remember this is cumulative data
+    #     f1p = self.data[
+    #         (self.data["event_date"] < date) & (self.data["fighter_id"] == f1)
+    #     ]
+    #     f1p = f1p.iloc[f1p["event_date"].argmax()]
 
-        f2p = self.data[
-            (self.data["event_date"] < date) & (self.data["fighter_id"] == f2)
-        ]
-        f2p = f2p.iloc[f2p["event_date"].argmax()]
+    #     f2p = self.data[
+    #         (self.data["event_date"] < date) & (self.data["fighter_id"] == f2)
+    #     ]
+    #     f2p = f2p.iloc[f2p["event_date"].argmax()]
 
-        # We collect the input data defined in X_set
-        x1 = [f1p[x] for x in X_set]
-        x2 = [f2p[x] for x in X_set]
+    #     # We collect the input data defined in X_set
+    #     x1 = [f1p[x] for x in X_set]
+    #     x2 = [f2p[x] for x in X_set]
 
-        if print_info:
-            print(fight["UFC_names"], " vs ", fight["opponent_UFC_names"])
+    #     if print_info:
+    #         print(fight["UFC_names"], " vs ", fight["opponent_UFC_names"])
 
-            odds_data = self.bfo_scraper.data
-            fight_mask = odds_data["fight_id"] == id_
-            fighter_odds = odds_data[
-                fight_mask & (odds_data["fighter_id"] == fight["fighter_id"])
-            ]["opening"].values[0]
-            opponent_odds = odds_data[
-                fight_mask & (odds_data["fighter_id"] == fight["opponent_id"])
-            ]["opening"].values[0]
-            print(f"{fighter_odds} vs {opponent_odds}")
+    #         odds_data = self.bfo_scraper.data
+    #         fight_mask = odds_data["fight_id"] == id_
+    #         fighter_odds = odds_data[
+    #             fight_mask & (odds_data["fighter_id"] == fight["fighter_id"])
+    #         ]["opening"].values[0]
+    #         opponent_odds = odds_data[
+    #             fight_mask & (odds_data["fighter_id"] == fight["opponent_id"])
+    #         ]["opening"].values[0]
+    #         print(f"{fighter_odds} vs {opponent_odds}")
 
-        return (
-            torch.FloatTensor(x1),
-            torch.FloatTensor(x2),
-            torch.FloatTensor([float(winner == f2p["fighter_id"])]),
-        )
+    #     return (
+    #         torch.FloatTensor(x1),
+    #         torch.FloatTensor(x2),
+    #         torch.FloatTensor([float(winner == f2p["fighter_id"])]),
+    #     )
 
-    def get_dataset(self, fight_ids: List[str], X_set: List[str]):
-        data = []
-        for id_ in fight_ids:
-            data.append(
-                self.from_id_to_fight(
-                    X_set=X_set,
-                    id_=id_,
-                )
-            )
+    # def get_dataset(self, fight_ids: List[str], X_set: List[str]):
+    #     data = []
+    #     for id_ in fight_ids:
+    #         data.append(
+    #             self.from_id_to_fight(
+    #                 X_set=X_set,
+    #                 id_=id_,
+    #             )
+    #         )
 
-        class CustomDataset(Dataset):
-            def __init__(self, data, mode="train"):
-                self.data = data
-                self.mode = mode  # @TODO revisit this it doesn't make sense
+    #     class CustomDataset(Dataset):
+    #         def __init__(self, data, mode="train"):
+    #             self.data = data
+    #             self.mode = mode  # @TODO revisit this it doesn't make sense
 
-            def __len__(self):
-                return len(self.data)
+    #         def __len__(self):
+    #             return len(self.data)
 
-            def __getitem__(self, idx):
-                X1, X2, Y = self.data[idx]
+    #         def __getitem__(self, idx):
+    #             X1, X2, Y = self.data[idx]
 
-                # Flip data to avoid RED or BLUE
-                # predictions
-                if np.random.random() >= 0.5:
-                    (
-                        X1,
-                        X2,
-                    ) = (
-                        X2,
-                        X1,
-                    )
-                    Y = 1 - Y
+    #             # Flip data to avoid RED or BLUE
+    #             # predictions
+    #             if np.random.random() >= 0.5:
+    #                 (
+    #                     X1,
+    #                     X2,
+    #                 ) = (
+    #                     X2,
+    #                     X1,
+    #                 )
+    #                 Y = 1 - Y
 
-                if self.mode == "train":
-                    return X1, X2, Y
-                else:
-                    return X1, X2
+    #             if self.mode == "train":
+    #                 return X1, X2, Y
+    #             else:
+    #                 return X1, X2
 
-        return CustomDataset(data)
+    #     return CustomDataset(data)
 
-    def get_data_loader(self, fight_ids: List[str], X_set: List[str], *args, **kwargs):
-        dataset = self.get_dataset(fight_ids, X_set)
-        return DataLoader(dataset, *args, **kwargs)
+    # def get_data_loader(self, fight_ids: List[str], X_set: List[str], *args, **kwargs):
+    #     dataset = self.get_dataset(fight_ids, X_set)
+    #     return DataLoader(dataset, *args, **kwargs)
 
 
 class OSRDataProcessor(DataProcessor):
@@ -499,8 +499,8 @@ class OSRDataProcessor(DataProcessor):
 
 
 class WOSRDataProcessor(DataProcessor):
-    def __init__(self, data_folder: Path | str, weights: List[float] = [0.3, 0.3, 0.3]):
-        super().__init__(data_folder)
+    def __init__(self, *args, weights: List[float] = [0.3, 0.3, 0.3], **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.skills_weight, self.past_OSR_weight, self.opponent_OSR_weight = weights
 

@@ -50,5 +50,5 @@ class TestUtils(unittest.TestCase):
         result = convert_odds_to_moneyline(odds)
         np.testing.assert_array_almost_equal(result, expected, decimal=5)
 
-if __name__ == "__main__":
+if __name__ == '__main__': # pragma: no cover
     unittest.main()

@@ -82,7 +82,7 @@ class PredictionPlots:
                 fights += 1
                 nbets += 1
 
-                if print_info:
+                if print_info: # pragma: no cover
                     print(fighter, "vs", opponent)
                     print(odd1, "vs", odd2)
                     print(prediction, shift)
@@ -96,7 +96,7 @@ class PredictionPlots:
                     print()
 
         if show_plot:
-            if ax is None:
+            if ax is None: # pragma: no cover
                 fig, ax = plt.subplots()
 
             ax.plot(

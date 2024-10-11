@@ -54,5 +54,5 @@ class TestBettingLoss(unittest.TestCase):
 
         self.assertAlmostEqual(loss.item(), expected_loss.item())
 
-if __name__ == "__main__":
+if __name__ == '__main__': # pragma: no cover
     unittest.main()

@@ -1,3 +1,10 @@
+"""
+Data processing module for UFC fight data.
+
+Provides classes to prepare and normalize data for model training and evaluation.
+Handles data transformation, normalization, and feature engineering.
+"""
+
 from __future__ import annotations
 
 import datetime
@@ -19,12 +26,35 @@ logger = logging.getLogger(__name__)
 
 
 class DataProcessor:
+    """
+    A data processor class designed to prepare and normalize UFC fight data for
+    training and testing neural network models.
+
+    This class provides a way to handle and transform raw data into a format suitable
+    for model training and evaluation.
+
+    The DataProcessor is designed to work with the dataset classes in
+    ufcpredictor.datasets to provide a seamless data preparation workflow.
+    """
+
     def __init__(
         self,
         data_folder: Optional[Path | str],
         ufc_scraper: Optional[UFCScraper] = None,
         bfo_scraper: Optional[BestFightOddsScraper] = None,
     ) -> None:
+        """
+        Constructor for DataProcessor.
+
+        Args:
+            data_folder: The folder containing the data.
+            ufc_scraper: The scraper to use for ufc data.
+            bfo_scraper: The scraper to use for best fight odds data.
+
+        Raises:
+            ValueError: If data_folder is None and both ufc_scraper and
+                bfo_scraper are None.
+        """
         if data_folder is None and (ufc_scraper is None or bfo_scraper is None):
             raise ValueError(
                 "If data_folder is None, both ufc_scraper and bfo_scraper "
@@ -37,15 +67,38 @@ class DataProcessor:
         )
 
     def load_data(self) -> None:
+        """
+        Loads and processes all the data.
+
+        First, it joins all the relevant dataframes (fight, fighter, event, and odds).
+        Then, it fixes the date and time fields, converts the odds to decimal format,
+        fills the weight for each fighter (if not available), adds key statistics
+        (KO, Submission, and Win), and applies filters to the data.
+        Finally, it groups the round data by fighter and fight, and assigns the result
+        to the data attribute.
+
+        This method should be called before any other method.
+        """
         data = self.join_dataframes()
         data = self.fix_date_and_time_fields(data)
-        data = self.convert_odds_to_european(data)
+        data = self.convert_odds_to_decimal(data)
         data = self.fill_weight(data)
         data = self.add_key_stats(data)
         data = self.apply_filters(data)
         self.data = self.group_round_data(data)
 
     def join_dataframes(self) -> pd.DataFrame:
+        """
+        Joins all the relevant dataframes (fight, fighter, event, and odds).
+
+        It duplicates the current fight data to create two rows per match,
+        one row for each fighter, and assigns fighter and opponent to each other.
+        Then, it merges the fighter data, round data, and odds data to the
+        previous table. Finally, it adds the date of the event to the dataframe.
+
+        Returns:
+            The joined dataframe.
+        """
         fight_data = self.scraper.fight_scraper.data
         round_data = self.scraper.fight_scraper.rounds_handler.data
         fighter_data = self.scraper.fighter_scraper.data
@@ -135,6 +188,21 @@ class DataProcessor:
 
     @staticmethod
     def fix_date_and_time_fields(data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Fix date and time fields in the dataframe.
+
+        This function takes care of converting control time, finish time
+        and total time from minutes to seconds. It also converts the
+        event date and fighter date of birth to datetime objects.
+
+        The dataframe is then sorted by fighter id and event date.
+
+        Args:
+            data: The dataframe to be processed.
+
+        Returns:
+            The dataframe with the fields fixed.
+        """
         data["ctrl_time"] = data["ctrl_time"].apply(convert_minutes_to_seconds)
         data["ctrl_time_opponent"] = data["ctrl_time_opponent"].apply(
             convert_minutes_to_seconds
@@ -149,7 +217,16 @@ class DataProcessor:
         return data
 
     @staticmethod
-    def convert_odds_to_european(data: pd.DataFrame) -> pd.DataFrame:
+    def convert_odds_to_decimal(data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Convert odds from American format to decimal format.
+
+        Args:
+            data: The dataframe with the odds in American format.
+
+        Returns:
+            The dataframe with the odds in decimal format.
+        """
         for field in "opening", "closing_range_min", "closing_range_max":
             msk = data[field] > 0
 
@@ -160,6 +237,22 @@ class DataProcessor:
 
     @staticmethod
     def fill_weight(data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Fill the weight column using the weight_class column and the weight_dict.
+
+        The weight_dict is a dictionary mapping the weight classes to their
+        corresponding weights in lbs. The weights are then filled in the weight
+        column according to the weight classes in the weight_class column.
+
+        This function also removes rows with null weight classes, or open weight
+        or catch weight (agreed weight outside a weight class).
+
+        Args:
+            data: The dataframe to be processed.
+
+        Returns:
+            The dataframe with the weight column filled.
+        """
         data.loc[:, "weight"] = data["weight_class"].map(weight_dict)
 
         ##################################################################################
@@ -175,6 +268,20 @@ class DataProcessor:
 
     @staticmethod
     def add_key_stats(data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Add key statistics to the dataframe.
+
+        This function adds columns to the dataframe indicating whether a fighter
+        has won a fight via KO, submission or decision, and whether the opponent
+        has won a fight via KO, submission or decision. It also adds a column
+        indicating the age of the fighter at the time of the fight.
+
+        Args:
+            data: The dataframe to be processed.
+
+        Returns:
+            The dataframe with the added columns.
+        """
         #############################################
         # Add some missing stats
         # KO, Submission and Win
@@ -218,6 +325,21 @@ class DataProcessor:
 
     @staticmethod
     def apply_filters(data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Apply filters to the dataframe.
+
+        This function applies filters to the dataframe to remove fights:
+        - Before 2008, 8, 1, since I don't have odds for these
+        - With non-standard fight formats (time_format not in ["3 Rnd (5-5-5)", "5 Rnd (5-5-5-5-5)"])
+        - With female fighters (gender not in ["M"])
+        - With disqualified or doctor's stoppage results (result not in ["Decision", "KO/TKO", "Submission"])
+
+        Args:
+            data: The dataframe to be processed.
+
+        Returns:
+            The dataframe with the applied filters.
+        """
         # Remove old fights since I don't have odds for these
         data = data[data["event_date"].dt.date >= datetime.date(2008, 8, 1)]
 
@@ -234,6 +356,17 @@ class DataProcessor:
 
     @property
     def round_stat_names(self) -> List[str]:
+        """
+        The names of the round statistics.
+
+        This property returns the names of the columns in the rounds data
+        that are not in ["fight_id", "fighter_id", "round"]. It also returns
+        the same names with "_opponent" appended, to represent the opponent's
+        statistics.
+
+        Returns:
+            A list of strings, the names of the round statistics.
+        """
         return [
             c
             for c in self.scraper.fight_scraper.rounds_handler.columns
@@ -246,6 +379,19 @@ class DataProcessor:
 
     @property
     def stat_names(self) -> List[str]:
+        """
+        The names of the statistics.
+
+        This property returns the names of the columns in the rounds data
+        that are not in ["fight_id", "fighter_id", "round"]. It also returns
+        the same names with "_opponent" appended, to represent the opponent's
+        statistics, and the names of the columns "KO", "Sub" and "win",
+        which are the result of the fight, with "_opponent" appended to
+        represent the opponent's result.
+
+        Returns:
+            A list of strings, the names of the statistics.
+        """
         stat_names = self.round_stat_names
         for field in ("KO", "Sub", "win"):
             stat_names += [field, field + "_opponent"]
@@ -254,10 +400,39 @@ class DataProcessor:
 
     @property
     def aggregated_fields(self) -> List[str]:
+        """
+        The fields that are aggregated over the fighter's history.
+
+        This property returns all the statistic names, including the ones
+        with "_opponent" appended to represent the opponent's statistics.
+
+        Returns:
+            A list of strings, the names of the aggregated fields.
+        """
         return self.stat_names
 
     @property
     def normalized_fields(self) -> List[str]:
+        """
+        The fields that are normalized over the fighter's history.
+
+        These fields are normalized in the sense that they are divided by
+        their mean value in the history of the fighter. This is done to
+        reduce the effect of outliers and to make the data more comparable
+        between different fighters.
+
+        The fields normalized are:
+        - "age"
+        - "time_since_last_fight"
+        - "fighter_height_cm"
+        - All the aggregated fields (see :meth:`aggregated_fields`),
+          and the same fields with "_per_minute" and "_per_fight" appended,
+          which represent the aggregated fields per minute and per fight,
+          respectively.
+
+        Returns:
+            A list of strings, the names of the normalized fields.
+        """
         normalized_fields = ["age", "time_since_last_fight", "fighter_height_cm"]
 
         for field in self.aggregated_fields:
@@ -266,6 +441,19 @@ class DataProcessor:
         return normalized_fields
 
     def group_round_data(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Group the round data by the fixed fields and sum the round statistics.
+
+        The fixed fields are the columns in the data that are not in the round
+        statistics and not in ["round"]. The round statistics are the columns
+        in the data that are in the round statistics and not in ["round"].
+
+        Args:
+            data: The data to be grouped.
+
+        Returns:
+            The grouped data, with the round statistics summed.
+        """
         fixed_fields = [
             c
             for c in data.columns
@@ -286,6 +474,16 @@ class DataProcessor:
         ).sort_values(by=["fighter_id", "event_date"])
 
     def aggregate_data(self) -> None:
+        """
+        Aggregate the data by summing the round statistics over the history of the
+        fighters.
+
+        The data is copied and then the round statistics are summed over the history
+        of the fighters. The total time is also summed over the history of the
+        fighters.
+
+        The aggregated data is stored in the attribute data_aggregated.
+        """
         logger.info(f"Fields to be aggregated: {self.aggregated_fields}")
 
         data_aggregated = self.data.copy()
@@ -313,6 +511,23 @@ class DataProcessor:
         self.data_aggregated = data_aggregated
 
     def add_per_minute_and_fight_stats(self) -> None:
+        """
+        Add two new columns to the aggregated data for each statistic.
+
+        The first column is the statistic per minute, computed by dividing the
+        statistic by the total time in the octagon. The second column is the
+        statistic per fight, computed by dividing the statistic by the number
+        of fights.
+
+        The new columns are named <statistic>_per_minute and <statistic>_per_fight,
+        where <statistic> is the name of the statistic.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
         new_columns = {}
 
         for column in self.aggregated_fields:
@@ -328,6 +543,18 @@ class DataProcessor:
         ).copy()
 
     def normalize_data(self) -> None:
+        """
+        Normalize the aggregated data by dividing each column by its mean.
+
+        This is done so that the data is more comparable between different fighters.
+        The fields normalized are the ones in normalized_fields.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
         data_normalized = self.data_aggregated.copy()
 
         logger.info(f"Fields to be normalized: {self.normalized_fields}")
@@ -338,97 +565,30 @@ class DataProcessor:
 
         self.data_normalized = data_normalized
 
-    # def from_id_to_fight(self, X_set: List[str], id_: str, print_info: bool = False):
-    #     # Get fighters
-    #     fight = self.data[self.data["fight_id"] == id_].iloc[0]
-    #     f1 = fight["fighter_id"]
-    #     f2 = fight["opponent_id"]
-    #     date = fight["event_date"]
-    #     winner = fight["winner"]
-
-    #     # Get previous data to the match
-    #     # Getting all previous matches and getting information from the last match
-    #     # Remember this is cumulative data
-    #     f1p = self.data[
-    #         (self.data["event_date"] < date) & (self.data["fighter_id"] == f1)
-    #     ]
-    #     f1p = f1p.iloc[f1p["event_date"].argmax()]
-
-    #     f2p = self.data[
-    #         (self.data["event_date"] < date) & (self.data["fighter_id"] == f2)
-    #     ]
-    #     f2p = f2p.iloc[f2p["event_date"].argmax()]
-
-    #     # We collect the input data defined in X_set
-    #     x1 = [f1p[x] for x in X_set]
-    #     x2 = [f2p[x] for x in X_set]
-
-    #     if print_info:
-    #         print(fight["UFC_names"], " vs ", fight["opponent_UFC_names"])
-
-    #         odds_data = self.bfo_scraper.data
-    #         fight_mask = odds_data["fight_id"] == id_
-    #         fighter_odds = odds_data[
-    #             fight_mask & (odds_data["fighter_id"] == fight["fighter_id"])
-    #         ]["opening"].values[0]
-    #         opponent_odds = odds_data[
-    #             fight_mask & (odds_data["fighter_id"] == fight["opponent_id"])
-    #         ]["opening"].values[0]
-    #         print(f"{fighter_odds} vs {opponent_odds}")
-
-    #     return (
-    #         torch.FloatTensor(x1),
-    #         torch.FloatTensor(x2),
-    #         torch.FloatTensor([float(winner == f2p["fighter_id"])]),
-    #     )
-
-    # def get_dataset(self, fight_ids: List[str], X_set: List[str]):
-    #     data = []
-    #     for id_ in fight_ids:
-    #         data.append(
-    #             self.from_id_to_fight(
-    #                 X_set=X_set,
-    #                 id_=id_,
-    #             )
-    #         )
-
-    #     class CustomDataset(Dataset):
-    #         def __init__(self, data, mode="train"):
-    #             self.data = data
-    #             self.mode = mode  # @TODO revisit this it doesn't make sense
-
-    #         def __len__(self):
-    #             return len(self.data)
-
-    #         def __getitem__(self, idx):
-    #             X1, X2, Y = self.data[idx]
-
-    #             # Flip data to avoid RED or BLUE
-    #             # predictions
-    #             if np.random.random() >= 0.5:
-    #                 (
-    #                     X1,
-    #                     X2,
-    #                 ) = (
-    #                     X2,
-    #                     X1,
-    #                 )
-    #                 Y = 1 - Y
-
-    #             if self.mode == "train":
-    #                 return X1, X2, Y
-    #             else:
-    #                 return X1, X2
-
-    #     return CustomDataset(data)
-
-    # def get_data_loader(self, fight_ids: List[str], X_set: List[str], *args, **kwargs):
-    #     dataset = self.get_dataset(fight_ids, X_set)
-    #     return DataLoader(dataset, *args, **kwargs)
-
 
 class OSRDataProcessor(DataProcessor):
+    """
+    Extends the DataProcessor class to add OSR information.
+
+    The OSR shows the strength of a given fighter by showing its win/loss ratio
+    with contributions from their opponents win/loss ratio.
+
+    The OSR is computed iteratively, for each iteration the new OSR is computed
+    as:
+        new_OSR = (old_OSR + mean_OSR_opponents + wins/n_fights)
+    """
+
     def aggregate_data(self) -> None:
+        """
+        Aggregate data by computing the fighters' statistics and OSR.
+
+        This method aggregates the data by computing the fighters' statistics and
+        OSR (Opponent Strength Rating). The OSR is computed as the average of the
+        opponent's OSR and the fighter's win rate.
+
+        The OSR is calculated iteratively until the difference between the new and
+        old values is less than 0.1.
+        """
         super().aggregate_data()
 
         # Adding OSR information
@@ -490,14 +650,43 @@ class OSRDataProcessor(DataProcessor):
 
 
 class WOSRDataProcessor(DataProcessor):
+    """
+    Extends the OSRDataProcessor class to add weights to the different components
+    of the OSR estimation.
+
+    The OSR is computed iteratively, for each iteration the new OSR is computed
+    as:
+        new_OSR = (w1*old_OSR + w2*mean_OSR_opponents + w3*wins/n_fights)
+    the weights are [w1, w2, w3]
+    """
+
     def __init__(
         self, *args: Any, weights: List[float] = [0.3, 0.3, 0.3], **kwargs: Any
     ) -> None:
+        """
+        Initialize a WOSRDataProcessor object.
+
+        Args:
+            *args: Any additional positional arguments to be passed to the superclass.
+            weights : Weights for the skills, past OSR, and opponent OSR when
+                calculating the OSR. Defaults to [0.3, 0.3, 0.3].
+            **kwargs: Any additional keyword arguments to be passed to the superclass.
+        """
         super().__init__(*args, **kwargs)
 
         self.skills_weight, self.past_OSR_weight, self.opponent_OSR_weight = weights
 
     def aggregate_data(self) -> None:
+        """
+        Aggregate data by computing the Weighted Opponent Skill Rating (WOSR).
+
+        The WOSR is calculated by taking the weighted average of the fighter's past
+        win ratio, the fighter's past OSR, and the opponent's OSR. The weights are
+        specified by the parameters of the constructor.
+
+        The WOSR is calculated iteratively until the difference between the new and
+        old values is less than 0.1.
+        """
         super().aggregate_data()
 
         # Adding OSR information

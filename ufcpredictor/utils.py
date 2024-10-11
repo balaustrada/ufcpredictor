@@ -1,3 +1,10 @@
+"""
+Utility functions for the UFC predictor project.
+
+This module contains various utility functions used throughout the project, including
+functions for converting between different time and odds formats, as well as other
+miscellaneous helper functions.
+"""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -28,6 +35,16 @@ weight_dict = {
 
 
 def convert_minutes_to_seconds(time_str: str) -> Optional[int]:
+    """
+    Convert a time string from minutes:seconds format to seconds.
+
+    Args:
+        time_str: Time string in minutes:seconds format.
+
+    Returns:
+        Time in seconds. If the input string is "--", returns 0. If the input is None 
+            or "NULL", or if the input is NaN, returns None.
+    """
     if time_str == "--":
         return 0
     elif time_str in (None, "NULL") or pd.isna(time_str):
@@ -38,6 +55,15 @@ def convert_minutes_to_seconds(time_str: str) -> Optional[int]:
 
 
 def convert_odds_to_decimal(odds: NDArray[np.float64]) -> NDArray[np.float64]:
+    """
+    Convert odds from American format to decimal format.
+
+    Args:
+        odds: Odds in American format.
+
+    Returns:
+        Odds in decimal format.
+    """
     msk = odds > 0
 
     odds[msk] = odds[msk] / 100 + 1
@@ -47,6 +73,15 @@ def convert_odds_to_decimal(odds: NDArray[np.float64]) -> NDArray[np.float64]:
 
 
 def convert_odds_to_moneyline(odds: NDArray[np.float64]) -> NDArray[np.float64]:
+    """
+    Convert odds from decimal format to moneyline format.
+
+    Args:
+        odds: Odds in decimal format.
+
+    Returns:
+        Odds in moneyline format.
+    """
     msk = odds > 2
 
     odds[msk] = (odds[msk] - 1) * 100

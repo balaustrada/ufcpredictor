@@ -1,3 +1,11 @@
+"""
+This module provides a Trainer class for training and testing PyTorch models using a
+specific workflow.
+
+The Trainer class encapsulates the training and testing data, model, optimizer, loss 
+function, and learning rate scheduler, providing a simple way to train and test a 
+PyTorch model.
+"""
 from __future__ import annotations
 
 import logging
@@ -11,12 +19,28 @@ from tqdm import tqdm
 if TYPE_CHECKING:  # pragma: no cover
     from typing import List, Optional, Tuple
 
-    from numpy.typing import NDArray
-
 logger = logging.getLogger(__name__)
 
 
 class Trainer:
+    """
+    Trainer class for training and testing a PyTorch model.
+
+    This class provides a simple way to train and test a PyTorch model using a specific
+    training and testing workflow.
+
+    Attributes:
+        train_loader (torch.utils.data.DataLoader): A DataLoader for the training data.
+        test_loader (torch.utils.data.DataLoader): A DataLoader for the test data.
+        model (torch.nn.Module): The model to be trained.
+        optimizer (torch.optim.Optimizer): The optimizer to be used.
+        loss_fn (torch.nn.Module): The loss function to be used.
+        scheduler (Optional[torch.optim.lr_scheduler.ReduceLROnPlateau]): The learning 
+            rate scheduler to be used.
+        device (str | torch.device): The device to be used for training. Defaults to 
+            "cpu".
+    """
+
     def __init__(
         self,
         train_loader: torch.utils.data.DataLoader,
@@ -27,6 +51,18 @@ class Trainer:
         scheduler: Optional[torch.optim.lr_scheduler.ReduceLROnPlateau] = None,
         device: str | torch.device = "cpu",
     ):
+        """
+        Initialize the Trainer object.
+
+        Args:
+            train_loader: A DataLoader for the training data.
+            test_loader: A DataLoader for the test data.
+            model: The model to be trained.
+            optimizer: The optimizer to be used.
+            loss_fn: The loss function to be used.
+            scheduler: The learning rate scheduler to be used.
+            device: The device to be used for training. Defaults to "cpu".
+        """
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.model = model
@@ -41,6 +77,19 @@ class Trainer:
         test_loader: torch.utils.data.DataLoader | None = None,
         epochs: int = 10,
     ) -> None:
+        """
+        Train the model for a given number of epochs.
+
+        Args:
+            train_loader: The DataLoader for the training data. Defaults to the
+                DataLoader passed to the Trainer constructor.
+            test_loader: The DataLoader for the test data. Defaults to the
+                DataLoader passed to the Trainer constructor.
+            epochs: The number of epochs to train for. Defaults to 10.
+
+        Returns:
+            None
+        """
         if train_loader is None:
             train_loader = self.train_loader
 
@@ -95,6 +144,18 @@ class Trainer:
     def test(
         self, test_loader: torch.utils.data.DataLoader | None = None
     ) -> Tuple[float, float, float, List, List]:
+        """
+        Evaluates the model on the test data and returns the validation loss, target F1
+        score, proportion of correct predictions, target predictions, and target labels.
+
+        Args:
+            test_loader: The DataLoader for the test data. Defaults to the DataLoader
+                passed to the Trainer constructor.
+
+        Returns:
+            A tuple containing the validation loss, target F1 score, proportion of correct
+            predictions, target predictions, and target labels.
+        """
         if test_loader is None:
             test_loader = self.test_loader
 

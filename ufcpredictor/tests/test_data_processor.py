@@ -89,7 +89,7 @@ class BaseTestDataProcessor(object):
         methods_to_patch = [
             'join_dataframes',
             'fix_date_and_time_fields',
-            'convert_odds_to_european',
+            'convert_odds_to_decimal',
             'fill_weight',
             'add_key_stats',
             'apply_filters',
@@ -134,15 +134,15 @@ class BaseTestDataProcessor(object):
         self.assertTrue(pd.api.types.is_datetime64_any_dtype(result['event_date']))
         self.assertTrue(pd.api.types.is_datetime64_any_dtype(result['fighter_dob']))
 
-    def test_convert_odds_to_european(self):
-        """Test that convert_odds_to_european correctly converts odds."""
+    def test_convert_odds_to_decimal(self):
+        """Test that convert_odds_to_decimal correctly converts odds."""
         data = pd.DataFrame({
             'opening': [-150, 200],
             'closing_range_min': [-120, 250],
             'closing_range_max': [-110, -105],
         })
 
-        result = self.processor.convert_odds_to_european(data)
+        result = self.processor.convert_odds_to_decimal(data)
 
         self.assertAlmostEqual(result['opening'].iloc[0], 1.6667, places=4)
         self.assertAlmostEqual(result['closing_range_min'].iloc[1], 3.5, places=4)

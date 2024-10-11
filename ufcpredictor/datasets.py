@@ -1,35 +1,42 @@
+"""
+This module contains dataset classes designed to handle UFC fight data for training 
+and testing neural network models.
+
+The dataset classes provide a structured way to store and retrieve data for fighter 
+characteristics, fight outcomes, and odds. They are designed to work with the 
+DataProcessor class to prepare and normalize the data.
+"""
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn.functional as F
-from sklearn.metrics import f1_score
-from torch import nn
-from torch.optim import Adam
-from torch.utils.data import DataLoader, Dataset
-from tqdm import tqdm
-from ufcscraper.odds_scraper import BestFightOddsScraper
-from ufcscraper.ufc_scraper import UFCScraper
+from torch.utils.data import Dataset
 
 from ufcpredictor.data_processor import DataProcessor
-from ufcpredictor.models import SymmetricFightNet
-from ufcpredictor.utils import convert_minutes_to_seconds, weight_dict
 
 if TYPE_CHECKING:  # pragma: no cover
     import datetime
-    from typing import Any, Callable, List, Optional, Set, Tuple
+    from typing import List, Optional, Tuple
 
     from numpy.typing import NDArray
+    from torch import nn
 
 logger = logging.getLogger(__name__)
 
 
 class BasicDataset(Dataset):
+    """
+    A basic dataset class designed to handle UFC fight data for training and testing 
+    neural network models.
+
+    This class provides a simple way to store and retrieve data for fighter 
+    characteristics, fight outcomes, and odds. It is designed to be used with the 
+    SymmetricFightNet model and other UFC prediction models.
+    """
     X_set = [
         "knockdowns_per_minute",
         "strikes_att_per_minute",
@@ -98,7 +105,16 @@ class BasicDataset(Dataset):
         X_set: Optional[List[str]] = None,
     ) -> None:
         """
-        fight_ids: Fight ids to load (usually train fights or test fights)
+        Constructor for ForecastDataset.
+
+        Args:
+            data_processor: The DataProcessor instance that contains the data.
+            fight_ids: The list of fight ids to include in the dataset.
+            X_set: The list of columns to include in the dataset. If None, use all 
+            columns.
+
+        Raises:
+            ValueError: If some columns are not found in the normalized data.
         """
         self.data_processor = data_processor
         self.fight_ids = fight_ids
@@ -117,6 +133,17 @@ class BasicDataset(Dataset):
         self.load_data()
 
     def load_data(self) -> None:
+        """
+        Loads the data into a format that can be used to train a model.
+        
+        The data is first reduced to only include the columns specified in X_set.
+        Then, the stats are shifted to get the stats prior to each fight.
+        The data is then merged with itself to get one row per match with the data
+        from the two fighters.
+        The matchings of the fighter with itself are removed and only one row per
+        match is kept.
+        Finally, the data is loaded into torch tensors.
+        """
         reduced_data = self.data_processor.data_normalized.copy()
 
         # We shift stats because the input for the model should be the
@@ -164,19 +191,31 @@ class BasicDataset(Dataset):
         self.fight_data = fight_data
 
     def __len__(self) -> int:
+        """Returns the size of the dataset.
+
+        Returns:
+            The size of the dataset.
+        """
         return len(self.data[0])
 
     def __getitem__(
         self, idx: int
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        # X, Y, winner, odds_1, odds_2 = self.data
-        # X, Y, winner, odds_1, odds_2 = (
-        #     X[idx],
-        #     Y[idx],
-        #     winner[idx],
-        #     odds_1[idx],
-        #     odds_2[idx],
-        # )
+        """
+        Returns a tuple of (X, Y, winner, odds_1, odds_2) for the given index.
+
+        The data is randomly flipped to simulate the possibility of a fight being
+        between two fighters in either order.
+
+        Args:
+            idx: The index of the data to return.
+
+        Returns:
+            A tuple of (X, Y, winner, odds_1, odds_2) where X and Y are the
+            input data for the two fighters, winner is a tensor of size 1
+            indicating which fighter won, and odds_1 and odds_2 are the opening
+            odds for the two fighters.
+        """
         X, Y, winner, odds_1, odds_2 = [x[idx] for x in self.data]
 
         if np.random.random() >= 0.5:
@@ -195,6 +234,23 @@ class BasicDataset(Dataset):
         NDArray[np.str_],
         NDArray[np.str_],
     ]:
+        """
+        Returns a tuple of (X, Y, winner, odds_1, odds_2, fighter_names, opponent_names) 
+        for the given fight ids.
+
+        If fight_ids is None, returns all the data in the dataset.
+
+        Args:
+            fight_ids: The list of fight ids to include in the dataset. If None,
+                use all the data in the dataset.
+
+        Returns:
+            A tuple of (X, Y, winner, odds_1, odds_2, fighter_names, opponent_names) 
+            where X and Y are the input data for the two fighters, winner is a tensor
+            of size 1 indicating which fighter won, and odds_1 and odds_2 are the
+            opening odds for the two fighters. fighter_names and opponent_names are
+            the names of the fighters and their opponents.
+        """
         if fight_ids is not None:
             fight_data = self.fight_data[self.fight_data["fight_id"].isin(fight_ids)]
         else:
@@ -214,8 +270,8 @@ class BasicDataset(Dataset):
             torch.FloatTensor(fight_data["opening_y"].values),
         ]
 
-        fighter_names=  np.array(fight_data["fighter_name_x"].values)
-        opponent_names= np.array(fight_data["fighter_name_y"].values)
+        fighter_names = np.array(fight_data["fighter_name_x"].values)
+        opponent_names = np.array(fight_data["fighter_name_y"].values)
 
         X1, X2, Y, odds1, odds2 = data
 
@@ -223,6 +279,13 @@ class BasicDataset(Dataset):
 
 
 class ForecastDataset(Dataset):
+    """
+    A dataset class designed to handle forecasting data for UFC fight predictions.
+
+    This class provides a structured way to store and retrieve data for training and 
+    testing neural network models. It is designed to work with the DataProcessor class 
+    to prepare and normalize the data.
+    """
     X_set = BasicDataset.X_set
 
     def __init__(
@@ -230,6 +293,17 @@ class ForecastDataset(Dataset):
         data_processor: DataProcessor,
         X_set: Optional[List[str]] = None,
     ) -> None:
+        """
+        Constructor for ForecastDataset.
+
+        Args:
+            data_processor: The DataProcessor instance that contains the data.
+            X_set: The list of columns to include in the dataset. If None, use all 
+                columns.
+
+        Raises:
+            ValueError: If some columns are not found in the normalized data.
+        """
         self.data_processor = data_processor
 
         if X_set is not None:
@@ -252,6 +326,21 @@ class ForecastDataset(Dataset):
         opponent_odds: List[float],
         model: nn.Module,
     ) -> Tuple[NDArray, NDArray]:
+        """
+        Make a prediction for a given list of matches.
+
+        Args:
+            fighter_ids: The list of fighter ids.
+            opponent_ids: The list of opponent ids.
+            event_dates: The list of event dates.
+            fighter_odds: The list of fighter odds.
+            opponent_odds: The list of opponent odds.
+            model: The model to make the prediction with.
+
+        Returns:
+            A tuple of two numpy arrays, each containing the predictions for one of the 
+            fighters.
+        """
         match_data = pd.DataFrame(
             {
                 "fighter_id": fighter_ids + opponent_ids,

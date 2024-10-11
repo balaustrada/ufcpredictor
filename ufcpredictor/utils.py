@@ -5,6 +5,7 @@ This module contains various utility functions used throughout the project, incl
 functions for converting between different time and odds formats, as well as other
 miscellaneous helper functions.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -42,7 +43,7 @@ def convert_minutes_to_seconds(time_str: str) -> Optional[int]:
         time_str: Time string in minutes:seconds format.
 
     Returns:
-        Time in seconds. If the input string is "--", returns 0. If the input is None 
+        Time in seconds. If the input string is "--", returns 0. If the input is None
             or "NULL", or if the input is NaN, returns None.
     """
     if time_str == "--":

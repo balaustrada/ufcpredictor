@@ -6,6 +6,7 @@ The models take into account various characteristics of the fighters and the odd
 of the fights, and can be used to make predictions on the outcome of a fight and 
 to calculate the benefit of a bet.
 """
+
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -16,13 +17,14 @@ class FighterNet(nn.Module):
     A neural network model designed to predict the outcome of a fight based on a single
     fighter's characteristics.
 
-    The model takes into account the characteristics of the fighter and the odds of the 
-    fight. It can be used to make predictions on the outcome of a fight and to 
+    The model takes into account the characteristics of the fighter and the odds of the
+    fight. It can be used to make predictions on the outcome of a fight and to
     calculate the benefit of a bet.
     """
+
     def __init__(self, input_size: int, dropout_prob: float = 0.0) -> None:
         """
-        Initialize the FighterNet model with the given input size and dropout 
+        Initialize the FighterNet model with the given input size and dropout
         probability.
 
         Args:
@@ -69,19 +71,20 @@ class FighterNet(nn.Module):
 
 class SymmetricFightNet(nn.Module):
     """
-    A neural network model designed to predict the outcome of a fight between two 
+    A neural network model designed to predict the outcome of a fight between two
     fighters.
 
     The model takes into account the characteristics of both fighters and the odds of
-    the fight. It uses a symmetric architecture to ensure that the model is fair and 
+    the fight. It uses a symmetric architecture to ensure that the model is fair and
     unbiased towards either fighter.
 
-    The model can be used to make predictions on the outcome of a fight and to calculate 
+    The model can be used to make predictions on the outcome of a fight and to calculate
     the benefit of a bet.
     """
+
     def __init__(self, input_size: int, dropout_prob: float = 0.0) -> None:
         """
-        Initialize the SymmetricFightNet model with the given input size and dropout 
+        Initialize the SymmetricFightNet model with the given input size and dropout
         probability.
 
         Args:

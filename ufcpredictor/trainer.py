@@ -6,6 +6,7 @@ The Trainer class encapsulates the training and testing data, model, optimizer, 
 function, and learning rate scheduler, providing a simple way to train and test a 
 PyTorch model.
 """
+
 from __future__ import annotations
 
 import logging
@@ -35,9 +36,9 @@ class Trainer:
         model (torch.nn.Module): The model to be trained.
         optimizer (torch.optim.Optimizer): The optimizer to be used.
         loss_fn (torch.nn.Module): The loss function to be used.
-        scheduler (Optional[torch.optim.lr_scheduler.ReduceLROnPlateau]): The learning 
+        scheduler (Optional[torch.optim.lr_scheduler.ReduceLROnPlateau]): The learning
             rate scheduler to be used.
-        device (str | torch.device): The device to be used for training. Defaults to 
+        device (str | torch.device): The device to be used for training. Defaults to
             "cpu".
     """
 

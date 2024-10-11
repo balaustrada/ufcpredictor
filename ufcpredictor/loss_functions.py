@@ -5,6 +5,7 @@ the outcome of UFC fights.
 The loss functions take into account the predictions made by the model and the actual 
 outcomes of the fights, and are used to optimize the model's performance.
 """
+
 import torch
 from torch import nn
 

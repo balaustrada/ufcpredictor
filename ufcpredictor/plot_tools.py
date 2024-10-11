@@ -2,6 +2,7 @@
 This module provides tools for plotting and visualizing predictions made by UFC
 predictor models.
 """
+
 from __future__ import annotations
 
 import logging
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 class PredictionPlots:
     """
-    Provides tools for visualizing and analyzing the predictions made by UFC predictor 
+    Provides tools for visualizing and analyzing the predictions made by UFC predictor
     models.
 
     This class contains methods for displaying the prediction details of a fight,
@@ -32,6 +33,7 @@ class PredictionPlots:
     displays the total invested, earnings, number of bets, and number of fights.
     Additionally, it can show a plot of the benefit of the model over time.
     """
+
     @staticmethod
     def show_fight_prediction_detail(
         model: nn.Module,
@@ -52,19 +54,19 @@ class PredictionPlots:
         Shows the prediction detail of a fight and the benefit of the model.
 
         It prints the prediction, shift, odd1, odd2, and correct for each fight.
-        It also prints the total invested, earnings, number of bets and number 
+        It also prints the total invested, earnings, number of bets and number
             of fights.
         Finally, it prints the benefit of the model as a percentage.
 
         Args:
             model : The model to use to make predictions.
-            data : The data to use to make predictions. It should contain the fighter 
+            data : The data to use to make predictions. It should contain the fighter
                 and opponent data, the label, the odds and the names of the fighters.
             print_info : If True, print the prediction, shift, odd1, odd2, and correct
                 for each fight. If False, do not print anything.
             show_plot : If True, show a plot of the benefit of the model over time.
-            ax : The axes to use to show the plot. If None, a new figure will be 
-                created. 
+            ax : The axes to use to show the plot. If None, a new figure will be
+                created.
         """
         X1, X2, Y, odds1, odds2, fighter_names, opponent_names = data
 
@@ -167,12 +169,12 @@ class PredictionPlots:
         Args:
             model : The model to use to make predictions.
             dataset : The dataset to use to get the data.
-            fight_ids : The id of the fight to use. If None, it will use all the data 
+            fight_ids : The id of the fight to use. If None, it will use all the data
                 in the dataset.
             print_info : If True, print the prediction, shift, odd1, odd2, and correct
                 for each fight. If False, do not print anything.
             show_plot : If True, show a plot of the benefit of the model over time.
-            ax : The axes to use to show the plot. If None, a new figure will be 
+            ax : The axes to use to show the plot. If None, a new figure will be
                 created.
         """
         X1, X2, Y, odds1, odds2, fighter_names, opponent_names = (

@@ -1,28 +1,19 @@
 from __future__ import annotations
 
+import datetime
 import logging
-
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-import datetime
 import numpy as np
 import pandas as pd
-import torch
-import torch
-from torch import nn
-import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
-from tqdm import tqdm
-from torch.optim import Adam
-from sklearn.metrics import f1_score
-
-from ufcscraper.ufc_scraper import UFCScraper
 from ufcscraper.odds_scraper import BestFightOddsScraper
+from ufcscraper.ufc_scraper import UFCScraper
+
 from ufcpredictor.utils import convert_minutes_to_seconds, weight_dict
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any, Callable, List, Optional, Set, Tuple
+    from pathlib import Path
+    from typing import Any, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -254,7 +245,7 @@ class DataProcessor:
         ]
 
     @property
-    def stat_names(self):
+    def stat_names(self) -> List[str]:
         stat_names = self.round_stat_names
         for field in ("KO", "Sub", "win"):
             stat_names += [field, field + "_opponent"]
@@ -262,11 +253,11 @@ class DataProcessor:
         return stat_names
 
     @property
-    def aggregated_fields(self):
+    def aggregated_fields(self) -> List[str]:
         return self.stat_names
 
     @property
-    def normalized_fields(self):
+    def normalized_fields(self) -> List[str]:
         normalized_fields = ["age", "time_since_last_fight", "fighter_height_cm"]
 
         for field in self.aggregated_fields:
@@ -294,7 +285,7 @@ class DataProcessor:
             .drop("round", axis=1)
         ).sort_values(by=["fighter_id", "event_date"])
 
-    def aggregate_data(self):
+    def aggregate_data(self) -> None:
         logger.info(f"Fields to be aggregated: {self.aggregated_fields}")
 
         data_aggregated = self.data.copy()
@@ -321,7 +312,7 @@ class DataProcessor:
 
         self.data_aggregated = data_aggregated
 
-    def add_per_minute_and_fight_stats(self):
+    def add_per_minute_and_fight_stats(self) -> None:
         new_columns = {}
 
         for column in self.aggregated_fields:
@@ -336,7 +327,7 @@ class DataProcessor:
             [self.data_aggregated, pd.DataFrame(new_columns)], axis=1
         ).copy()
 
-    def normalize_data(self):
+    def normalize_data(self) -> None:
         data_normalized = self.data_aggregated.copy()
 
         logger.info(f"Fields to be normalized: {self.normalized_fields}")
@@ -437,7 +428,7 @@ class DataProcessor:
 
 
 class OSRDataProcessor(DataProcessor):
-    def aggregate_data(self):
+    def aggregate_data(self) -> None:
         super().aggregate_data()
 
         # Adding OSR information
@@ -499,12 +490,14 @@ class OSRDataProcessor(DataProcessor):
 
 
 class WOSRDataProcessor(DataProcessor):
-    def __init__(self, *args, weights: List[float] = [0.3, 0.3, 0.3], **kwargs):
+    def __init__(
+        self, *args: Any, weights: List[float] = [0.3, 0.3, 0.3], **kwargs: Any
+    ) -> None:
         super().__init__(*args, **kwargs)
 
         self.skills_weight, self.past_OSR_weight, self.opponent_OSR_weight = weights
 
-    def aggregate_data(self):
+    def aggregate_data(self) -> None:
         super().aggregate_data()
 
         # Adding OSR information

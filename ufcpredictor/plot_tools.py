@@ -8,9 +8,12 @@ import numpy as np
 import torch
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any, Callable, List, Optional, Set, Tuple
+    from typing import List, Optional, Tuple
+
     from torch import nn
-    from ufcpredictor.datasets import Dataset
+    from numpytyping import NDArray
+
+    from ufcpredictor.datasets import BasicDataset
 
 logger = logging.getLogger(__name__)
 
@@ -19,11 +22,19 @@ class PredictionPlots:
     @staticmethod
     def show_fight_prediction_detail(
         model: nn.Module,
-        data: Tuple[torch.Tensor],
+        data: Tuple[
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            NDArray[np.str_],
+            NDArray[np.str_],
+        ],
         print_info: bool = False,
         show_plot: bool = False,
         ax: Optional[plt.Axes] = None,
-    ):
+    ) -> None:
         X1, X2, Y, odds1, odds2, fighter_names, opponent_names = data
 
         with torch.no_grad():
@@ -82,7 +93,7 @@ class PredictionPlots:
                 fights += 1
                 nbets += 1
 
-                if print_info: # pragma: no cover
+                if print_info:  # pragma: no cover
                     print(fighter, "vs", opponent)
                     print(odd1, "vs", odd2)
                     print(prediction, shift)
@@ -96,7 +107,7 @@ class PredictionPlots:
                     print()
 
         if show_plot:
-            if ax is None: # pragma: no cover
+            if ax is None:  # pragma: no cover
                 fig, ax = plt.subplots()
 
             ax.plot(
@@ -110,12 +121,12 @@ class PredictionPlots:
     @staticmethod
     def show_fight_prediction_detail_from_dataset(
         model: nn.Module,
-        dataset: Dataset,
+        dataset: BasicDataset,
         fight_ids: Optional[List[str]] = None,
         print_info: bool = False,
         show_plot: bool = False,
         ax: Optional[plt.Axes] = None,
-    ):
+    ) -> None:
         X1, X2, Y, odds1, odds2, fighter_names, opponent_names = (
             dataset.get_fight_data_from_ids(fight_ids)
         )

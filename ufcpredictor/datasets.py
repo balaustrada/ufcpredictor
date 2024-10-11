@@ -24,11 +24,9 @@ if TYPE_CHECKING:  # pragma: no cover
     import datetime
     from typing import Any, Callable, List, Optional, Set, Tuple
 
+    from numpy.typing import NDArray
+
 logger = logging.getLogger(__name__)
-
-
-class Dataset:
-    pass
 
 
 class BasicDataset(Dataset):
@@ -97,7 +95,7 @@ class BasicDataset(Dataset):
         self,
         data_processor: DataProcessor,
         fight_ids: List[str],
-        X_set: List[str] = None,
+        X_set: Optional[List[str]] = None,
     ) -> None:
         """
         fight_ids: Fight ids to load (usually train fights or test fights)
@@ -165,18 +163,21 @@ class BasicDataset(Dataset):
 
         self.fight_data = fight_data
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data[0])
 
-    def __getitem__(self, idx):
-        X, Y, winner, odds_1, odds_2 = self.data
-        X, Y, winner, odds_1, odds_2 = (
-            X[idx],
-            Y[idx],
-            winner[idx],
-            odds_1[idx],
-            odds_2[idx],
-        )
+    def __getitem__(
+        self, idx: int
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        # X, Y, winner, odds_1, odds_2 = self.data
+        # X, Y, winner, odds_1, odds_2 = (
+        #     X[idx],
+        #     Y[idx],
+        #     winner[idx],
+        #     odds_1[idx],
+        #     odds_2[idx],
+        # )
+        X, Y, winner, odds_1, odds_2 = [x[idx] for x in self.data]
 
         if np.random.random() >= 0.5:
             X, Y = Y, X
@@ -185,9 +186,15 @@ class BasicDataset(Dataset):
 
         return X, Y, winner.reshape(-1), odds_1.reshape(-1), odds_2.reshape(-1)
 
-    def get_fight_data_from_ids(
-        self, fight_ids: Optional[List[str]] = None
-    ) -> Tuple[torch.Tensor]:
+    def get_fight_data_from_ids(self, fight_ids: Optional[List[str]] = None) -> Tuple[
+        torch.FloatTensor,
+        torch.FloatTensor,
+        torch.FloatTensor,
+        torch.FloatTensor,
+        torch.FloatTensor,
+        NDArray[np.str_],
+        NDArray[np.str_],
+    ]:
         if fight_ids is not None:
             fight_data = self.fight_data[self.fight_data["fight_id"].isin(fight_ids)]
         else:
@@ -207,8 +214,8 @@ class BasicDataset(Dataset):
             torch.FloatTensor(fight_data["opening_y"].values),
         ]
 
-        fighter_names = fight_data["fighter_name_x"].values
-        opponent_names = fight_data["fighter_name_y"].values
+        fighter_names=  np.array(fight_data["fighter_name_x"].values)
+        opponent_names= np.array(fight_data["fighter_name_y"].values)
 
         X1, X2, Y, odds1, odds2 = data
 
@@ -221,7 +228,7 @@ class ForecastDataset(Dataset):
     def __init__(
         self,
         data_processor: DataProcessor,
-        X_set: List[str] = None,
+        X_set: Optional[List[str]] = None,
     ) -> None:
         self.data_processor = data_processor
 
@@ -244,7 +251,7 @@ class ForecastDataset(Dataset):
         fighter_odds: List[float],
         opponent_odds: List[float],
         model: nn.Module,
-    ):
+    ) -> Tuple[NDArray, NDArray]:
         match_data = pd.DataFrame(
             {
                 "fighter_id": fighter_ids + opponent_ids,
@@ -289,7 +296,7 @@ class ForecastDataset(Dataset):
             torch.FloatTensor(
                 np.asarray(
                     [
-                        data_dict[fighter_id + "_" + event_date]
+                        data_dict[fighter_id + "_" + str(event_date)]
                         for fighter_id, event_date in zip(fighter_ids, event_dates)
                     ]
                 )
@@ -297,7 +304,7 @@ class ForecastDataset(Dataset):
             torch.FloatTensor(
                 np.asarray(
                     [
-                        data_dict[fighter_id + "_" + event_date]
+                        data_dict[fighter_id + "_" + str(event_date)]
                         for fighter_id, event_date in zip(opponent_ids, event_dates)
                     ]
                 )

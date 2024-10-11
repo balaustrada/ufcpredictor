@@ -1,14 +1,21 @@
 import torch
 from torch import nn
 
+
 class BettingLoss(nn.Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super(BettingLoss, self).__init__()
 
-    def get_bet(self, prediction):
+    def get_bet(self, prediction: torch.Tensor | float) -> torch.Tensor | float:
         return prediction * 2 * 10
 
-    def forward(self, predictions, targets, odds_1, odds_2):
+    def forward(
+        self,
+        predictions: torch.Tensor,
+        targets: torch.Tensor,
+        odds_1: torch.Tensor,
+        odds_2: torch.Tensor,
+    ) -> torch.Tensor:
         msk = torch.round(predictions) == targets
 
         return_fighter_1 = self.get_bet(0.5 - predictions) * odds_1

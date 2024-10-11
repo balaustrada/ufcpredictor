@@ -42,7 +42,7 @@ class DataProcessor:
 
         self.scraper = ufc_scraper or UFCScraper(data_folder=data_folder)
         self.bfo_scraper = bfo_scraper or BestFightOddsScraper(
-            data_folder=self.data_folder, n_sessions=-1
+            data_folder=data_folder, n_sessions=-1
         )
 
     def load_data(self) -> None:

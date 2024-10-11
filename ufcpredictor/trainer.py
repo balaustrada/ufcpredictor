@@ -1,31 +1,17 @@
 from __future__ import annotations
 
 import logging
-
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
-import pandas as pd
-
-from tqdm import tqdm
-from ufcscraper.ufc_scraper import UFCScraper
-from ufcscraper.odds_scraper import BestFightOddsScraper
-from ufcpredictor.utils import convert_minutes_to_seconds, weight_dict
-from ufcpredictor.data_processor import DataProcessor
-from ufcpredictor.models import SymmetricFightNet
 import torch
-from torch import nn
-import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
-from tqdm import tqdm
-from torch.optim import Adam
 from sklearn.metrics import f1_score
-
+from tqdm import tqdm
 
 if TYPE_CHECKING:  # pragma: no cover
-    import datetime
-    from typing import Any, Callable, List, Optional, Set, Tuple
+    from typing import List, Optional, Tuple
+
+    from numpy.typing import NDArray
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +19,13 @@ logger = logging.getLogger(__name__)
 class Trainer:
     def __init__(
         self,
-        train_loader,
-        test_loader,
-        model,
-        optimizer,
-        loss_fn,
-        scheduler=None,
-        device="cpu",
+        train_loader: torch.utils.data.DataLoader,
+        test_loader: torch.utils.data.DataLoader,
+        model: torch.nn.Module,
+        optimizer: torch.optim.Optimizer,
+        loss_fn: torch.nn.Module,
+        scheduler: Optional[torch.optim.lr_scheduler.ReduceLROnPlateau] = None,
+        device: str | torch.device = "cpu",
     ):
         self.train_loader = train_loader
         self.test_loader = test_loader
@@ -49,7 +35,12 @@ class Trainer:
         self.device = device
         self.loss_fn = loss_fn.to(device)
 
-    def train(self, train_loader=None, test_loader=None, epochs=10):
+    def train(
+        self,
+        train_loader: torch.utils.data.DataLoader | None = None,
+        test_loader: torch.utils.data.DataLoader | None = None,
+        epochs: int = 10,
+    ) -> None:
         if train_loader is None:
             train_loader = self.train_loader
 
@@ -80,7 +71,9 @@ class Trainer:
 
                 train_loss.append(loss.item())
 
-                target_preds += torch.round(target_logit).detach().cpu().numpy().tolist()
+                target_preds += (
+                    torch.round(target_logit).detach().cpu().numpy().tolist()
+                )
                 target_labels += Y.detach().cpu().numpy().tolist()
 
             match = np.asarray(target_preds).reshape(-1) == np.asarray(
@@ -99,7 +92,9 @@ class Trainer:
             if self.scheduler is not None:
                 self.scheduler.step(val_loss)
 
-    def test(self, test_loader=None):
+    def test(
+        self, test_loader: torch.utils.data.DataLoader | None = None
+    ) -> Tuple[float, float, float, List, List]:
         if test_loader is None:
             test_loader = self.test_loader
 

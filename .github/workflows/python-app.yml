@@ -28,6 +28,13 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8 coverage
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        
+    - name: Clone ufcscraper repo
+      run: |
+        git clone https://github.com/balaustrada/ufcscraper.git
+        cd ufcscraper
+        pip install .
+
     - name: Test with unittest
       run: |
         python -m coverage run --source ufcpredictor -m unittest discover ufcpredictor/tests

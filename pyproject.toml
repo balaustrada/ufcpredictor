@@ -7,11 +7,15 @@ packages = ["ufcpredictor"]
 
 [tool.setuptools.dynamic]
 version = {attr = "ufcpredictor.__version__"}
-dependencies = {file = ["requirements.txt"]}
 
 [project]
 name = "ufcpredictor"
 readme = "README.md"
 requires-python = ">=3.9.13"
 dynamic = ["version"]
+dependencies = [ 
+    "scikit_learn",
+    "torch",
+    "tqdm",
+]
 

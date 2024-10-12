@@ -1,0 +1,17 @@
+site_name: UFCPredictor
+
+theme:
+  name: "material"
+
+plugins:
+  - mkdocstrings
+
+nav: 
+  - Home: index.md
+  - Data processor: '#data-processor'
+  - Datasets: '#datasets'
+  - Loss Functions: '#loss-functions'
+  - Models: '#models'
+  - Trainer: '#trainer'
+  - Plot tools: '#plot-tools'
+  - Utils: '#utils'  # Ensure Utils is added manually here

@@ -132,7 +132,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
             outputs=output
         )
 
-    demo.launch()
+    demo.launch(server_port=args.port)
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -145,6 +145,12 @@ def get_args() -> argparse.Namespace:
     parser.add_argument(
         "--model-path",
         type=Path,
+    )
+
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=7860,
     )
 
     return parser.parse_args()

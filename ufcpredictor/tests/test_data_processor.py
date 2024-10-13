@@ -80,6 +80,14 @@ class BaseTestDataProcessor(object):
         self.processor.scraper.event_scraper.data = self.mock_event_data
         self.processor.bfo_scraper.data = self.mock_odds_data
 
+    def test_get_fighter_name_and_id(self):
+        self.processor.fighter_names = dict(f1="fighter1", f2="fighter2")
+        self.processor.fighter_ids = dict(fighter1="f1", fighter2="f2")
+        
+        self.assertEqual(self.processor.get_fighter_name("f1"), "fighter1")
+        self.assertEqual(self.processor.get_fighter_id("fighter1"), "f1")
+        self.assertEqual(self.processor.get_fighter_id("fighter2a"), "f2")
+
     def test_raise_error_if_data_folder_is_none(self):
         """Test that raise_error_if_data_folder_is_none raises an error if data_folder is None."""
         with self.assertRaises(ValueError):

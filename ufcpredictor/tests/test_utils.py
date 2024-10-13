@@ -37,6 +37,10 @@ class TestUtils(unittest.TestCase):
         result = convert_odds_to_decimal(np.asarray(odds, dtype=np.float64))
         np.testing.assert_array_almost_equal(result, expected, decimal=5)
 
+
+        result = convert_odds_to_decimal(odds)
+        np.testing.assert_array_almost_equal(result, expected, decimal=5)
+
     def test_convert_odds_to_moneyline(self):
         # Test conversion for decimal odds greater than 2
         odds = [2.5, 3.0, 4.0]
@@ -46,8 +50,11 @@ class TestUtils(unittest.TestCase):
 
         # Test conversion for decimal odds less than or equal to 2
         odds = [5/3, 1.5, 12/9]
-        expected = [-150.0, -200.0, -300.0]
+        expected = [-150.0, -200, -300]
         result = convert_odds_to_moneyline(np.asarray(odds, dtype=np.float64))
+        np.testing.assert_array_almost_equal(result, expected, decimal=5)
+
+        result = convert_odds_to_moneyline(odds)
         np.testing.assert_array_almost_equal(result, expected, decimal=5)
 
 if __name__ == '__main__': # pragma: no cover

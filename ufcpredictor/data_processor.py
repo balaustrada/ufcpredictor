@@ -8,6 +8,7 @@ Handles data transformation, normalization, and feature engineering.
 from __future__ import annotations
 
 import datetime
+from fuzzywuzzy.process import extractOne
 import logging
 from typing import TYPE_CHECKING
 
@@ -86,6 +87,44 @@ class DataProcessor:
         data = self.add_key_stats(data)
         data = self.apply_filters(data)
         self.data = self.group_round_data(data)
+
+        names = self.data["fighter_name"].values
+        ids = self.data["fighter_id"].values
+
+        self.fighter_names = {id_: name_ for id_, name_ in zip(ids, names)}
+        self.fighter_ids = {name_: id_ for id_, name_ in zip(ids, names)}
+
+    def get_fighter_name(self, id_: str) -> str:
+        """
+        Returns the name of the fighter with the given id.
+
+        Args:
+            id_: The id of the fighter.
+
+        Returns:
+            The name of the fighter.
+        """
+        return self.fighter_names[id_]
+
+    def get_fighter_id(self, name: str) -> str:
+        """
+        Returns the id of the fighter with the given name.
+        Search is performed using fuzzywuzzy.
+        If multiple matches are found, the first one is returned.
+
+        Args:
+            name: The name of the fighter.
+
+        Returns:
+            The id of the fighter.
+        """
+        best_name, score = extractOne(name, self.fighter_ids.keys())
+
+        if score < 100:
+            logger.warning(
+                f"Fighter found for {name} with {score}% accuracy: {best_name}"
+            )
+        return self.fighter_ids[best_name]
 
     def join_dataframes(self) -> pd.DataFrame:
         """

@@ -182,12 +182,66 @@ class TestForecastDataset(unittest.TestCase):
 
         # Call the method under test
         predictions_1, predictions_2 = forecast_dataset.get_forecast_prediction(
-            fighter_ids=fighter_ids,
-            opponent_ids=opponent_ids,
+            fighter_names=fighter_ids,
+            opponent_names=opponent_ids,
             event_dates=event_dates,
             fighter_odds=fighter_odds,
             opponent_odds=opponent_odds,
-            model=mock_model
+            model=mock_model,
+            parse_ids=True,
+        )
+
+        # Verify the predictions content
+        np.testing.assert_almost_equal(
+            predictions_1.reshape(-1),
+            [4. , 5. , 5. , 4. , 1.5, 2. , 1.8, 1.2]
+        )
+        np.testing.assert_almost_equal(
+            predictions_2.reshape(-1), 
+            [-4., -3., -3., -4., -0.79999995, -0.20000005, -0.5, -1.]
+        )  # As per model's output logic
+
+    def test_get_forecast_prediction_from_name(self):
+        # Mock data
+        mock_data = pd.DataFrame({
+            "fighter_id": ["f1", "f2", "f3", "f1", "f2", "f3"],
+            "fight_id": ["fight1", "fight1", "fight2", "fight2", "fight3", "fight3"],
+            "knockdowns_per_minute": [1, 2, 3, 4, 5, 6],
+            "winner": ["f1", "f2", "f1", "f2", "f3", "f1"],
+            "opening": [1.5, 2.0, 1.2, 1.8, 2.5, 1.9],
+            "fighter_name": ["John", "Doe", "Jane", "John", "Doe", "Jane"],
+            "event_date": ["2023-01-01", "2023-01-01", "2023-01-02", "2023-01-02", "2023-01-03", "2023-01-03"],
+        })
+
+        id_dictionary = {name: id_ for name, id_ in zip(mock_data['fighter_name'], mock_data['fighter_id'])}
+        
+        mock_processor = MagicMock()
+        mock_processor.data_normalized = mock_data
+        mock_processor.get_fighter_id = MagicMock(
+            side_effect=lambda x: id_dictionary[x]
+        )
+
+        forecast_dataset = ForecastDataset(data_processor=mock_processor, X_set=self.X_set)
+
+        # Prepare mock input data
+        fighter_names = ["John", "Doe"]
+        opponent_names = ["Doe", "John"]
+        event_dates = ['2023-02-01', '2023-03-02']
+        fighter_odds = [1.5, 2.0]
+        opponent_odds = [1.8, 1.2]
+
+        # Mock the model's forward method to return fixed predictions
+        mock_model = MagicMock()
+        mock_model.side_effect = mock_call_return_args
+
+        # Call the method under test
+        predictions_1, predictions_2 = forecast_dataset.get_forecast_prediction(
+            fighter_names=fighter_names,
+            opponent_names=opponent_names,
+            event_dates=event_dates,
+            fighter_odds=fighter_odds,
+            opponent_odds=opponent_odds,
+            model=mock_model,
         )
 
         # Verify the predictions content

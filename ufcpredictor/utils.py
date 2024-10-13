@@ -11,9 +11,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pandas as pd
+import numpy as np
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Optional
+    from typing import List, Optional
 
     import numpy as np
     from numpy.typing import NDArray
@@ -55,7 +56,7 @@ def convert_minutes_to_seconds(time_str: str) -> Optional[int]:
         return minutes * 60 + seconds
 
 
-def convert_odds_to_decimal(odds: NDArray[np.float64]) -> NDArray[np.float64]:
+def convert_odds_to_decimal(odds: List[int | float] | NDArray[np.float64 | np.int_]) -> NDArray[np.float64]:
     """
     Convert odds from American format to decimal format.
 
@@ -65,6 +66,11 @@ def convert_odds_to_decimal(odds: NDArray[np.float64]) -> NDArray[np.float64]:
     Returns:
         Odds in decimal format.
     """
+    if not isinstance(odds, np.ndarray):
+        odds = np.asarray(odds, dtype=np.float64)
+    else:
+        odds = odds.astype(np.float64)
+
     msk = odds > 0
 
     odds[msk] = odds[msk] / 100 + 1
@@ -73,7 +79,7 @@ def convert_odds_to_decimal(odds: NDArray[np.float64]) -> NDArray[np.float64]:
     return odds
 
 
-def convert_odds_to_moneyline(odds: NDArray[np.float64]) -> NDArray[np.float64]:
+def convert_odds_to_moneyline(odds: NDArray[np.float64] | List[float]) -> NDArray[np.int_]:
     """
     Convert odds from decimal format to moneyline format.
 
@@ -83,9 +89,12 @@ def convert_odds_to_moneyline(odds: NDArray[np.float64]) -> NDArray[np.float64]:
     Returns:
         Odds in moneyline format.
     """
+    if not isinstance(odds, np.ndarray):
+        odds = np.asarray(odds, dtype=np.float64)
+
     msk = odds > 2
 
     odds[msk] = (odds[msk] - 1) * 100
     odds[~msk] = 100 / (1 - odds[~msk])
 
-    return odds
+    return np.round(odds).astype(int)

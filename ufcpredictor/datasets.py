@@ -322,28 +322,43 @@ class ForecastDataset(Dataset):
 
     def get_forecast_prediction(
         self,
-        fighter_ids: List[str],
-        opponent_ids: List[str],
+        fighter_names: List[str],
+        opponent_names: List[str],
         event_dates: List[str | datetime.date],
         fighter_odds: List[float],
         opponent_odds: List[float],
         model: nn.Module,
+        parse_ids: bool = False,
     ) -> Tuple[NDArray, NDArray]:
         """
-        Make a prediction for a given list of matches.
+        Make a prediction for a given list of matches. Either providing the names of
+        the fighters and their opponents, or providing the ids of the fighters and
+        their opponents.
 
         Args:
-            fighter_ids: The list of fighter ids.
-            opponent_ids: The list of opponent ids.
+            fighters_names: The list of fighters names.
+            opponent_names: The list of opponent names.
             event_dates: The list of event dates.
             fighter_odds: The list of fighter odds.
             opponent_odds: The list of opponent odds.
             model: The model to make the prediction with.
+            parse_ids: Whether to parse the ids of the fighters and opponents. Ids
+                are parsed in fields "fighter_names" and "opponent_names"if True,
+                and names are parsed if False.
 
         Returns:
             A tuple of two numpy arrays, each containing the predictions for one of the
             fighters.
         """
+        if not parse_ids:
+            fighter_ids = [self.data_processor.get_fighter_id(x) for x in fighter_names]
+            opponent_ids = [
+                self.data_processor.get_fighter_id(x) for x in opponent_names
+            ]
+        else:
+            fighter_ids = fighter_names
+            opponent_ids = opponent_names
+
         match_data = pd.DataFrame(
             {
                 "fighter_id": fighter_ids + opponent_ids,

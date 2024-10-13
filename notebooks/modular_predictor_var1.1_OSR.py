@@ -138,6 +138,10 @@ trainer = Trainer(
 trainer.train(epochs=8) # ~8 is a good match if dropout to 0.35 
 
 # %%
+# Save model dict
+torch.save(model.state_dict(), 'model.pth')
+
+# %%
 from ufcpredictor.plot_tools import PredictionPlots
 import matplotlib.pyplot as plt
 

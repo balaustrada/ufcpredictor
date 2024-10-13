@@ -1,16 +1,22 @@
+from __future__ import annotations
+
+import argparse
+import logging
+from datetime import datetime
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 import gradio as gr
 import numpy as np
-import logging
 import torch
-from datetime import datetime
-import sys
 
-from ufcpredictor.utils import convert_odds_to_decimal, convert_odds_to_moneyline
-from ufcpredictor.datasets import ForecastDataset
 from ufcpredictor.data_processor import WOSRDataProcessor as DataProcessor
+from ufcpredictor.datasets import ForecastDataset
 from ufcpredictor.models import SymmetricFightNet
-from ufcpredictor.loss_functions import BettingLoss
 from ufcpredictor.utils import convert_odds_to_decimal
+
+if TYPE_CHECKING:
+    from typing import Optional
 
 
 logger = logging.getLogger(__name__)
@@ -51,9 +57,12 @@ def predict(a, b, c, d):
 def greet(name):
     return "Hello " + name + "!"
 
-def main():
+def main(args: Optional[argparse.Namespace] = None) -> None:
+    if args is None:
+        args = get_args()
+
     logger.info("Loading data...")
-    data_processor = DataProcessor("/home/cramirez/kaggle/ufc_scraper/data")
+    data_processor = DataProcessor(args.data_folder)
     data_processor.load_data()
     data_processor.aggregate_data()
     data_processor.add_per_minute_and_fight_stats()
@@ -71,7 +80,7 @@ def main():
         dropout_prob=0.35,
     )
     model.load_state_dict(
-        torch.load("/home/cramirez/kaggle/ufc_scraper/ufcpredictor/notebooks/model.pth")
+        torch.load(args.model_path)
     )
 
     fighter_names = list(
@@ -93,9 +102,10 @@ def main():
         odds1 = gr.Number(label="Odds 1", value=100)
         odds2 = gr.Number(label="Odds 2", value=100)
 
+        btn = gr.Button("Predict")
+
         output = gr.Text(label="Prediction Output")
 
-        btn = gr.Button("Predict")
 
         def get_forecast_single_prediction(fighter_name, opponent_name, event_date, odds1, odds2):
             event_date = [datetime.fromtimestamp(event_date).strftime("%Y-%m-%d"),]
@@ -124,10 +134,20 @@ def main():
 
     demo.launch()
 
+def get_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--data-folder",
+        type=Path,
+    )
+
+    parser.add_argument(
+        "--model-path",
+        type=Path,
+    )
+
+    return parser.parse_args()
+
 if __name__ == "__main__":
-    # logging.basicConfig(
-    #     stream=sys.stdout,
-    #     level="INFO",
-    #     format="%(levelname)s:%(message)s",
-    # )
     main()

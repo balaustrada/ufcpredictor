@@ -1,22 +1,14 @@
-# Use a base image with Python
-FROM python:3.12
+FROM pytorch/pytorch:latest
 
 # Install the repository directly from GitHub
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y git
 RUN pip install git+https://github.com/balaustrada/ufcscraper.git
 RUN pip install git+https://github.com/balaustrada/ufcpredictor.git
 
-# Set the working directory
-WORKDIR /data
-
-# Copy the requirements.txt file into the container
-#COPY app/requirements.txt .
-
-# Install necessary Python packages
-# RUN pip install --no-cache-dir -r requirements.txt
-
-
-# Copy the rest of your application files into the container
-# COPY app/ .
+ADD app.py .
+ADD data .
 
 # Expose the port the app runs on (if needed)
 EXPOSE 7860

@@ -15,6 +15,7 @@ requires-python = ">=3.9.13"
 dynamic = ["version"]
 dependencies = [
     "fuzzywuzzy",
+    "gradio",
     "matplotlib",
     "scikit_learn",
     "torch",

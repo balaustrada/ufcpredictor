@@ -23,6 +23,7 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: "3.12"
+        lfs: true
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -34,9 +35,6 @@ jobs:
         git clone https://github.com/balaustrada/ufcscraper.git
         cd ufcscraper
         pip install .
-    - name: Checkout LFS
-      uses: actions/checkout@v2
-      run: git lfs pull
     - name: Test with unittest
       run: |
         python -m coverage run --source ufcpredictor -m unittest discover ufcpredictor/tests

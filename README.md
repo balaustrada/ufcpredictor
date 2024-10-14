@@ -52,9 +52,9 @@ export DATASET_TOKEN=DATASETTOKEN; ufcpredictor_app --data-folder data --model-p
 ## Deployment with Docker
 
 ### Include data (without UFCfightdata token)
-We need to modify the Dockerfile uncommenting and editing the following line to include the folder where the ``csv`` files are stored.
+We need to modify the Dockerfile uncommenting and editing the following line to include the folder where the ``csv`` files are stored. (Remember Dockerfile will only work with folders inside the relative path).
 ```dockerfile
-#ADD --chown=user /path/to/data/folder $HOME/app/data
+#ADD --chown=user data_folder $HOME/app/data
 ```
 We should also modify the last line to remove the ``--download-dataset`` option:
 ```dockerfile

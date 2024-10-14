@@ -30,6 +30,8 @@ COPY --chown=user . $HOME/app
 # Copy input data (if no HuggingFace token is provided)
 #ADD --chown=user /path/to/data/folder $HOME/app/data
 
+ENTRYPOINT ["/bin/sh", "-c"]
+
 # Expose the port the app runs on (if needed)
 EXPOSE 7860
 

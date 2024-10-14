@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -60,6 +61,12 @@ def greet(name):
 def main(args: Optional[argparse.Namespace] = None) -> None:
     if args is None:
         args = get_args()
+
+    logging.basicConfig(
+        stream=sys.stdout,
+        level=args.log_level,
+        format="%(levelname)s:%(message)s",
+    )
 
     logger.info("Loading data...")
     data_processor = DataProcessor(args.data_folder)
@@ -136,6 +143,12 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"],
+    )
 
     parser.add_argument(
         "--data-folder",

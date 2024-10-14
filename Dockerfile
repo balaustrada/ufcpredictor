@@ -27,8 +27,11 @@ WORKDIR $HOME/app
 # setting the owner to the user
 COPY --chown=user . $HOME/app
 
+# Copy input data (if no HuggingFace token is provided)
+#ADD --chown=user /path/to/data/folder $HOME/app/data
+
 # Expose the port the app runs on (if needed)
 EXPOSE 7860
 
 # Command to run your Jupyter notebook (you can change this as necessary)
-CMD ["python", "app.py", "--data-folder", "data", "--model-path", "models/model.pth", "--port", "7860", "--server-name", "0.0.0.0", "--download-dataset"]
+CMD ["ufcpredictor_app", "--data-folder", "data", "--model-path", "models/model.pth", "--port", "7860", "--server-name", "0.0.0.0", "--download-dataset"]

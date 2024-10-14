@@ -267,11 +267,11 @@ class PredictionPlots:
 
         ax.axvline(x=0, color="lightgray", lw=1)
         ax.text(
-            prediction * 1.2,
+            prediction,
             ax.get_ylim()[1] * 0.5,
             f"{abs(prediction):.2f}±{shift:.2f}",
             color=color,
-            ha="left" if prediction > 0 else "right",
+            ha="center",#"left" if prediction > 0 else "right",
             va="center",
             fontsize=11,
             fontweight="bold",

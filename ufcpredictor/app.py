@@ -156,7 +156,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
             )
 
             fig.subplots_adjust(
-                left=0.1, right=0.9, top=0.75, bottom=0.2
+                top=0.75, bottom=0.2
             )  # Adjust margins as needed
 
             return fig

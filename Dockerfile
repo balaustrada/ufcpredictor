@@ -12,6 +12,7 @@ ADD data .
 
 # Expose the port the app runs on (if needed)
 EXPOSE 7860
+EXPOSE 7861
 
 # Command to run your Jupyter notebook (you can change this as necessary)
-CMD ["python", "app.py", "--data-folder", ".", "--model-path", "model.pth", "--port", "7860"]
+CMD ["python", "app.py", "--data-folder", ".", "--model-path", "model.pth", "--port", "7860", "--server-name", "0.0.0.0"]

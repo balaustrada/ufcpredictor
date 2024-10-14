@@ -139,7 +139,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
             outputs=output
         )
 
-    demo.launch(server_port=args.port)
+    demo.launch(server_name=args.server_name, server_port=args.port)
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -148,6 +148,12 @@ def get_args() -> argparse.Namespace:
         "--log-level",
         default="INFO",
         choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"],
+    )
+
+    parser.add_argument(
+        "--server-name",
+        default="127.0.0.1",
+        type=str,
     )
 
     parser.add_argument(

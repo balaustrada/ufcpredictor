@@ -34,7 +34,9 @@ jobs:
         git clone https://github.com/balaustrada/ufcscraper.git
         cd ufcscraper
         pip install .
-
+    - name: Checkout LFS
+      uses: actions/checkout@v2
+      run: git lfs pull
     - name: Test with unittest
       run: |
         python -m coverage run --source ufcpredictor -m unittest discover ufcpredictor/tests

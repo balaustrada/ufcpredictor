@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
-import matplotlib.pyplot as plt
 
 import gradio as gr
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from huggingface_hub import snapshot_download
 
 from ufcpredictor.data_processor import WOSRDataProcessor as DataProcessor
 from ufcpredictor.datasets import ForecastDataset
@@ -69,6 +71,22 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         level=args.log_level,
         format="%(levelname)s:%(message)s",
     )
+
+    if args.download_dataset:
+        logger.info("Downloading dataset...")
+        if "DATASET_TOKEN" not in os.environ:
+            raise ValueError(
+                "'DATASET_TOKEN' must be set as an environmental variable"
+                "to download the dataset. Please make sure you have access "
+                "to the Hugging Face dataset."
+            )
+        snapshot_download(
+            repo_id="balaustrada/UFCfightdata",
+            allow_patterns=["*.csv"],
+            token=os.environ["DATASET_TOKEN"],
+            repo_type="dataset",
+            local_dir=args.data_folder,
+        )
 
     logger.info("Loading data...")
     data_processor = DataProcessor(args.data_folder)
@@ -241,6 +259,11 @@ def get_args() -> argparse.Namespace:
         "--server-name",
         default="127.0.0.1",
         type=str,
+    )
+
+    parser.add_argument(
+        "--download-dataset",
+        action="store_true",
     )
 
     parser.add_argument(

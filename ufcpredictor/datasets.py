@@ -319,6 +319,56 @@ class ForecastDataset(Dataset):
 
         if len(not_found) > 0:
             raise ValueError(f"Columns not found in normalized data: {not_found}")
+        
+    def get_single_forecast_prediction(
+            self,
+            fighter_name: str,
+            opponent_name: str,
+            event_date: str | datetime.date,
+            odds1: int,
+            odds2: int,
+            model: nn.Module,
+            parse_ids: bool = False,
+    ) -> Tuple[float, float]:
+        """
+        Make a prediction for a single match. Either providing the names of the
+        fighters and their opponents, or providing the ids of the fighters and
+        their opponents.
+
+        Args:
+            fighter_name: The name of the fighter.
+            opponent_name: The name of the opponent.
+            event_date: The date of the fight.
+            odds1: The odds of the first fighter.
+            odds2: The odds of the second fighter.
+            model: The model to make the prediction with.
+            parse_ids: Whether to parse the ids of the fighters and opponents. Ids
+                are parsed in fields "fighter_name" and "opponent_name"if True,
+                and names are parsed if False.
+
+        Returns: The predicted odds for the first and second fighters.
+        """
+        p1, p2 = self.get_forecast_prediction(
+            [
+               fighter_name,
+            ],
+            [
+                opponent_name,
+            ],
+            [
+                event_date,
+            ],
+            [
+                odds1,
+            ],
+            [
+                odds2,
+            ],
+            model=model,
+            parse_ids=parse_ids,
+        )
+
+        return p1[0][0], p2[0][0]
 
     def get_forecast_prediction(
         self,

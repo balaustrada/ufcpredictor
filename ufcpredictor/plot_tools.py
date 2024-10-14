@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import datetime
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import List, Optional, Tuple
@@ -187,4 +188,92 @@ class PredictionPlots:
             print_info,
             show_plot,
             ax,
+        )
+
+    @staticmethod
+    def plot_single_prediction(
+        model: nn.Module,
+        dataset: BasicDataset,
+        fighter_name: str,
+        opponent_name: str,
+        event_date: str | datetime.date,
+        odds1: int,
+        odds2: int,
+        ax: Optional[plt.Axes] = None,
+    ):
+        """
+        Plots the prediction for a single fight.
+
+        Args:
+            model : The model to use to make predictions.
+            dataset : The dataset to use to get the data.
+            fighter_name : The name of the first fighter.
+            opponent_name : The name of the second fighter.
+            event_date : The date of the fight.
+            odds1 : The odds for the first fighter (decimal).
+            odds2 : The odds for the second fighter (decimal).
+        """
+        p1, p2 = dataset.get_single_forecast_prediction(
+            fighter_name, opponent_name, event_date, odds1, odds2, model
+        )
+
+        if ax is None:  # pragma: no cover
+            fig, ax = plt.subplots()
+
+        prediction = ((p1 + p2) -1 ) *100
+        shift = np.abs(p1 - p2)*2*100
+
+        red = "tab:red"
+        blue = "tab:blue"
+
+        color = red if prediction <= 0 else blue
+
+        ax.barh(
+            0,
+            prediction,
+            xerr=shift,
+            color=color,
+            capsize=5,
+            height=0.7,
+
+        )
+        ax.set_ylim([-1, 1])
+        ax.set_xlim([-100, 100])
+
+        ticks = np.arange(-100, 101, 25, dtype=int)
+        ax.set_xticks(ticks)
+        ax.set_xticklabels([abs(tick) for tick in ticks])
+
+        ax.text(
+            ax.get_xlim()[0],
+            ax.get_ylim()[1] * 1.3,
+            fighter_name,
+            color=red,
+            ha="left",
+            va="center",
+            fontsize=12,
+            fontweight="bold",
+        )
+
+        ax.text(
+            ax.get_xlim()[1],
+            ax.get_ylim()[1] * 1.3,
+            opponent_name,
+            color=blue,
+            ha="right",
+            va="center",
+            fontsize=12,
+            fontweight="bold",
+        )
+
+        ax.axvline(x=0, color="lightgray", lw=1)
+        ax.text(
+            prediction * 1.2,
+            ax.get_ylim()[1] * 0.5,
+            f"{abs(prediction):.2f}±{shift:.2f}",
+            color=color,
+            ha="left" if prediction > 0 else "right",
+            va="center",
+            fontsize=11,
+            fontweight="bold",
         )

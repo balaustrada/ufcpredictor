@@ -18,8 +18,9 @@ from ufcpredictor.data_processor import WOSRDataProcessor as DataProcessor
 from ufcpredictor.datasets import ForecastDataset
 from ufcpredictor.models import SymmetricFightNet
 from ufcpredictor.utils import convert_odds_to_decimal
+from ufcpredictor.plot_tools import PredictionPlots
 
-if TYPE_CHECKING:
+if TYPE_CHECKING: # pragma: no cover
     from typing import Optional
 
 
@@ -53,15 +54,6 @@ X_set = [
     "OSR",
 ]
 
-
-def predict(a, b, c, d):
-    return a, b, c, d
-
-
-def greet(name):
-    return "Hello " + name + "!"
-
-
 def main(args: Optional[argparse.Namespace] = None) -> None:
     if args is None:
         args = get_args()
@@ -72,9 +64,9 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         format="%(levelname)s:%(message)s",
     )
 
-    if args.download_dataset:
+    if args.download_dataset: # pragma: no cover
         logger.info("Downloading dataset...")
-        if "DATASET_TOKEN" not in os.environ:
+        if "DATASET_TOKEN" not in os.environ: # pragma: no cover
             raise ValueError(
                 "'DATASET_TOKEN' must be set as an environmental variable"
                 "to download the dataset. Please make sure you have access "
@@ -108,9 +100,9 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
     )
     model.load_state_dict(torch.load(args.model_path))
 
-    fighter_names = list(
+    fighter_names = sorted(list(
         data_processor.scraper.fighter_scraper.data["fighter_name"].values
-    )
+    ))
 
     with gr.Blocks() as demo:
         event_date = gr.DateTime(
@@ -121,11 +113,13 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         fighter_name = gr.Dropdown(
             label="Fighter Name",
             choices=fighter_names,
+            value="Ilia Topuria",
             interactive=True,
         )
         opponent_name = gr.Dropdown(
             label="Opponent Name",
             choices=fighter_names,
+            value="Max Holloway",
             interactive=True,
         )
         odds1 = gr.Number(label="Fighter odds", value=100)
@@ -139,103 +133,24 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         def get_forecast_single_prediction(
             fighter_name, opponent_name, event_date, odds1, odds2
         ):
-            event_date = [
-                datetime.fromtimestamp(event_date).strftime("%Y-%m-%d"),
-            ]
-            odds1 = convert_odds_to_decimal(
-                [
-                    odds1,
-                ]
-            )
-            odds2 = convert_odds_to_decimal(
-                [
-                    odds2,
-                ]
-            )
-
-            # print(fighter_name, opponent_name, event_date, odds1, odds2)
-            p1, p2 = dataset.get_forecast_prediction(
-                [
-                    fighter_name,
-                ],
-                [
-                    opponent_name,
-                ],
-                event_date,
-                odds1,
-                odds2,
-                model=model,
-            )
-            prediction = (p1 + p2)[0][0] - 1  # Prediction between -1 and 1
-            shift = np.abs(p1 - p2)[0][0] * 2
-
-            prediction *= 100
-            shift *= 100
-
             fig, ax = plt.subplots(figsize=(6.4, 1.7))
-            red = "tab:red"
-            blue = "tab:blue"
 
-            color = red if prediction < 0 else blue
-
-            ax.barh(
-                0,
-                prediction,
-                xerr=shift,
-                color=color,
-                capsize=5,
-                height=0.7,
-            )
-            ax.set_ylim([-1, 1])
-
-            ax.set_xlim([-100, 100])
-            ax_right = ax.twinx()
-            ax_right.set_yticks([])
-            ax.set_yticks([])
-
-            ticks = np.arange(-100, 101, 25, dtype=int)
-            ax.set_xticks(ticks)
-            ax.set_xticklabels([abs(tick) for tick in ticks])
-
-            ax.text(
-                ax.get_xlim()[0],
-                ax.get_ylim()[1] * 1.3,
-                fighter_name,
-                color=red,
-                ha="left",
-                va="center",
-                fontsize=12,
-                fontweight="bold",
+            PredictionPlots.plot_single_prediction(
+                model=model,
+                dataset=dataset,
+                fighter_name=fighter_name,
+                opponent_name=opponent_name,
+                event_date=datetime.fromtimestamp(event_date).strftime("%Y-%m-%d"),
+                odds1=convert_odds_to_decimal([odds1,])[0],
+                odds2=convert_odds_to_decimal([odds2,])[0],
+                ax=ax,
             )
 
-            ax.text(
-                ax.get_xlim()[1],
-                ax.get_ylim()[1] * 1.3,
-                opponent_name,
-                color=blue,
-                ha="right",
-                va="center",
-                fontsize=12,
-                fontweight="bold",
-            )
-
-            ax.axvline(x=0, color="lightgray", lw=1)
-            ax.text(
-                prediction * 1.2,
-                ax.get_ylim()[1] * 0.5,
-                f"{abs(prediction):.2f}±{shift:.2f}",
-                color=color,
-                ha="left" if prediction > 0 else "right",
-                va="center",
-                fontsize=11,
-                fontweight="bold",
-            )
             fig.subplots_adjust(
                 left=0.1, right=0.9, top=0.75, bottom=0.2
             )  # Adjust margins as needed
 
             return fig
-            # return f"{prediction[0][0]:.3f} ({shift[0][0]:.3f})"
 
         btn.click(
             get_forecast_single_prediction,
@@ -285,5 +200,5 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": # pragma: no cover
     main()

@@ -6,6 +6,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
+import matplotlib.pyplot as plt
 
 import gradio as gr
 import numpy as np
@@ -111,7 +112,8 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
 
         btn = gr.Button("Predict")
 
-        output = gr.Text(label="Prediction Output")
+        output = gr.Plot(label="")
+        # output = gr.Text(label="Prediction Output")
 
 
         def get_forecast_single_prediction(fighter_name, opponent_name, event_date, odds1, odds2):
@@ -128,10 +130,75 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
                 odds2,
                 model=model
             )
-            prediction = (p1 + p2) / 2
-            shift = np.abs(p1 - p2)
+            prediction = (p1 + p2)[0][0] - 1 # Prediction between -1 and 1
+            shift = np.abs(p1 - p2)[0][0] * 2
 
-            return f"{prediction[0][0]:.3f} ({shift[0][0]:.3f})"
+            prediction *=100
+            shift*=100
+
+            fig, ax = plt.subplots(figsize=(6.4, 1.7))
+            red = "tab:red"
+            blue = "tab:blue"
+
+            color = red if prediction < 0 else blue
+
+            ax.barh(
+                0,
+                prediction,
+                xerr=shift,
+                color=color,
+                capsize=5,
+                height=0.7,
+            )
+            ax.set_ylim([-1, 1])
+
+            ax.set_xlim([-100, 100])
+            ax_right = ax.twinx()
+            ax_right.set_yticks([])
+            ax.set_yticks([])
+
+            ticks = np.arange(-100, 101, 25, dtype=int)
+            ax.set_xticks(ticks)
+            ax.set_xticklabels([abs(tick) for tick in ticks])
+
+            ax.text(
+                ax.get_xlim()[0],
+                ax.get_ylim()[1]*1.3,
+                fighter_name,
+                color=red,
+                ha="left",
+                va="center",
+                fontsize=12,
+                fontweight='bold',
+            )
+
+            ax.text(
+                ax.get_xlim()[1],
+                ax.get_ylim()[1]*1.3,
+                opponent_name,
+                color=blue,
+                ha="right",
+                va="center",
+                fontsize=12,
+                fontweight='bold',
+            )
+
+            ax.axvline(x=0, color='lightgray', lw=1)
+            ax.text(
+                prediction*1.2,
+                ax.get_ylim()[1]*0.5,
+                f"{abs(prediction):.2f}±{shift:.2f}",
+                color=color,
+                ha='left' if prediction > 0 else "right",
+                va="center",
+                fontsize=11,
+                fontweight='bold',
+            )
+            fig.subplots_adjust(left=0.1, right=0.9, top=0.75, bottom=0.2)  # Adjust margins as needed
+
+    
+            return fig
+            #return f"{prediction[0][0]:.3f} ({shift[0][0]:.3f})"
         
         btn.click(
             get_forecast_single_prediction,

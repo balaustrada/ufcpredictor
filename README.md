@@ -1,3 +1,13 @@
+---
+title: UFC Predictor
+emoji: 🥋
+colorFrom: blue
+colorTo: red
+sdk: docker
+python_version: 3.12
+pinned: false
+---
+
 # UFC Predictor
 
 [![Python application](https://github.com/balaustrada/ufcpredictor/actions/workflows/python-app.yml/badge.svg)](https://github.com/balaustrada/ufcpredictor/actions/workflows/python-app.yml/)

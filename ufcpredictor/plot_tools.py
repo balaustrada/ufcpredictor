@@ -19,7 +19,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from torch import nn
     from numpy.typing import NDArray
 
-    from ufcpredictor.datasets import BasicDataset
+    from ufcpredictor.datasets import BasicDataset, ForecastDataset
 
 logger = logging.getLogger(__name__)
 
@@ -193,14 +193,14 @@ class PredictionPlots:
     @staticmethod
     def plot_single_prediction(
         model: nn.Module,
-        dataset: BasicDataset,
+        dataset: ForecastDataset,
         fighter_name: str,
         opponent_name: str,
         event_date: str | datetime.date,
         odds1: int,
         odds2: int,
         ax: Optional[plt.Axes] = None,
-    ):
+    ) -> None:
         """
         Plots the prediction for a single fight.
 
@@ -220,8 +220,8 @@ class PredictionPlots:
         if ax is None:  # pragma: no cover
             fig, ax = plt.subplots()
 
-        prediction = ((p1 + p2) -1 ) *100
-        shift = np.abs(p1 - p2)*2*100
+        prediction = ((p1 + p2) - 1) * 100
+        shift = np.abs(p1 - p2) * 2 * 100
 
         red = "tab:red"
         blue = "tab:blue"
@@ -235,10 +235,9 @@ class PredictionPlots:
             color=color,
             capsize=5,
             height=0.7,
-
         )
-        ax.set_ylim([-1, 1])
-        ax.set_xlim([-100, 100])
+        ax.set_ylim(-1, 1)
+        ax.set_xlim(-100, 100)
 
         ticks = np.arange(-100, 101, 25, dtype=int)
         ax.set_xticks(ticks)

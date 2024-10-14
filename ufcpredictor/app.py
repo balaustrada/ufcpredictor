@@ -20,7 +20,7 @@ from ufcpredictor.models import SymmetricFightNet
 from ufcpredictor.utils import convert_odds_to_decimal
 from ufcpredictor.plot_tools import PredictionPlots
 
-if TYPE_CHECKING: # pragma: no cover
+if TYPE_CHECKING:  # pragma: no cover
     from typing import Optional
 
 
@@ -54,6 +54,7 @@ X_set = [
     "OSR",
 ]
 
+
 def main(args: Optional[argparse.Namespace] = None) -> None:
     if args is None:
         args = get_args()
@@ -64,9 +65,9 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         format="%(levelname)s:%(message)s",
     )
 
-    if args.download_dataset: # pragma: no cover
+    if args.download_dataset:  # pragma: no cover
         logger.info("Downloading dataset...")
-        if "DATASET_TOKEN" not in os.environ: # pragma: no cover
+        if "DATASET_TOKEN" not in os.environ:  # pragma: no cover
             raise ValueError(
                 "'DATASET_TOKEN' must be set as an environmental variable"
                 "to download the dataset. Please make sure you have access "
@@ -100,9 +101,9 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
     )
     model.load_state_dict(torch.load(args.model_path))
 
-    fighter_names = sorted(list(
-        data_processor.scraper.fighter_scraper.data["fighter_name"].values
-    ))
+    fighter_names = sorted(
+        list(data_processor.scraper.fighter_scraper.data["fighter_name"].values)
+    )
 
     with gr.Blocks() as demo:
         event_date = gr.DateTime(
@@ -131,8 +132,8 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         # output = gr.Text(label="Prediction Output")
 
         def get_forecast_single_prediction(
-            fighter_name, opponent_name, event_date, odds1, odds2
-        ):
+            fighter_name: str, opponent_name: str, event_date: float, odds1: int, odds2: int
+        ) -> plt.Figure:
             fig, ax = plt.subplots(figsize=(6.4, 1.7))
 
             PredictionPlots.plot_single_prediction(
@@ -141,8 +142,16 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
                 fighter_name=fighter_name,
                 opponent_name=opponent_name,
                 event_date=datetime.fromtimestamp(event_date).strftime("%Y-%m-%d"),
-                odds1=convert_odds_to_decimal([odds1,])[0],
-                odds2=convert_odds_to_decimal([odds2,])[0],
+                odds1=convert_odds_to_decimal(
+                    [
+                        odds1,
+                    ]
+                )[0],
+                odds2=convert_odds_to_decimal(
+                    [
+                        odds2,
+                    ]
+                )[0],
                 ax=ax,
             )
 
@@ -200,5 +209,5 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-if __name__ == "__main__": # pragma: no cover
+if __name__ == "__main__":  # pragma: no cover
     main()

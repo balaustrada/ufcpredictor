@@ -87,7 +87,7 @@ class TestApp(unittest.TestCase):
                     datetime(2024, 10, 1).timestamp(),
                     -188,
                     188,
-                ) 
+                )
                 result_container.append(result)
                 return result
 
@@ -105,5 +105,5 @@ class TestApp(unittest.TestCase):
             self.assertAlmostEqual(0.7, patch_.get_height())
 
 
-if __name__ == "__main__": # pragma: no cover
+if __name__ == "__main__":  # pragma: no cover
     unittest.main()

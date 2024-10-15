@@ -43,11 +43,16 @@ from ufcpredictor.utils import convert_odds_to_decimal
 from ufcpredictor.plot_tools import PredictionPlots
 from ufcpredictor.trainer import Trainer
 
+from ufcscraper.ufc_scraper import UFCScraper
+from ufcscraper.odds_scraper import BestFightOddsScraper
+
 from typing import Optional
 
 # %%
 import matplotlib.pyplot as plt
 import pandas as pd
+
+pd.set_option("display.max_columns", None)
 
 # %%
 logger = logging.getLogger(__name__)
@@ -94,6 +99,8 @@ event_dates = general_data_processor.scraper.event_scraper.data["event_date"].un
 # %%
 # Now iterate over events to start adding data.
 # (this should encapsulate the following cells as well)
+
+stats = []
 for event_date in sorted(event_dates[event_dates > starting_date]):
     pass
 
@@ -102,13 +109,15 @@ event_date = "2024-10-05"
 
 # %%
 data_processor = DataProcessor(Path(".").resolve().parents[1] / "data")
-data_processor.load_data()
-data_processor.data = data_processor.data[
-    data_processor.data["event_date"]
-    < (
-        pd.to_datetime(event_date) - pd.Timedelta(days=4)
-    )  # Just for robustness use 4 days before as limit
+
+# Removing fights with date < 4 days before
+# I have to perform it before loading and filtering to ensure
+# no contamination
+data_processor.scraper.event_scraper.data = data_processor.scraper.event_scraper.data[
+    pd.to_datetime(data_processor.scraper.event_scraper.data["event_date"])
+    < pd.to_datetime(event_date) - pd.Timedelta(days=4) # 4 days just in case
 ]
+data_processor.load_data()
 
 # %%
 data_processor.aggregate_data()
@@ -187,17 +196,19 @@ trainer = Trainer(
 )
 
 # %%
+
+# %%
 print("First train...")
 # First train
 trainer.train(
     epochs=5,
     train_loader=early_train_dataloader,
-    silent=False,
+    silent=True,
 )
 
 print("Second train..")
 # Second quality train
-trainer.train(epochs=3, train_loader=train_dataloader, silent=False)
+trainer.train(epochs=3, train_loader=train_dataloader, silent=True)
 
 # %%
 # Now the model is trained, let's load the ForecastDataset and predict
@@ -227,12 +238,8 @@ fight_data = fight_data[fight_data["fighter_id_x"] != fight_data["fighter_id_y"]
 fight_data = fight_data.drop_duplicates(subset=["fight_id"], keep="first")
 
 # %%
-fight_data
-
-# %%
 fighter_ids = fight_data["fighter_id_x"].values.tolist()
 opponent_ids = fight_data["opponent_id_x"].values.tolist()
-winner = fighter_ids == fight_data["winner_x"].values.tolist()
 fighter_odds = fight_data["opening_x"].values.tolist()
 opponent_odds = fight_data["opening_y"].values.tolist()
 event_dates = (
@@ -242,15 +249,17 @@ event_dates = (
     .values
 ).tolist()
 
+Y = fight_data["fighter_id_x"] != fight_data["winner_x"]
+
 # %%
 model = SymmetricFightNet(
     input_size=len(X_set),
     dropout_prob=0.35,
 )
-model.load_state_dict(torch.load("models/model.pth"))
+model.load_state_dict(torch.load(Path(".").resolve().parents[1] / "models/model.pth"))
 
 # %%
-predict_dataset.get_forecast_prediction(
+p1, p2 = predict_dataset.get_forecast_prediction(
     fighter_names=fighter_ids,
     opponent_names=opponent_ids,
     event_dates=event_dates,
@@ -261,120 +270,54 @@ predict_dataset.get_forecast_prediction(
 )
 
 # %%
-predict_dataset.get_single_forecast_prediction(
-    fighter_name="Ilia Topuria",
-    opponent_name="Max Holloway",
-    event_date="2024-10-26",
-    odds1=convert_odds_to_decimal(-188),
-    odds2=convert_odds_to_decimal(188),
-    model=model,
-)
+stats = []
 
-# %%
-fighter_names = [
-    "Ilia Topuria",
-]
-opponent_names = [
-    "Max Holloway",
-]
-event_dates = [
-    "2024-10-26",
-]
-fighter_odds = convert_odds_to_decimal(
-    [
-        -188,
-    ]
-)
-opponent_odds = convert_odds_to_decimal(
-    [
-        188,
-    ]
-)
-model = model
-parse_ids = False
+for p1i, p2i, Yi, fighter_odd, opponent_odd in zip(
+    p1, p2, Y, fighter_odds, opponent_odds
+):
+    prediction = (p1i[0] + p2i[0]) * 0.5
 
-# %%
-self = predict_dataset
+    bet = np.abs(prediction - 0.5) * 2 * 10
 
-# %%
-if not parse_ids:
-    fighter_ids = [self.data_processor.get_fighter_id(x) for x in fighter_names]
-    opponent_ids = [self.data_processor.get_fighter_id(x) for x in opponent_names]
-else:
-    fighter_ids = fighter_names
-    opponent_ids = opponent_names
+    if round(prediction) == Yi:  # correct
+        if Yi == 0:
+            win = bet * fighter_odd
+        else:
+            win = bet * opponent_odd
+    else:
+        win = 0
 
-match_data = pd.DataFrame(
-    {
-        "fighter_id": fighter_ids + opponent_ids,
-        "event_date_forecast": event_dates * 2,
-        "opening": np.concatenate((fighter_odds, opponent_odds)),
-    }
-)
+    earnings += win
+    inversion += bet
 
-match_data = match_data.merge(
-    self.data_processor.data_normalized,
-    left_on="fighter_id",
-    right_on="fighter_id",
-)
-
-match_data = match_data[match_data["event_date"] < match_data["event_date_forecast"]]
-match_data = match_data.sort_values(
-    by=["fighter_id", "event_date"],
-    ascending=[True, False],
-)
-match_data = match_data.drop_duplicates(
-    subset=["fighter_id", "event_date_forecast"],
-    keep="first",
-)
-match_data["id_"] = (
-    match_data["fighter_id"].astype(str)
-    + "_"
-    + match_data["event_date_forecast"].astype(str)
-)
-
-# This data dict is used to facilitate the construction of the tensors
-data_dict = {
-    id_: data
-    for id_, data in zip(
-        match_data["id_"].values,
-        np.asarray([match_data[x] for x in self.X_set]).T,
+    stats.append(
+        [
+            prediction,
+            Yi,
+            fighter_odd,
+            opponent_odd,
+            prediction == Yi,
+            bet,
+            win,
+        ]
     )
-}
-
-data = [
-    torch.FloatTensor(
-        np.asarray(
-            [
-                data_dict[fighter_id + "_" + str(event_date)]
-                for fighter_id, event_date in zip(fighter_ids, event_dates)
-            ]
-        )
-    ),  # X1
-    torch.FloatTensor(
-        np.asarray(
-            [
-                data_dict[fighter_id + "_" + str(event_date)]
-                for fighter_id, event_date in zip(opponent_ids, event_dates)
-            ]
-        )
-    ),  # X2
-    torch.FloatTensor(np.asarray(fighter_odds)).reshape(-1, 1),  # Odds1,
-    torch.FloatTensor(np.asarray(opponent_odds)).reshape(-1, 1),  # Odds2
-]
 
 # %%
-data
+df = pd.DataFrame(
+    stats,
+    columns=[
+        "Prediction",
+        "result",
+        "fighter_odds",
+        "opponent_odds",
+        "correct",
+        "bet",
+        "win",
+    ],
+)
 
 # %%
-X1, X2, odds1, odds2 = data
+df
 
 # %%
-model.eval()
-with torch.no_grad():
-    predictions_1 = model(X1, X2, odds1, odds2).detach().numpy()
-
-# %%
-predictions_1
-
-# %%
+df["bet"].sum() - df["win"].sum()

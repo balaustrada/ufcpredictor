@@ -11,7 +11,7 @@ from torch import nn
 
 
 class BettingLoss(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, max_bet: float = 10) -> None:
         """
         Initializes the BettingLoss instance.
 
@@ -19,6 +19,7 @@ class BettingLoss(nn.Module):
         other actions.
         """
         super(BettingLoss, self).__init__()
+        self.max_bet = max_bet
 
     def get_bet(self, prediction: torch.Tensor | float) -> torch.Tensor | float:
         """
@@ -36,7 +37,7 @@ class BettingLoss(nn.Module):
         Returns:
             A tensor or float between 0 and 20 representing the bet.
         """
-        return prediction * 2 * 10
+        return prediction * 2 * self.max_bet
 
     def forward(
         self,

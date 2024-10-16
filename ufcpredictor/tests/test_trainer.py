@@ -58,6 +58,22 @@ class TestTrainer(unittest.TestCase):
         self.assertGreaterEqual(target_f1, 0)
         # self.assertLessEqual(val_loss, 1.0)
         # Ensure validation runs properly and outputs valid metrics
+
+    def test_empty_loader(self):
+        trainer = Trainer(
+            train_loader=self.train_loader,
+            test_loader=None,
+            model=self.model,
+            optimizer=self.optimizer,
+            loss_fn=self.loss_fn,
+            device=self.device,
+        )
+        result = trainer.test(test_loader=None)
+        self.assertEqual(
+            result,
+            (0, 0, 0, [], []),
+        )
+    
         
 
 class TestTrainerWithScheduler(unittest.TestCase):

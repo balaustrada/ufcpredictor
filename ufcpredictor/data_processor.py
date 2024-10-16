@@ -40,7 +40,7 @@ class DataProcessor:
 
     def __init__(
         self,
-        data_folder: Optional[Path | str],
+        data_folder: Optional[Path | str] = None,
         ufc_scraper: Optional[UFCScraper] = None,
         bfo_scraper: Optional[BestFightOddsScraper] = None,
     ) -> None:

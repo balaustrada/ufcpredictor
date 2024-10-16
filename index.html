@@ -12,7 +12,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.40">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.41">
     
     
       
@@ -20,7 +20,7 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.8c3ca2c6.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.0253249f.min.css">
       
       
 
@@ -2397,7 +2397,7 @@ ufcpredictor.datasets to provide a seamless data preparation workflow.</p>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">data_folder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">],</span>
+        <span class="n">data_folder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">ufc_scraper</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">UFCScraper</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">bfo_scraper</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">BestFightOddsScraper</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -3179,7 +3179,7 @@ represent the opponent's result.</p>
 
 
 <h3 id="ufcpredictor.data_processor.DataProcessor.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">data_folder</span><span class="p">,</span> <span class="n">ufc_scraper</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bfo_scraper</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">data_folder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ufc_scraper</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bfo_scraper</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h3>
 
@@ -3213,7 +3213,7 @@ represent the opponent's result.</p>
               </div>
             </td>
             <td>
-                <em>required</em>
+                  <code>None</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -3306,7 +3306,7 @@ bfo_scraper are None.</p>
 <span class="normal">67</span>
 <span class="normal">68</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
-    <span class="n">data_folder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="n">data_folder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">ufc_scraper</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">UFCScraper</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">bfo_scraper</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">BestFightOddsScraper</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -8698,8 +8698,9 @@ outcomes of the fights, and are used to optimize the model's performance.</p>
 <span class="normal">79</span>
 <span class="normal">80</span>
 <span class="normal">81</span>
-<span class="normal">82</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">BettingLoss</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">82</span>
+<span class="normal">83</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">BettingLoss</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_bet</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Initializes the BettingLoss instance.</span>
 
@@ -8707,6 +8708,7 @@ outcomes of the fights, and are used to optimize the model's performance.</p>
 <span class="sd">        other actions.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">BettingLoss</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_bet</span> <span class="o">=</span> <span class="n">max_bet</span>
 
     <span class="k">def</span> <span class="nf">get_bet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prediction</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -8724,7 +8726,7 @@ outcomes of the fights, and are used to optimize the model's performance.</p>
 <span class="sd">        Returns:</span>
 <span class="sd">            A tensor or float between 0 and 20 representing the bet.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">prediction</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="mi">10</span>
+        <span class="k">return</span> <span class="n">prediction</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_bet</span>
 
     <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -8787,7 +8789,7 @@ outcomes of the fights, and are used to optimize the model's performance.</p>
 
 
 <h3 id="ufcpredictor.loss_functions.BettingLoss.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">()</span></code>
+            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">max_bet</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span></code>
 
 </h3>
 
@@ -8807,7 +8809,8 @@ other actions.</p>
 <span class="normal">18</span>
 <span class="normal">19</span>
 <span class="normal">20</span>
-<span class="normal">21</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">21</span>
+<span class="normal">22</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_bet</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Initializes the BettingLoss instance.</span>
 
@@ -8815,6 +8818,7 @@ other actions.</p>
 <span class="sd">    other actions.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="nb">super</span><span class="p">(</span><span class="n">BettingLoss</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">max_bet</span> <span class="o">=</span> <span class="n">max_bet</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -8943,8 +8947,7 @@ this is the net profit.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/loss_functions.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">41</span>
-<span class="normal">42</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">42</span>
 <span class="normal">43</span>
 <span class="normal">44</span>
 <span class="normal">45</span>
@@ -8984,7 +8987,8 @@ this is the net profit.</p>
 <span class="normal">79</span>
 <span class="normal">80</span>
 <span class="normal">81</span>
-<span class="normal">82</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">forward</span><span class="p">(</span>
+<span class="normal">82</span>
+<span class="normal">83</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">forward</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">predictions</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
     <span class="n">targets</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
@@ -9106,8 +9110,7 @@ prediction.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/loss_functions.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">23</span>
-<span class="normal">24</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">24</span>
 <span class="normal">25</span>
 <span class="normal">26</span>
 <span class="normal">27</span>
@@ -9122,7 +9125,8 @@ prediction.</p>
 <span class="normal">36</span>
 <span class="normal">37</span>
 <span class="normal">38</span>
-<span class="normal">39</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_bet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prediction</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="nb">float</span><span class="p">:</span>
+<span class="normal">39</span>
+<span class="normal">40</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_bet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prediction</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Computes the bet for the given prediction.</span>
 
@@ -9138,7 +9142,7 @@ prediction.</p>
 <span class="sd">    Returns:</span>
 <span class="sd">        A tensor or float between 0 and 20 representing the bet.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">prediction</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="mi">10</span>
+    <span class="k">return</span> <span class="n">prediction</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_bet</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -10438,7 +10442,13 @@ rate scheduler to be used.</p>
 <span class="normal">198</span>
 <span class="normal">199</span>
 <span class="normal">200</span>
-<span class="normal">201</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Trainer</span><span class="p">:</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Trainer</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Trainer class for training and testing a PyTorch model.</span>
 
@@ -10460,10 +10470,10 @@ rate scheduler to be used.</p>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">train_loader</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">,</span>
-        <span class="n">test_loader</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">,</span>
         <span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
         <span class="n">optimizer</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Optimizer</span><span class="p">,</span>
         <span class="n">loss_fn</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+        <span class="n">test_loader</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">scheduler</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">lr_scheduler</span><span class="o">.</span><span class="n">ReduceLROnPlateau</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
     <span class="p">):</span>
@@ -10492,6 +10502,7 @@ rate scheduler to be used.</p>
         <span class="n">train_loader</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">test_loader</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">silent</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Train the model for a given number of epochs.</span>
@@ -10502,6 +10513,7 @@ rate scheduler to be used.</p>
 <span class="sd">            test_loader: The DataLoader for the test data. Defaults to the</span>
 <span class="sd">                DataLoader passed to the Trainer constructor.</span>
 <span class="sd">            epochs: The number of epochs to train for. Defaults to 10.</span>
+<span class="sd">            silent: Whether to not print training progress. Defaults to False.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            None</span>
@@ -10518,7 +10530,7 @@ rate scheduler to be used.</p>
             <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
             <span class="n">train_loss</span> <span class="o">=</span> <span class="p">[]</span>
 
-            <span class="k">for</span> <span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">train_loader</span><span class="p">)):</span>
+            <span class="k">for</span> <span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">train_loader</span><span class="p">),</span> <span class="n">disable</span><span class="o">=</span><span class="n">silent</span><span class="p">):</span>
                 <span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="n">X1</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">),</span>
                     <span class="n">X2</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">),</span>
@@ -10547,12 +10559,13 @@ rate scheduler to be used.</p>
 
             <span class="n">val_loss</span><span class="p">,</span> <span class="n">val_target_f1</span><span class="p">,</span> <span class="n">correct</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test</span><span class="p">(</span><span class="n">test_loader</span><span class="p">)</span>
 
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Train acc: [</span><span class="si">{</span><span class="n">match</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">match</span><span class="p">)</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Epoch : [</span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s2">] Train Loss : [</span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">train_loss</span><span class="p">)</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">] &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;Val Loss : [</span><span class="si">{</span><span class="n">val_loss</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">] Disaster? F1 : [</span><span class="si">{</span><span class="n">val_target_f1</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">] &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;Correct: [</span><span class="si">{</span><span class="n">correct</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">]&quot;</span>
-            <span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">silent</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Train acc: [</span><span class="si">{</span><span class="n">match</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">match</span><span class="p">)</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Epoch : [</span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s2">] Train Loss : [</span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">train_loss</span><span class="p">)</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">] &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Val Loss : [</span><span class="si">{</span><span class="n">val_loss</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">] Disaster? F1 : [</span><span class="si">{</span><span class="n">val_target_f1</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">] &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Correct: [</span><span class="si">{</span><span class="n">correct</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">]&quot;</span>
+                <span class="p">)</span>
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">val_loss</span><span class="p">)</span>
@@ -10573,7 +10586,10 @@ rate scheduler to be used.</p>
 <span class="sd">            predictions, target predictions, and target labels.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">test_loader</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">test_loader</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_loader</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_loader</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">test_loader</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_loader</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
         <span class="n">val_loss</span> <span class="o">=</span> <span class="p">[]</span>
@@ -10633,7 +10649,7 @@ rate scheduler to be used.</p>
 
 
 <h3 id="ufcpredictor.trainer.Trainer.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">train_loader</span><span class="p">,</span> <span class="n">test_loader</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">,</span> <span class="n">scheduler</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">train_loader</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">,</span> <span class="n">test_loader</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">scheduler</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span></code>
 
 </h3>
 
@@ -10675,7 +10691,7 @@ rate scheduler to be used.</p>
                 <code>test_loader</code>
             </td>
             <td>
-                  <code>DataLoader</code>
+                  <code>Optional[DataLoader]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10683,7 +10699,7 @@ rate scheduler to be used.</p>
               </div>
             </td>
             <td>
-                <em>required</em>
+                  <code>None</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -10802,10 +10818,10 @@ rate scheduler to be used.</p>
 <span class="normal">73</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">train_loader</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">,</span>
-    <span class="n">test_loader</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">,</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="n">optimizer</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Optimizer</span><span class="p">,</span>
     <span class="n">loss_fn</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+    <span class="n">test_loader</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">scheduler</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">lr_scheduler</span><span class="o">.</span><span class="n">ReduceLROnPlateau</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
 <span class="p">):</span>
@@ -10915,10 +10931,7 @@ passed to the Trainer constructor.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/trainer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">148</span>
 <span class="normal">149</span>
 <span class="normal">150</span>
 <span class="normal">151</span>
@@ -10971,7 +10984,13 @@ passed to the Trainer constructor.</p>
 <span class="normal">198</span>
 <span class="normal">199</span>
 <span class="normal">200</span>
-<span class="normal">201</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">test</span><span class="p">(</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">test</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">test_loader</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">List</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -10987,7 +11006,10 @@ passed to the Trainer constructor.</p>
 <span class="sd">        predictions, target predictions, and target labels.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">test_loader</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">test_loader</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_loader</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_loader</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">test_loader</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_loader</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
     <span class="n">val_loss</span> <span class="o">=</span> <span class="p">[]</span>
@@ -11038,7 +11060,7 @@ passed to the Trainer constructor.</p>
 
 
 <h3 id="ufcpredictor.trainer.Trainer.train" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">train</span><span class="p">(</span><span class="n">train_loader</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">test_loader</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">train</span><span class="p">(</span><span class="n">train_loader</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">test_loader</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">silent</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
 </h3>
 
@@ -11107,6 +11129,22 @@ DataLoader passed to the Trainer constructor.</p>
             </td>
             <td>
                   <code>10</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>silent</code>
+            </td>
+            <td>
+                  <code>bool</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to not print training progress. Defaults to False.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
             </td>
           </tr>
       </tbody>
@@ -11205,11 +11243,15 @@ DataLoader passed to the Trainer constructor.</p>
 <span class="normal">140</span>
 <span class="normal">141</span>
 <span class="normal">142</span>
-<span class="normal">143</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">train</span><span class="p">(</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">train</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">train_loader</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">test_loader</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">silent</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Train the model for a given number of epochs.</span>
@@ -11220,6 +11262,7 @@ DataLoader passed to the Trainer constructor.</p>
 <span class="sd">        test_loader: The DataLoader for the test data. Defaults to the</span>
 <span class="sd">            DataLoader passed to the Trainer constructor.</span>
 <span class="sd">        epochs: The number of epochs to train for. Defaults to 10.</span>
+<span class="sd">        silent: Whether to not print training progress. Defaults to False.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        None</span>
@@ -11236,7 +11279,7 @@ DataLoader passed to the Trainer constructor.</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
         <span class="n">train_loss</span> <span class="o">=</span> <span class="p">[]</span>
 
-        <span class="k">for</span> <span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">train_loader</span><span class="p">)):</span>
+        <span class="k">for</span> <span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">train_loader</span><span class="p">),</span> <span class="n">disable</span><span class="o">=</span><span class="n">silent</span><span class="p">):</span>
             <span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">X1</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">),</span>
                 <span class="n">X2</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">),</span>
@@ -11265,12 +11308,13 @@ DataLoader passed to the Trainer constructor.</p>
 
         <span class="n">val_loss</span><span class="p">,</span> <span class="n">val_target_f1</span><span class="p">,</span> <span class="n">correct</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test</span><span class="p">(</span><span class="n">test_loader</span><span class="p">)</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Train acc: [</span><span class="si">{</span><span class="n">match</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">match</span><span class="p">)</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Epoch : [</span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s2">] Train Loss : [</span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">train_loss</span><span class="p">)</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">] &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;Val Loss : [</span><span class="si">{</span><span class="n">val_loss</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">] Disaster? F1 : [</span><span class="si">{</span><span class="n">val_target_f1</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">] &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;Correct: [</span><span class="si">{</span><span class="n">correct</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">]&quot;</span>
-        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">silent</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Train acc: [</span><span class="si">{</span><span class="n">match</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">match</span><span class="p">)</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Epoch : [</span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s2">] Train Loss : [</span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">train_loss</span><span class="p">)</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">] &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Val Loss : [</span><span class="si">{</span><span class="n">val_loss</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">] Disaster? F1 : [</span><span class="si">{</span><span class="n">val_target_f1</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">] &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Correct: [</span><span class="si">{</span><span class="n">correct</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">]&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">val_loss</span><span class="p">)</span>
@@ -12974,7 +13018,8 @@ or "NULL", or if the input is NaN, returns None.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/utils.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">59</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">58</span>
+<span class="normal">59</span>
 <span class="normal">60</span>
 <span class="normal">61</span>
 <span class="normal">62</span>
@@ -12993,8 +13038,7 @@ or "NULL", or if the input is NaN, returns None.</p>
 <span class="normal">75</span>
 <span class="normal">76</span>
 <span class="normal">77</span>
-<span class="normal">78</span>
-<span class="normal">79</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">convert_odds_to_decimal</span><span class="p">(</span><span class="n">odds</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">int_</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]:</span>
+<span class="normal">78</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">convert_odds_to_decimal</span><span class="p">(</span><span class="n">odds</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">int_</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert odds from American format to decimal format.</span>
 
@@ -13090,25 +13134,25 @@ or "NULL", or if the input is NaN, returns None.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/utils.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
-<span class="normal"> 89</span>
-<span class="normal"> 90</span>
-<span class="normal"> 91</span>
-<span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">convert_odds_to_moneyline</span><span class="p">(</span><span class="n">odds</span><span class="p">:</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]</span> <span class="o">|</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int_</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span>
+<span class="normal">92</span>
+<span class="normal">93</span>
+<span class="normal">94</span>
+<span class="normal">95</span>
+<span class="normal">96</span>
+<span class="normal">97</span>
+<span class="normal">98</span>
+<span class="normal">99</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">convert_odds_to_moneyline</span><span class="p">(</span><span class="n">odds</span><span class="p">:</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]</span> <span class="o">|</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int_</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert odds from decimal format to moneyline format.</span>
 
@@ -13189,7 +13233,7 @@ or "NULL", or if the input is NaN, returns None.</p>
     <script id="__config" type="application/json">{"base": ".", "features": [], "search": "assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="assets/javascripts/bundle.525ec568.min.js"></script>
+      <script src="assets/javascripts/bundle.83f73b43.min.js"></script>
       
     
   </body>

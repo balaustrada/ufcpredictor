@@ -45,10 +45,10 @@ class Trainer:
     def __init__(
         self,
         train_loader: torch.utils.data.DataLoader,
-        test_loader: torch.utils.data.DataLoader,
         model: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         loss_fn: torch.nn.Module,
+        test_loader: Optional[torch.utils.data.DataLoader] = None,
         scheduler: Optional[torch.optim.lr_scheduler.ReduceLROnPlateau] = None,
         device: str | torch.device = "cpu",
     ):
@@ -77,6 +77,7 @@ class Trainer:
         train_loader: torch.utils.data.DataLoader | None = None,
         test_loader: torch.utils.data.DataLoader | None = None,
         epochs: int = 10,
+        silent: bool = False,
     ) -> None:
         """
         Train the model for a given number of epochs.
@@ -87,6 +88,7 @@ class Trainer:
             test_loader: The DataLoader for the test data. Defaults to the
                 DataLoader passed to the Trainer constructor.
             epochs: The number of epochs to train for. Defaults to 10.
+            silent: Whether to not print training progress. Defaults to False.
 
         Returns:
             None
@@ -103,7 +105,7 @@ class Trainer:
             self.model.train()
             train_loss = []
 
-            for X1, X2, Y, odds1, odds2 in tqdm(iter(train_loader)):
+            for X1, X2, Y, odds1, odds2 in tqdm(iter(train_loader), disable=silent):
                 X1, X2, Y, odds1, odds2 = (
                     X1.to(self.device),
                     X2.to(self.device),
@@ -131,13 +133,14 @@ class Trainer:
             ).reshape(-1)
 
             val_loss, val_target_f1, correct, _, _ = self.test(test_loader)
-
-            print(f"Train acc: [{match.sum() / len(match):.5f}]")
-            print(
-                f"Epoch : [{epoch}] Train Loss : [{np.mean(train_loss):.5f}] "
-                f"Val Loss : [{val_loss:.5f}] Disaster? F1 : [{val_target_f1:.5f}] "
-                f"Correct: [{correct*100:.2f}]"
-            )
+            
+            if not silent:
+                print(f"Train acc: [{match.sum() / len(match):.5f}]")
+                print(
+                    f"Epoch : [{epoch}] Train Loss : [{np.mean(train_loss):.5f}] "
+                    f"Val Loss : [{val_loss:.5f}] Disaster? F1 : [{val_target_f1:.5f}] "
+                    f"Correct: [{correct*100:.2f}]"
+                )
 
             if self.scheduler is not None:
                 self.scheduler.step(val_loss)
@@ -158,7 +161,10 @@ class Trainer:
             predictions, target predictions, and target labels.
         """
         if test_loader is None:
-            test_loader = self.test_loader
+            if self.test_loader is None:
+                return 0, 0, 0, [], []
+            else:
+                test_loader = self.test_loader
 
         self.model.eval()
         val_loss = []

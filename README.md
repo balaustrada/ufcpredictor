@@ -17,6 +17,39 @@ pinned: false
 
 Documentation available [here](https://balaustrada.github.io/ufcpredictor/)
 
+# The Model
+The model uses the statistics from previous matches as features to predict the outcomes of upcoming fights. It consists of two stacked neural networks. Key statistics for each fighter are input into the first network, producing two vector outputs. 
+
+These outputs are then fed into the SymmetricFightNet, yielding a value between 0 and 1, where 0 indicates that the first fighter is predicted to win and 1 indicates the opposite. The loss function applied to the model optimises profit based on the odds input into the network, making the odds a crucial part of the model.
+
+The output value of the network should be considered as a "normalised" predicted bet, which is scaled to the range (-100, 100) in the Gradio implementation.
+
+
+# Predictions
+In ``examples`` the notebooks ``results_*`` show the fight forecast for the periods 2023/01-2024/10 and 2024/01-2024/10. Two different models are shown:
+- **With odds**: This is the default model, where the odds are used in the loss function, but they are also used as input features in the model.
+- **Without odds**: This model is trained using the same loss function, but the odds do not enter into the model.
+
+The accuracy of both models on these datasets is summarized in the table below, where Favorite Accuracy is the accuracy if we just predict the favorite to win.
+
+<div align="center">
+  
+|   Period  | Odds in model | Accuracy (%) | Favourite Accuracy (%) |
+|:---------:|:-------------:|:------------:|:---------------------:|
+|    2024   |       No      |     60.3     |          64.0         |
+|    2024   |      Yes      |     64.0     |          64.0         |
+| 2023-2024 |       No      |     58.6     |          62.1         |
+| 2023-2024 |      Yes      |     61.8     |          62.1         |
+
+</div>
+
+The accuracy of the model is comparable to that implied by the opening odds, although slightly lower. When odds are incorporated into the model, the accuracy aligns with that of predicting favourites. However, the difference in predictions can still lead to profit, depending on the strength of the prediction and the odds. In the following plot, we compare the return for the different datasets:
+
+<p align="center">
+<img src="https://github.com/user-attachments/assets/d33a1412-dbb4-4358-88ad-f1789edf7e53">
+</p>
+
+while the model shows underperformance in certain periods, leading to loses, its overall performance shows potential for profit. When evaluating return, we see an improvement with the inclusion of odds in our model; but the behaviour of both curves is similar.
 
 # Deployment
 The app is deployed in the following Hugging Face [space](https://huggingface.co/spaces/balaustrada/UFCPredictor), allowing for the prediction of fights by including the event date, fighter names and the odds assigned for each fighter.

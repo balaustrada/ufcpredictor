@@ -11647,7 +11647,29 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
 <span class="normal">275</span>
 <span class="normal">276</span>
 <span class="normal">277</span>
-<span class="normal">278</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">PredictionPlots</span><span class="p">:</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">PredictionPlots</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Provides tools for visualizing and analyzing the predictions made by UFC predictor</span>
 <span class="sd">    models.</span>
@@ -11693,6 +11715,7 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
 <span class="sd">                created.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">,</span> <span class="n">fighter_names</span><span class="p">,</span> <span class="n">opponent_names</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
             <span class="n">predictions_1</span> <span class="o">=</span> <span class="p">(</span>
@@ -11722,7 +11745,7 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
             <span class="n">invest_progress</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="n">earning_progress</span> <span class="o">=</span> <span class="p">[]</span>
 
-            <span class="k">for</span> <span class="n">fighter</span><span class="p">,</span> <span class="n">opponent</span><span class="p">,</span> <span class="n">prediction</span><span class="p">,</span> <span class="n">shift</span><span class="p">,</span> <span class="n">odd1</span><span class="p">,</span> <span class="n">odd2</span><span class="p">,</span> <span class="n">correct</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+            <span class="k">for</span> <span class="n">fighter</span><span class="p">,</span> <span class="n">opponent</span><span class="p">,</span> <span class="n">prediction</span><span class="p">,</span> <span class="n">shift</span><span class="p">,</span> <span class="n">odd1</span><span class="p">,</span> <span class="n">odd2</span><span class="p">,</span> <span class="n">correct</span><span class="p">,</span> <span class="n">Yi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
                 <span class="n">fighter_names</span><span class="p">,</span>
                 <span class="n">opponent_names</span><span class="p">,</span>
                 <span class="n">predictions</span><span class="p">,</span>
@@ -11730,6 +11753,7 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
                 <span class="n">odds1</span><span class="p">,</span>
                 <span class="n">odds2</span><span class="p">,</span>
                 <span class="n">corrects</span><span class="p">,</span>
+                <span class="n">Y</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
             <span class="p">):</span>
                 <span class="n">prediction</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">prediction</span><span class="p">),</span> <span class="mi">3</span><span class="p">)</span>
                 <span class="n">shift</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">shift</span><span class="p">),</span> <span class="mi">3</span><span class="p">)</span>
@@ -11762,6 +11786,17 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
                     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;benefits: </span><span class="si">{</span><span class="p">(</span><span class="n">earnings</span><span class="o">/</span><span class="n">invested</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
 
                     <span class="nb">print</span><span class="p">()</span>
+                <span class="n">stats</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">(</span>
+                        <span class="n">prediction</span><span class="p">,</span>
+                        <span class="n">Yi</span><span class="p">,</span>
+                        <span class="n">odd1</span><span class="p">,</span>
+                        <span class="n">odd2</span><span class="p">,</span>
+                        <span class="n">correct</span><span class="p">,</span>
+                        <span class="n">bet</span><span class="p">,</span>
+                        <span class="n">earning</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">show_plot</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
@@ -11774,6 +11809,8 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
                 <span class="o">*</span> <span class="mi">100</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">stats</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">show_fight_prediction_detail_from_dataset</span><span class="p">(</span>
@@ -11805,13 +11842,20 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
             <span class="n">dataset</span><span class="o">.</span><span class="n">get_fight_data_from_ids</span><span class="p">(</span><span class="n">fight_ids</span><span class="p">)</span>
         <span class="p">)</span>
 
-        <span class="n">PredictionPlots</span><span class="o">.</span><span class="n">show_fight_prediction_detail</span><span class="p">(</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">PredictionPlots</span><span class="o">.</span><span class="n">show_fight_prediction_detail</span><span class="p">(</span>
             <span class="n">model</span><span class="p">,</span>
             <span class="p">(</span><span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">,</span> <span class="n">fighter_names</span><span class="p">,</span> <span class="n">opponent_names</span><span class="p">),</span>
             <span class="n">print_info</span><span class="p">,</span>
             <span class="n">show_plot</span><span class="p">,</span>
             <span class="n">ax</span><span class="p">,</span>
         <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="n">fight_stats</span> <span class="o">+</span> <span class="p">(</span><span class="n">fight_id</span><span class="p">,)</span>
+            <span class="k">for</span> <span class="n">fight_stats</span><span class="p">,</span> <span class="n">fight_id</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                <span class="n">stats</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">fight_data</span><span class="p">[</span><span class="s2">&quot;fight_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+            <span class="p">)</span>
+        <span class="p">]</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">plot_single_prediction</span><span class="p">(</span>
@@ -11894,7 +11938,7 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
             <span class="n">ax</span><span class="o">.</span><span class="n">get_ylim</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.5</span><span class="p">,</span>
             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">abs</span><span class="p">(</span><span class="n">prediction</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">±</span><span class="si">{</span><span class="n">shift</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
             <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
-            <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span><span class="c1">#&quot;left&quot; if prediction &gt; 0 else &quot;right&quot;,</span>
+            <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>  <span class="c1"># &quot;left&quot; if prediction &gt; 0 else &quot;right&quot;,</span>
             <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
             <span class="n">fontsize</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span>
             <span class="n">fontweight</span><span class="o">=</span><span class="s2">&quot;bold&quot;</span><span class="p">,</span>
@@ -12053,29 +12097,7 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/plot_tools.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span>
-<span class="normal">196</span>
-<span class="normal">197</span>
-<span class="normal">198</span>
-<span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
-<span class="normal">202</span>
-<span class="normal">203</span>
-<span class="normal">204</span>
-<span class="normal">205</span>
-<span class="normal">206</span>
-<span class="normal">207</span>
-<span class="normal">208</span>
-<span class="normal">209</span>
-<span class="normal">210</span>
-<span class="normal">211</span>
-<span class="normal">212</span>
-<span class="normal">213</span>
-<span class="normal">214</span>
-<span class="normal">215</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">215</span>
 <span class="normal">216</span>
 <span class="normal">217</span>
 <span class="normal">218</span>
@@ -12138,7 +12160,29 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
 <span class="normal">275</span>
 <span class="normal">276</span>
 <span class="normal">277</span>
-<span class="normal">278</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span> <span class="nf">plot_single_prediction</span><span class="p">(</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="n">dataset</span><span class="p">:</span> <span class="n">ForecastDataset</span><span class="p">,</span>
@@ -12219,7 +12263,7 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
         <span class="n">ax</span><span class="o">.</span><span class="n">get_ylim</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.5</span><span class="p">,</span>
         <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">abs</span><span class="p">(</span><span class="n">prediction</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">±</span><span class="si">{</span><span class="n">shift</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
         <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
-        <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span><span class="c1">#&quot;left&quot; if prediction &gt; 0 else &quot;right&quot;,</span>
+        <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>  <span class="c1"># &quot;left&quot; if prediction &gt; 0 else &quot;right&quot;,</span>
         <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
         <span class="n">fontsize</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span>
         <span class="n">fontweight</span><span class="o">=</span><span class="s2">&quot;bold&quot;</span><span class="p">,</span>
@@ -12461,7 +12505,22 @@ created.</p>
 <span class="normal">150</span>
 <span class="normal">151</span>
 <span class="normal">152</span>
-<span class="normal">153</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span> <span class="nf">show_fight_prediction_detail</span><span class="p">(</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="n">data</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span>
@@ -12496,6 +12555,7 @@ created.</p>
 <span class="sd">            created.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">,</span> <span class="n">fighter_names</span><span class="p">,</span> <span class="n">opponent_names</span> <span class="o">=</span> <span class="n">data</span>
+    <span class="n">stats</span> <span class="o">=</span> <span class="p">[]</span>
 
     <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
         <span class="n">predictions_1</span> <span class="o">=</span> <span class="p">(</span>
@@ -12525,7 +12585,7 @@ created.</p>
         <span class="n">invest_progress</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">earning_progress</span> <span class="o">=</span> <span class="p">[]</span>
 
-        <span class="k">for</span> <span class="n">fighter</span><span class="p">,</span> <span class="n">opponent</span><span class="p">,</span> <span class="n">prediction</span><span class="p">,</span> <span class="n">shift</span><span class="p">,</span> <span class="n">odd1</span><span class="p">,</span> <span class="n">odd2</span><span class="p">,</span> <span class="n">correct</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+        <span class="k">for</span> <span class="n">fighter</span><span class="p">,</span> <span class="n">opponent</span><span class="p">,</span> <span class="n">prediction</span><span class="p">,</span> <span class="n">shift</span><span class="p">,</span> <span class="n">odd1</span><span class="p">,</span> <span class="n">odd2</span><span class="p">,</span> <span class="n">correct</span><span class="p">,</span> <span class="n">Yi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
             <span class="n">fighter_names</span><span class="p">,</span>
             <span class="n">opponent_names</span><span class="p">,</span>
             <span class="n">predictions</span><span class="p">,</span>
@@ -12533,6 +12593,7 @@ created.</p>
             <span class="n">odds1</span><span class="p">,</span>
             <span class="n">odds2</span><span class="p">,</span>
             <span class="n">corrects</span><span class="p">,</span>
+            <span class="n">Y</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
         <span class="p">):</span>
             <span class="n">prediction</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">prediction</span><span class="p">),</span> <span class="mi">3</span><span class="p">)</span>
             <span class="n">shift</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">shift</span><span class="p">),</span> <span class="mi">3</span><span class="p">)</span>
@@ -12565,6 +12626,17 @@ created.</p>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;benefits: </span><span class="si">{</span><span class="p">(</span><span class="n">earnings</span><span class="o">/</span><span class="n">invested</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
 
                 <span class="nb">print</span><span class="p">()</span>
+            <span class="n">stats</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">(</span>
+                    <span class="n">prediction</span><span class="p">,</span>
+                    <span class="n">Yi</span><span class="p">,</span>
+                    <span class="n">odd1</span><span class="p">,</span>
+                    <span class="n">odd2</span><span class="p">,</span>
+                    <span class="n">correct</span><span class="p">,</span>
+                    <span class="n">bet</span><span class="p">,</span>
+                    <span class="n">earning</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">show_plot</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
@@ -12577,6 +12649,8 @@ created.</p>
             <span class="o">*</span> <span class="mi">100</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">stats</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -12712,22 +12786,7 @@ created.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/plot_tools.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">170</span>
 <span class="normal">171</span>
 <span class="normal">172</span>
 <span class="normal">173</span>
@@ -12748,7 +12807,29 @@ created.</p>
 <span class="normal">188</span>
 <span class="normal">189</span>
 <span class="normal">190</span>
-<span class="normal">191</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span> <span class="nf">show_fight_prediction_detail_from_dataset</span><span class="p">(</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="n">dataset</span><span class="p">:</span> <span class="n">BasicDataset</span><span class="p">,</span>
@@ -12778,13 +12859,20 @@ created.</p>
         <span class="n">dataset</span><span class="o">.</span><span class="n">get_fight_data_from_ids</span><span class="p">(</span><span class="n">fight_ids</span><span class="p">)</span>
     <span class="p">)</span>
 
-    <span class="n">PredictionPlots</span><span class="o">.</span><span class="n">show_fight_prediction_detail</span><span class="p">(</span>
+    <span class="n">stats</span> <span class="o">=</span> <span class="n">PredictionPlots</span><span class="o">.</span><span class="n">show_fight_prediction_detail</span><span class="p">(</span>
         <span class="n">model</span><span class="p">,</span>
         <span class="p">(</span><span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">,</span> <span class="n">fighter_names</span><span class="p">,</span> <span class="n">opponent_names</span><span class="p">),</span>
         <span class="n">print_info</span><span class="p">,</span>
         <span class="n">show_plot</span><span class="p">,</span>
         <span class="n">ax</span><span class="p">,</span>
     <span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">[</span>
+        <span class="n">fight_stats</span> <span class="o">+</span> <span class="p">(</span><span class="n">fight_id</span><span class="p">,)</span>
+        <span class="k">for</span> <span class="n">fight_stats</span><span class="p">,</span> <span class="n">fight_id</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+            <span class="n">stats</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">fight_data</span><span class="p">[</span><span class="s2">&quot;fight_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="p">)</span>
+    <span class="p">]</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

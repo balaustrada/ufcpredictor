@@ -22,7 +22,7 @@ The model uses the statistics from previous matches as features to predict the o
 
 These outputs are then fed into the SymmetricFightNet, yielding a value between 0 and 1, where 0 indicates that the first fighter is predicted to win and 1 indicates the opposite. The loss function applied to the model optimises profit based on the odds input into the network, making the odds a crucial part of the model.
 
-The outpu tvalue of the network should be considered as a "normalised" predicted bet, which is scaled to the range (-100, 100) in the Gradio implementation.
+The output value of the network should be considered as a "normalised" predicted bet, which is scaled to the range (-100, 100) in the Gradio implementation.
 
 
 # Predictions
@@ -43,7 +43,7 @@ The accuracy of both models on these datasets is summarized in the table below, 
 
 </div>
 
-The accuracy of the model is comparable to that implied by the opening odds, although slightly lower. When odds are incorporated into the model, the accuracy aligns with that of predicting favourites. However, the difference in predictions can still lead to profit, depending on the strenght of the prediction and the odds. In the following plot, we compare the return for the different datasets:
+The accuracy of the model is comparable to that implied by the opening odds, although slightly lower. When odds are incorporated into the model, the accuracy aligns with that of predicting favourites. However, the difference in predictions can still lead to profit, depending on the strength of the prediction and the odds. In the following plot, we compare the return for the different datasets:
 
 <p align="center">
 <img src="https://github.com/user-attachments/assets/d33a1412-dbb4-4358-88ad-f1789edf7e53">

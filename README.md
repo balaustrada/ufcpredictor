@@ -17,6 +17,8 @@ pinned: false
 
 Documentation available [here](https://balaustrada.github.io/ufcpredictor/)
 
+Model deployed in this Hugging Face [space](https://huggingface.co/spaces/balaustrada/UFCPredictor)
+
 # The Model
 The model uses the statistics from previous matches as features to predict the outcomes of upcoming fights. It consists of two stacked neural networks. Key statistics for each fighter are input into the first network, producing two vector outputs. 
 

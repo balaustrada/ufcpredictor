@@ -50,7 +50,7 @@ class PredictionPlots:
         print_info: bool = False,
         show_plot: bool = False,
         ax: Optional[plt.Axes] = None,
-    ) -> None:
+    ) -> List[Tuple[float, int, float, float, bool, float, float]]:
         """
         Shows the prediction detail of a fight and the benefit of the model.
 
@@ -175,7 +175,7 @@ class PredictionPlots:
         print_info: bool = False,
         show_plot: bool = False,
         ax: Optional[plt.Axes] = None,
-    ) -> None:
+    ) -> List[Tuple[float, int, float, float, bool, float, float, str]]:
         """
         Shows the prediction detail of a fight and the benefit of the model.
 

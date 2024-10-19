@@ -19,6 +19,9 @@ import jupyter_black
 jupyter_black.load()
 
 # %%
+from torch import nn
+
+# %%
 from __future__ import annotations
 
 import argparse
@@ -47,6 +50,57 @@ from ufcscraper.ufc_scraper import UFCScraper
 from ufcscraper.odds_scraper import BestFightOddsScraper
 
 from typing import Optional
+
+# %%
+from ufcpredictor.models import SymmetricFightNet, FighterNet
+from ufcpredictor.loss_functions import BettingLoss
+
+from ufcpredictor.utils import convert_odds_to_decimal, convert_odds_to_moneyline
+
+
+# %%
+
+# %%
+class NoOddsNet(SymmetricFightNet):
+    def __init__(self, input_size: int, dropout_prob: float = 0.0) -> None:
+        super(SymmetricFightNet, self).__init__()
+        self.fighter_net = FighterNet(input_size=input_size, dropout_prob=dropout_prob)
+
+        self.fc1 = nn.Linear(254, 512)  # Here I'm losing the two odds entries.
+        # self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(512, 128)
+        self.fc4 = nn.Linear(128, 64)
+        self.fc5 = nn.Linear(64, 1)
+
+        # Use the global dropout probability
+        self.dropout1 = nn.Dropout(p=dropout_prob)
+        self.dropout2 = nn.Dropout(p=dropout_prob)
+        self.dropout3 = nn.Dropout(p=dropout_prob)
+        self.dropout4 = nn.Dropout(p=dropout_prob)
+
+        self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, X1, X2, odds1, odds2):
+        out1 = self.fighter_net(X1)
+        out2 = self.fighter_net(X2)
+
+        # out1 = torch.cat((out1, odds1), dim=1) # Do not introduce odds in the model
+        # out2 = torch.cat((out2, odds2), dim=1)
+
+        x = torch.cat((out1 - out2, out2 - out1), dim=1)
+
+        x = self.relu(self.fc1(x))
+        x = self.dropout1(x)  # Apply dropout after the first ReLU
+        # x = self.relu(self.fc2(x))
+        # x = self.dropout2(x)  # Apply dropout after the second ReLU
+        x = self.relu(self.fc3(x))
+        x = self.dropout3(x)  # Apply dropout after the third ReLU
+        x = self.relu(self.fc4(x))
+        x = self.dropout4(x)  # Apply dropout after the fourth ReLU
+        x = self.sigmoid(self.fc5(x))
+        return x
+
 
 # %%
 import matplotlib.pyplot as plt
@@ -88,7 +142,7 @@ X_set = [
 
 # %%
 # Set the starting date for the process
-starting_date = "2024-01-01"  # "2023-01-01"
+starting_date = "2020-01-01"
 
 # %%
 # From the full dataset load all the event dates
@@ -115,7 +169,7 @@ wins = 0
 bets = 0
 
 # %%
-starting_date = "2024-01-01"
+starting_date = "2024-01-01"  # "2023-01-01"
 
 # %%
 # Now iterate over events to start adding data.
@@ -197,7 +251,7 @@ for event_date in sorted(event_dates[event_dates > starting_date]):
     random.seed(seed)
     np.random.seed(seed)
 
-    model = SymmetricFightNet(
+    model = NoOddsNet(
         input_size=len(train_dataset.X_set),
         dropout_prob=0.35,
     )
@@ -222,7 +276,7 @@ for event_date in sorted(event_dates[event_dates > starting_date]):
 
     # First train
     trainer.train(
-        epochs=5,
+        epochs=7,
         train_loader=early_train_dataloader,
         silent=True,
     )
@@ -378,15 +432,14 @@ results
 # %%
 fig, ax = plt.subplots()
 
-ax.plot(
-    results["event_date"],
-    np.cumsum(results["win"] - results["bet"]) / np.cumsum(results["bet"]),
-)
+ax.plot(results["event_date"], np.cumsum(results["win"] - results["bet"]))
 # Put x labels rotated 90 degrees
 ax.tick_params(axis="x", labelrotation=90)
 
 ax.grid()
 ax.axhline(0, color="black")
+
+# %%
 
 # %%
 
@@ -417,6 +470,8 @@ df[["correct", "house correct"]].mean()
 
 # %%
 (df["correct"].mean() - df["house correct"].mean()) * 100
+
+# %%
 
 # %%
 

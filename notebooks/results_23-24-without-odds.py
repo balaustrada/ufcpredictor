@@ -13,10 +13,16 @@
 #     name: kaggle
 # ---
 
+# %% [markdown]
+# # Predicting 2024 fights (without using odds)
+
 # %%
 import jupyter_black
 
 jupyter_black.load()
+
+# %%
+from torch import nn
 
 # %%
 from __future__ import annotations
@@ -49,6 +55,58 @@ from ufcscraper.odds_scraper import BestFightOddsScraper
 from typing import Optional
 
 # %%
+from ufcpredictor.models import SymmetricFightNet, FighterNet
+from ufcpredictor.loss_functions import BettingLoss
+
+from ufcpredictor.utils import convert_odds_to_decimal, convert_odds_to_moneyline
+
+
+# %%
+
+# %%
+# Create especific model to avoid using odds.
+class NoOddsNet(SymmetricFightNet):
+    def __init__(self, input_size: int, dropout_prob: float = 0.0) -> None:
+        super(SymmetricFightNet, self).__init__()
+        self.fighter_net = FighterNet(input_size=input_size, dropout_prob=dropout_prob)
+
+        self.fc1 = nn.Linear(254, 512)  # Here I'm losing the two odds entries.
+        # self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(512, 128)
+        self.fc4 = nn.Linear(128, 64)
+        self.fc5 = nn.Linear(64, 1)
+
+        # Use the global dropout probability
+        self.dropout1 = nn.Dropout(p=dropout_prob)
+        self.dropout2 = nn.Dropout(p=dropout_prob)
+        self.dropout3 = nn.Dropout(p=dropout_prob)
+        self.dropout4 = nn.Dropout(p=dropout_prob)
+
+        self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, X1, X2, odds1, odds2):
+        out1 = self.fighter_net(X1)
+        out2 = self.fighter_net(X2)
+
+        # out1 = torch.cat((out1, odds1), dim=1) # Do not introduce odds in the model
+        # out2 = torch.cat((out2, odds2), dim=1)
+
+        x = torch.cat((out1 - out2, out2 - out1), dim=1)
+
+        x = self.relu(self.fc1(x))
+        x = self.dropout1(x)  # Apply dropout after the first ReLU
+        # x = self.relu(self.fc2(x))
+        # x = self.dropout2(x)  # Apply dropout after the second ReLU
+        x = self.relu(self.fc3(x))
+        x = self.dropout3(x)  # Apply dropout after the third ReLU
+        x = self.relu(self.fc4(x))
+        x = self.dropout4(x)  # Apply dropout after the fourth ReLU
+        x = self.sigmoid(self.fc5(x))
+        return x
+
+
+# %%
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -58,6 +116,8 @@ pd.set_option("display.max_columns", None)
 logger = logging.getLogger(__name__)
 
 # %%
+# Selecting the set of attributes that we will use as features
+# for our model
 X_set = [
     "clinch_strikes_att_opponent_per_minute",
     "time_since_last_fight",
@@ -87,10 +147,6 @@ X_set = [
 ]
 
 # %%
-# Set the starting date for the process
-starting_date = "2024-01-01"  # "2023-01-01"
-
-# %%
 # From the full dataset load all the event dates
 general_data_processor = DataProcessor(Path(".").resolve().parents[1] / "data")
 general_data_processor.load_data()
@@ -99,6 +155,8 @@ general_data_processor.add_per_minute_and_fight_stats()
 event_dates = general_data_processor.scraper.event_scraper.data["event_date"].unique()
 
 # %%
+# Preserve only fights for fighters that have at least
+# 3 previous fights in the UFC.
 general_invalid_fights = set(
     general_data_processor.data_aggregated[
         general_data_processor.data_aggregated["num_fight"] < 4
@@ -115,7 +173,8 @@ wins = 0
 bets = 0
 
 # %%
-starting_date = "2024-01-01"
+# Set the starting date for the process
+starting_date = "2023-01-01"
 
 # %%
 # Now iterate over events to start adding data.
@@ -197,7 +256,7 @@ for event_date in sorted(event_dates[event_dates > starting_date]):
     random.seed(seed)
     np.random.seed(seed)
 
-    model = SymmetricFightNet(
+    model = NoOddsNet(
         input_size=len(train_dataset.X_set),
         dropout_prob=0.35,
     )
@@ -212,17 +271,12 @@ for event_date in sorted(event_dates[event_dates > starting_date]):
         model=model,
         optimizer=optimizer,
         scheduler=scheduler,
-        loss_fn=BettingLoss(
-            max_bet=max(
-                0,  # (wins - bets) * 0.5,
-                10,
-            ),
-        ),
+        loss_fn=BettingLoss(),
     )
 
     # First train
     trainer.train(
-        epochs=5,
+        epochs=7,
         train_loader=early_train_dataloader,
         silent=True,
     )
@@ -323,6 +377,7 @@ for event_date in sorted(event_dates[event_dates > starting_date]):
 # %%
 
 # %%
+# Grouping the stats of each prediction into a dataframe
 df = pd.DataFrame(
     stats,
     columns=[
@@ -337,50 +392,33 @@ df = pd.DataFrame(
     ],
 )
 
-# %%
 bet = df["bet"].sum()
 win = df["win"].sum()
-print(f"{win:.2f} - {bet:.2f} = {win - bet:.2f}")
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-df
+print(f"win ({win:.2f}) - bet ({bet:.2f}) = {win - bet:.2f}")
+# print(f"{win:.2f} - {bet:.2f} = {win - bet:.2f}")
 
 # %%
 total_number_of_valid_fights = (
     (general_data_processor.data["event_date"] >= starting_date)
     & (general_data_processor.data["fight_id"].isin(general_valid_fights))
 ).sum()
+print("Total number of valid fights")
 print(total_number_of_valid_fights)
 
 # %%
-
-# %%
-
-# %%
+# Getting bets per date
 df = df.merge(
     general_data_processor.data[["fight_id", "event_date"]],
     on="fight_id",
 )
-
-# %%
-df
-
-# %%
 results = df.groupby("event_date")[["bet", "win"]].sum().reset_index()
-results
 
 # %%
 fig, ax = plt.subplots()
 
 ax.plot(
     results["event_date"],
-    np.cumsum(results["win"] - results["bet"]) / np.cumsum(results["bet"]),
+    np.cumsum(results["win"] - results["bet"]) / np.cumsum(results["bet"]) * 100,
 )
 # Put x labels rotated 90 degrees
 ax.tick_params(axis="x", labelrotation=90)
@@ -388,12 +426,14 @@ ax.tick_params(axis="x", labelrotation=90)
 ax.grid()
 ax.axhline(0, color="black")
 
-# %%
+ax.set_xlabel("Event date")
+ax.set_ylabel("Return (%)");
 
 # %%
 from ufcpredictor.utils import convert_odds_to_moneyline, convert_odds_to_decimal
 
 # %%
+# Compare performance vs just picking favourite
 df["fighter_p"] = 1 / df["fighter_odds"] * 100
 df["opponent_p"] = 1 / df["opponent_odds"] * 100
 
@@ -407,17 +447,14 @@ df["opponent_p"] = df["opponent_p"] - excess / 2
 
 df["house_pred"] = df["opponent_p"] / 100
 
-# %%
 df["correct"] = round(df["Prediction"]) == df["result"]
 df["house correct"] = round(df["house_pred"]) == df["result"]
-df
 
 # %%
-df[["correct", "house correct"]].mean()
+model_correct_fraction = df["correct"].mean()
+favourite_correct_faction = df["house correct"].mean()
 
-# %%
-(df["correct"].mean() - df["house correct"].mean()) * 100
-
-# %%
+print(f"Model correct fraction: {model_correct_fraction:.4f}")
+print(f"Favourite correct fraction: {favourite_correct_faction:.4f}")
 
 # %%

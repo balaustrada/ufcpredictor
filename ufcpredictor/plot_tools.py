@@ -70,6 +70,7 @@ class PredictionPlots:
                 created.
         """
         X1, X2, Y, odds1, odds2, fighter_names, opponent_names = data
+        stats = []
 
         with torch.no_grad():
             predictions_1 = (
@@ -99,7 +100,7 @@ class PredictionPlots:
             invest_progress = []
             earning_progress = []
 
-            for fighter, opponent, prediction, shift, odd1, odd2, correct in zip(
+            for fighter, opponent, prediction, shift, odd1, odd2, correct, Yi in zip(
                 fighter_names,
                 opponent_names,
                 predictions,
@@ -107,6 +108,7 @@ class PredictionPlots:
                 odds1,
                 odds2,
                 corrects,
+                Y.numpy().tolist(),
             ):
                 prediction = round(float(prediction), 3)
                 shift = round(float(shift), 3)
@@ -139,6 +141,17 @@ class PredictionPlots:
                     print(f"benefits: {(earnings/invested-1)*100:.2f}%")
 
                     print()
+                stats.append(
+                    (
+                        prediction,
+                        Yi,
+                        odd1,
+                        odd2,
+                        correct,
+                        bet,
+                        earning,
+                    )
+                )
 
         if show_plot:
             if ax is None:  # pragma: no cover
@@ -151,6 +164,8 @@ class PredictionPlots:
                 * 100,
             )
             ax.axhline(0, c="k")
+
+        return stats
 
     @staticmethod
     def show_fight_prediction_detail_from_dataset(
@@ -182,13 +197,20 @@ class PredictionPlots:
             dataset.get_fight_data_from_ids(fight_ids)
         )
 
-        PredictionPlots.show_fight_prediction_detail(
+        stats = PredictionPlots.show_fight_prediction_detail(
             model,
             (X1, X2, Y, odds1, odds2, fighter_names, opponent_names),
             print_info,
             show_plot,
             ax,
         )
+
+        return [
+            fight_stats + (fight_id,)
+            for fight_stats, fight_id in zip(
+                stats, dataset.fight_data["fight_id"].values
+            )
+        ]
 
     @staticmethod
     def plot_single_prediction(
@@ -271,7 +293,7 @@ class PredictionPlots:
             ax.get_ylim()[1] * 0.5,
             f"{abs(prediction):.2f}±{shift:.2f}",
             color=color,
-            ha="center",#"left" if prediction > 0 else "right",
+            ha="center",  # "left" if prediction > 0 else "right",
             va="center",
             fontsize=11,
             fontweight="bold",

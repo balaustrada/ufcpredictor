@@ -13,10 +13,16 @@
 #     name: kaggle
 # ---
 
+# %% [markdown]
+# This notebook I try to use in the network only 1 odd! probability of fighter 2
+
 # %%
 import jupyter_black
 
 jupyter_black.load()
+
+# %%
+from torch import nn
 
 # %%
 from __future__ import annotations
@@ -47,6 +53,38 @@ from ufcscraper.ufc_scraper import UFCScraper
 from ufcscraper.odds_scraper import BestFightOddsScraper
 
 from typing import Optional
+
+# %%
+from ufcpredictor.models import SymmetricFightNet, FighterNet
+from ufcpredictor.loss_functions import BettingLoss
+
+from ufcpredictor.utils import convert_odds_to_decimal, convert_odds_to_moneyline
+
+
+# %%
+
+# %%
+class SymmetricFightNet(SymmetricFightNet):
+    def forward(self, X1, X2, odds1, odds2):
+        out1 = self.fighter_net(X1)
+        out2 = self.fighter_net(X2)
+
+        out1 = torch.cat((out1, 1 / odds1), dim=1)  # Do not introduce odds in the model
+        out2 = torch.cat((out2, 1 / odds2), dim=1)
+
+        x = torch.cat((out1 - out2, out2 - out1), dim=1)
+
+        x = self.relu(self.fc1(x))
+        x = self.dropout1(x)  # Apply dropout after the first ReLU
+        # x = self.relu(self.fc2(x))
+        # x = self.dropout2(x)  # Apply dropout after the second ReLU
+        x = self.relu(self.fc3(x))
+        x = self.dropout3(x)  # Apply dropout after the third ReLU
+        x = self.relu(self.fc4(x))
+        x = self.dropout4(x)  # Apply dropout after the fourth ReLU
+        x = self.sigmoid(self.fc5(x))
+        return x
+
 
 # %%
 import matplotlib.pyplot as plt
@@ -88,7 +126,7 @@ X_set = [
 
 # %%
 # Set the starting date for the process
-starting_date = "2024-01-01"  # "2023-01-01"
+starting_date = "2020-01-01"
 
 # %%
 # From the full dataset load all the event dates
@@ -115,7 +153,7 @@ wins = 0
 bets = 0
 
 # %%
-starting_date = "2024-01-01"
+starting_date = "2024-01-01"  # "2023-01-01"
 
 # %%
 # Now iterate over events to start adding data.
@@ -391,6 +429,8 @@ ax.axhline(0, color="black")
 # %%
 
 # %%
+
+# %%
 from ufcpredictor.utils import convert_odds_to_moneyline, convert_odds_to_decimal
 
 # %%
@@ -417,6 +457,8 @@ df[["correct", "house correct"]].mean()
 
 # %%
 (df["correct"].mean() - df["house correct"].mean()) * 100
+
+# %%
 
 # %%
 

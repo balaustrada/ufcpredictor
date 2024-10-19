@@ -13,6 +13,9 @@
 #     name: kaggle
 # ---
 
+# %% [markdown]
+# # Predicting 2024 fights using opening odds
+
 # %%
 import jupyter_black
 
@@ -58,6 +61,8 @@ pd.set_option("display.max_columns", None)
 logger = logging.getLogger(__name__)
 
 # %%
+# Selecting the set of attributes that we will use as features 
+# for our model
 X_set = [
     "clinch_strikes_att_opponent_per_minute",
     "time_since_last_fight",
@@ -87,10 +92,6 @@ X_set = [
 ]
 
 # %%
-# Set the starting date for the process
-starting_date = "2024-01-01"  # "2023-01-01"
-
-# %%
 # From the full dataset load all the event dates
 general_data_processor = DataProcessor(Path(".").resolve().parents[1] / "data")
 general_data_processor.load_data()
@@ -99,6 +100,8 @@ general_data_processor.add_per_minute_and_fight_stats()
 event_dates = general_data_processor.scraper.event_scraper.data["event_date"].unique()
 
 # %%
+# Preserve only fights for fighters that have at least
+# 3 previous fights in the UFC.
 general_invalid_fights = set(
     general_data_processor.data_aggregated[
         general_data_processor.data_aggregated["num_fight"] < 4
@@ -115,11 +118,13 @@ wins = 0
 bets = 0
 
 # %%
+# Starting date to make the predictions
 starting_date = "2024-01-01"
 
 # %%
 # Now iterate over events to start adding data.
-# (this should encapsulate the following cells as well)
+# We train the model before each event
+# before making predictions
 for event_date in sorted(event_dates[event_dates > starting_date]):
     if (
         len(
@@ -212,12 +217,7 @@ for event_date in sorted(event_dates[event_dates > starting_date]):
         model=model,
         optimizer=optimizer,
         scheduler=scheduler,
-        loss_fn=BettingLoss(
-            max_bet=max(
-                0,  # (wins - bets) * 0.5,
-                10,
-            ),
-        ),
+        loss_fn=BettingLoss(),
     )
 
     # First train
@@ -323,6 +323,7 @@ for event_date in sorted(event_dates[event_dates > starting_date]):
 # %%
 
 # %%
+# Grouping the stats of each prediction into a dataframe
 df = pd.DataFrame(
     stats,
     columns=[
@@ -337,50 +338,33 @@ df = pd.DataFrame(
     ],
 )
 
-# %%
 bet = df["bet"].sum()
 win = df["win"].sum()
-print(f"{win:.2f} - {bet:.2f} = {win - bet:.2f}")
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-df
+print(f"win ({win:.2f}) - bet ({bet:.2f}) = {win - bet:.2f}")
+# print(f"{win:.2f} - {bet:.2f} = {win - bet:.2f}")
 
 # %%
 total_number_of_valid_fights = (
     (general_data_processor.data["event_date"] >= starting_date)
     & (general_data_processor.data["fight_id"].isin(general_valid_fights))
 ).sum()
+print("Total number of valid fights")
 print(total_number_of_valid_fights)
 
 # %%
-
-# %%
-
-# %%
+# Getting bets per date
 df = df.merge(
     general_data_processor.data[["fight_id", "event_date"]],
     on="fight_id",
 )
-
-# %%
-df
-
-# %%
 results = df.groupby("event_date")[["bet", "win"]].sum().reset_index()
-results
 
 # %%
 fig, ax = plt.subplots()
 
 ax.plot(
     results["event_date"],
-    np.cumsum(results["win"] - results["bet"]) / np.cumsum(results["bet"]),
+    np.cumsum(results["win"] - results["bet"]) / np.cumsum(results["bet"]) * 100,
 )
 # Put x labels rotated 90 degrees
 ax.tick_params(axis="x", labelrotation=90)
@@ -388,12 +372,14 @@ ax.tick_params(axis="x", labelrotation=90)
 ax.grid()
 ax.axhline(0, color="black")
 
-# %%
+ax.set_xlabel("Event date")
+ax.set_ylabel("Return (%)");
 
 # %%
 from ufcpredictor.utils import convert_odds_to_moneyline, convert_odds_to_decimal
 
 # %%
+# Compare performance vs just picking favourite
 df["fighter_p"] = 1 / df["fighter_odds"] * 100
 df["opponent_p"] = 1 / df["opponent_odds"] * 100
 
@@ -407,17 +393,12 @@ df["opponent_p"] = df["opponent_p"] - excess / 2
 
 df["house_pred"] = df["opponent_p"] / 100
 
-# %%
 df["correct"] = round(df["Prediction"]) == df["result"]
 df["house correct"] = round(df["house_pred"]) == df["result"]
-df
 
 # %%
-df[["correct", "house correct"]].mean()
+model_correct_fraction = df["correct"].mean()
+favourite_correct_faction = df["house correct"].mean()
 
-# %%
-(df["correct"].mean() - df["house correct"].mean()) * 100
-
-# %%
-
-# %%
+print(f"Model correct fraction: {model_correct_fraction:.4f}")
+print(f"Favourite correct fraction: {favourite_correct_faction:.4f}")

@@ -13,6 +13,13 @@
 #     name: kaggle
 # ---
 
+# %% [markdown]
+# This is a version off:
+# modular_predictor_var1.1_OSR_2_train_phases_no_train_contamination
+#
+# where I don't put the odds into the model, to check how its prediction 
+# compare to the "odds prediction".
+
 # %%
 import pandas as pd
 pd.set_option("display.max_columns", None)
@@ -21,8 +28,59 @@ pd.set_option("display.max_columns", None)
 from ufcpredictor.data_processor import WOSRDataProcessor as DataProcessor
 from ufcpredictor.datasets import BasicDataset
 from ufcpredictor.trainer import Trainer
+from ufcpredictor.utils import convert_odds_to_decimal, convert_odds_to_moneyline
 import torch
+from torch import nn
 import numpy as np
+
+# %% [markdown]
+# I need to define a model to not take into account the odds inside the model:
+
+# %%
+from ufcpredictor.models import SymmetricFightNet, FighterNet
+from ufcpredictor.loss_functions import BettingLoss
+
+
+# %%
+class NoOddsNet(SymmetricFightNet):
+    def __init__(self, input_size: int, dropout_prob: float = 0.0) -> None:
+        super(SymmetricFightNet, self).__init__()
+        self.fighter_net = FighterNet(input_size=input_size, dropout_prob=dropout_prob)
+
+        self.fc1 = nn.Linear(254, 512) # Here I'm losing the two odds entries.
+        # self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(512, 128)
+        self.fc4 = nn.Linear(128, 64)
+        self.fc5 = nn.Linear(64, 1)
+
+        # Use the global dropout probability
+        self.dropout1 = nn.Dropout(p=dropout_prob)
+        self.dropout2 = nn.Dropout(p=dropout_prob)
+        self.dropout3 = nn.Dropout(p=dropout_prob)
+        self.dropout4 = nn.Dropout(p=dropout_prob)
+
+        self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
+    def forward(self, X1, X2, odds1, odds2):
+        out1 = self.fighter_net(X1)
+        out2 = self.fighter_net(X2)
+
+        # out1 = torch.cat((out1, odds1), dim=1) # Do not introduce odds in the model
+        # out2 = torch.cat((out2, odds2), dim=1)
+
+        x = torch.cat((out1 - out2, out2 - out1), dim=1)
+
+        x = self.relu(self.fc1(x))
+        x = self.dropout1(x)  # Apply dropout after the first ReLU
+        # x = self.relu(self.fc2(x))
+        # x = self.dropout2(x)  # Apply dropout after the second ReLU
+        x = self.relu(self.fc3(x))
+        x = self.dropout3(x)  # Apply dropout after the third ReLU
+        x = self.relu(self.fc4(x))
+        x = self.dropout4(x)  # Apply dropout after the fourth ReLU
+        x = self.sigmoid(self.fc5(x))
+        return x
+
 
 # %%
 self = data_processor = DataProcessor(
@@ -144,8 +202,6 @@ train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=64, shu
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=64, shuffle=False)
 
 # %%
-from ufcpredictor.models import SymmetricFightNet
-from ufcpredictor.loss_functions import BettingLoss
 
 
 # %%
@@ -156,7 +212,7 @@ random.seed(seed)
 np.random.seed(seed)
 
 # %%
-model = SymmetricFightNet(
+model = NoOddsNet(
         input_size=len(train_dataset.X_set),
         dropout_prob=0.35, # 0.35
 )
@@ -176,7 +232,7 @@ trainer = Trainer(
 
 # %%
 trainer.train(
-    epochs=5,
+    epochs=7,
     train_loader=early_train_dataloader,
     test_loader=test_dataloader,
 )
@@ -186,7 +242,7 @@ trainer.train(epochs=3) # ~8 is a good match if dropout to 0.35
 
 # %%
 # Save model dict
-torch.save(model.state_dict(), 'model.pth')
+#torch.save(model.state_dict(), 'model.pth')
 
 # %%
 from ufcpredictor.plot_tools import PredictionPlots
@@ -239,7 +295,6 @@ ax.plot(
 )
 # Put x labels rotated 90 degrees
 ax.tick_params(axis="x", labelrotation=90)
-
 ax.grid()
 ax.axhline(0, color="black")
 
@@ -261,13 +316,10 @@ output = model(X1, X2, odds1.reshape(-1,1), odds2.reshape(-1,1))
 output.sum().backward()
 
 # %%
-odds1.grad.sum()
-
-# %%
 fig, ax = plt.subplots(figsize=(5, 12))
 
 labels = test_dataset.X_set + ["odds"]
-values = list(abs(X1.grad.sum(axis=0))) + [odds1.grad.sum(),]
+values = list(abs(X1.grad.sum(axis=0)))# + [odds1.grad.sum(),]
 
 sorted_indices = sorted(range(len(values)), key=lambda i: values[i], reverse=True)
 labels = [labels[i] for i in sorted_indices]
@@ -276,15 +328,31 @@ values = [values[i] for i in sorted_indices]
 ax.barh(labels, values)
 ax.grid()
 
-# %%
+# %% [markdown]
+# ## Comparison with Odds
 
 # %%
+df = pd.DataFrame(
+    stats,
+    columns=[
+        "Prediction",
+        "result",
+        "fighter_odds",
+        "opponent_odds",
+        "correct",
+        "bet",
+        "win",
+        "fight_id"
+    ],
+)
 
-# %%
-df
+# df = df.merge(
+#     data_processor.data[["fight_id", "event_date"]],
+#     on="fight_id",
+# )
 
-# %%
-from ufcpredictor.utils import convert_odds_to_moneyline, convert_odds_to_decimal
+# results = df.groupby("event_date")[["bet", "win"]].sum().reset_index()
+# results
 
 # %%
 df["fighter_p"] = 1 / df["fighter_odds"] * 100
@@ -293,12 +361,24 @@ df["opponent_p"] = 1 / df["opponent_odds"] * 100
 df["fighter_oddsm"] = convert_odds_to_moneyline(df["fighter_odds"])
 df["opponent_oddsm"] = convert_odds_to_moneyline(df["opponent_odds"])
 
+# %%
+df
+
+# %%
 excess = (df["fighter_p"] + df["opponent_p"]) - 100
 
 df["fighter_p"] = df["fighter_p"] - excess/2
 df["opponent_p"] = df["opponent_p"] - excess/2
 
+# %% [markdown]
+# Now the probabilities sum to 1
+
+# %%
 df["house_pred"] = df["opponent_p"]/100
+
+# %%
+df = df[["fight_id", "fighter_oddsm", "opponent_oddsm", "Prediction", "house_pred", "result"]]
+df
 
 # %%
 df["correct"] = round(df["Prediction"]) == df["result"]
@@ -309,6 +389,7 @@ df
 df[["correct", "house correct"]].mean()
 
 # %%
+
 (df["correct"].mean() - df["house correct"].mean()) * 100
 
 # %%

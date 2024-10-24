@@ -12,7 +12,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.41">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.42">
     
     
       
@@ -2520,7 +2520,6 @@ ufcpredictor.datasets to provide a seamless data preparation workflow.</p>
 
         <span class="c1"># I am merging the fighter data to the previous table</span>
         <span class="c1"># This includes height, reach etc...</span>
-        <span class="n">fighter_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;fighter_id&quot;</span><span class="p">,</span> <span class="s2">&quot;fighter_name&quot;</span><span class="p">,</span> <span class="s2">&quot;fighter_nickname&quot;</span><span class="p">]</span>
         <span class="n">fighter_data</span><span class="p">[</span><span class="s2">&quot;fighter_name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">fighter_data</span><span class="p">[</span><span class="s2">&quot;fighter_f_name&quot;</span><span class="p">]</span>
             <span class="o">+</span> <span class="s2">&quot; &quot;</span>
@@ -2624,6 +2623,7 @@ ufcpredictor.datasets to provide a seamless data preparation workflow.</p>
 <span class="sd">            The dataframe with the odds in decimal format.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="s2">&quot;opening&quot;</span><span class="p">,</span> <span class="s2">&quot;closing_range_min&quot;</span><span class="p">,</span> <span class="s2">&quot;closing_range_max&quot;</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">field</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
             <span class="n">msk</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span>
 
             <span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">msk</span><span class="p">,</span> <span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">msk</span><span class="p">,</span> <span class="n">field</span><span class="p">]</span> <span class="o">/</span> <span class="mi">100</span> <span class="o">+</span> <span class="mi">1</span>
@@ -2765,11 +2765,11 @@ ufcpredictor.datasets to provide a seamless data preparation workflow.</p>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">[</span>
             <span class="n">c</span>
-            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scraper</span><span class="o">.</span><span class="n">fight_scraper</span><span class="o">.</span><span class="n">rounds_handler</span><span class="o">.</span><span class="n">columns</span>
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scraper</span><span class="o">.</span><span class="n">fight_scraper</span><span class="o">.</span><span class="n">rounds_handler</span><span class="o">.</span><span class="n">dtypes</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;fight_id&quot;</span><span class="p">,</span> <span class="s2">&quot;fighter_id&quot;</span><span class="p">,</span> <span class="s2">&quot;round&quot;</span><span class="p">]</span>
         <span class="p">]</span> <span class="o">+</span> <span class="p">[</span>
             <span class="n">c</span> <span class="o">+</span> <span class="s2">&quot;_opponent&quot;</span>
-            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scraper</span><span class="o">.</span><span class="n">fight_scraper</span><span class="o">.</span><span class="n">rounds_handler</span><span class="o">.</span><span class="n">columns</span>
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scraper</span><span class="o">.</span><span class="n">fight_scraper</span><span class="o">.</span><span class="n">rounds_handler</span><span class="o">.</span><span class="n">dtypes</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;fight_id&quot;</span><span class="p">,</span> <span class="s2">&quot;fighter_id&quot;</span><span class="p">,</span> <span class="s2">&quot;round&quot;</span><span class="p">]</span>
         <span class="p">]</span>
 
@@ -3005,7 +3005,7 @@ with "_opponent" appended to represent the opponent's statistics.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>List[str]</code>
+                  <code><span title="typing.List">List</span>[str]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3061,7 +3061,7 @@ between different fighters.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>List[str]</code>
+                  <code><span title="typing.List">List</span>[str]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3109,7 +3109,7 @@ statistics.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>List[str]</code>
+                  <code><span title="typing.List">List</span>[str]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3159,7 +3159,7 @@ represent the opponent's result.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>List[str]</code>
+                  <code><span title="typing.List">List</span>[str]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3205,7 +3205,7 @@ represent the opponent's result.</p>
                 <code>data_folder</code>
             </td>
             <td>
-                  <code>Optional[Path | str]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="pathlib.Path">Path</span> | str]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3221,7 +3221,7 @@ represent the opponent's result.</p>
                 <code>ufc_scraper</code>
             </td>
             <td>
-                  <code>Optional[UFCScraper]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="ufcscraper.ufc_scraper.UFCScraper">UFCScraper</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3237,7 +3237,7 @@ represent the opponent's result.</p>
                 <code>bfo_scraper</code>
             </td>
             <td>
-                  <code>Optional[BestFightOddsScraper]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="ufcscraper.odds_scraper.BestFightOddsScraper">BestFightOddsScraper</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3376,7 +3376,7 @@ indicating the age of the fighter at the time of the fight.</p>
                 <code>data</code>
             </td>
             <td>
-                  <code>DataFrame</code>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3402,7 +3402,7 @@ indicating the age of the fighter at the time of the fight.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>DataFrame</code>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3779,7 +3779,7 @@ fighters.</p>
                 <code>data</code>
             </td>
             <td>
-                  <code>DataFrame</code>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3805,7 +3805,7 @@ fighters.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>DataFrame</code>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3917,7 +3917,7 @@ fighters.</p>
                 <code>data</code>
             </td>
             <td>
-                  <code>DataFrame</code>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3943,7 +3943,7 @@ fighters.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>DataFrame</code>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3956,7 +3956,8 @@ fighters.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/data_processor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">258</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">257</span>
+<span class="normal">258</span>
 <span class="normal">259</span>
 <span class="normal">260</span>
 <span class="normal">261</span>
@@ -3985,6 +3986,7 @@ fighters.</p>
 <span class="sd">        The dataframe with the odds in decimal format.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="s2">&quot;opening&quot;</span><span class="p">,</span> <span class="s2">&quot;closing_range_min&quot;</span><span class="p">,</span> <span class="s2">&quot;closing_range_max&quot;</span><span class="p">:</span>
+        <span class="n">data</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">field</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
         <span class="n">msk</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span>
 
         <span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">msk</span><span class="p">,</span> <span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">msk</span><span class="p">,</span> <span class="n">field</span><span class="p">]</span> <span class="o">/</span> <span class="mi">100</span> <span class="o">+</span> <span class="mi">1</span>
@@ -4036,7 +4038,7 @@ or catch weight (agreed weight outside a weight class).</p>
                 <code>data</code>
             </td>
             <td>
-                  <code>DataFrame</code>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4062,7 +4064,7 @@ or catch weight (agreed weight outside a weight class).</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>DataFrame</code>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4178,7 +4180,7 @@ event date and fighter date of birth to datetime objects.</p>
                 <code>data</code>
             </td>
             <td>
-                  <code>DataFrame</code>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4204,7 +4206,7 @@ event date and fighter date of birth to datetime objects.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>DataFrame</code>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4217,7 +4219,8 @@ event date and fighter date of birth to datetime objects.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/data_processor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">228</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">227</span>
+<span class="normal">228</span>
 <span class="normal">229</span>
 <span class="normal">230</span>
 <span class="normal">231</span>
@@ -4244,8 +4247,7 @@ event date and fighter date of birth to datetime objects.</p>
 <span class="normal">252</span>
 <span class="normal">253</span>
 <span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">255</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span> <span class="nf">fix_date_and_time_fields</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Fix date and time fields in the dataframe.</span>
@@ -4523,7 +4525,7 @@ in the data that are in the round statistics and not in ["round"].</p>
                 <code>data</code>
             </td>
             <td>
-                  <code>DataFrame</code>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4549,7 +4551,7 @@ in the data that are in the round statistics and not in ["round"].</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>DataFrame</code>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4660,7 +4662,7 @@ previous table. Finally, it adds the date of the event to the dataframe.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>DataFrame</code>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4769,8 +4771,7 @@ previous table. Finally, it adds the date of the event to the dataframe.</p>
 <span class="normal">222</span>
 <span class="normal">223</span>
 <span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">join_dataframes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="normal">225</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">join_dataframes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Joins all the relevant dataframes (fight, fighter, event, and odds).</span>
 
@@ -4807,7 +4808,6 @@ previous table. Finally, it adds the date of the event to the dataframe.</p>
 
     <span class="c1"># I am merging the fighter data to the previous table</span>
     <span class="c1"># This includes height, reach etc...</span>
-    <span class="n">fighter_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;fighter_id&quot;</span><span class="p">,</span> <span class="s2">&quot;fighter_name&quot;</span><span class="p">,</span> <span class="s2">&quot;fighter_nickname&quot;</span><span class="p">]</span>
     <span class="n">fighter_data</span><span class="p">[</span><span class="s2">&quot;fighter_name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">fighter_data</span><span class="p">[</span><span class="s2">&quot;fighter_f_name&quot;</span><span class="p">]</span>
         <span class="o">+</span> <span class="s2">&quot; &quot;</span>
@@ -5063,7 +5063,7 @@ The fields normalized are the ones in normalized_fields.</p>
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code>DataProcessor</code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="ufcpredictor.data_processor.DataProcessor" href="#ufcpredictor.data_processor.DataProcessor">DataProcessor</a></code></p>
 
 
         <p>Extends the DataProcessor class to add OSR information.</p>
@@ -5440,7 +5440,7 @@ old values is less than 0.1.</p>
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code>DataProcessor</code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="ufcpredictor.data_processor.DataProcessor" href="#ufcpredictor.data_processor.DataProcessor">DataProcessor</a></code></p>
 
 
         <p>Extends the OSRDataProcessor class to add weights to the different components
@@ -5717,7 +5717,7 @@ the weights are [w1, w2, w3]</p>
                 <code>*args</code>
             </td>
             <td>
-                  <code>Any</code>
+                  <code><span title="typing.Any">Any</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -5749,7 +5749,7 @@ calculating the OSR. Defaults to [0.3, 0.3, 0.3].</p>
                 <code>**kwargs</code>
             </td>
             <td>
-                  <code>Any</code>
+                  <code><span title="typing.Any">Any</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -6047,7 +6047,7 @@ DataProcessor class to prepare and normalize the data.</p>
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code>Dataset</code></p>
+              Bases: <code><span title="torch.utils.data.Dataset">Dataset</span></code></p>
 
 
         <p>A basic dataset class designed to handle UFC fight data for training and testing
@@ -6633,7 +6633,7 @@ between two fighters in either order.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>Tensor</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -6643,7 +6643,7 @@ between two fighters in either order.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                  <code>Tensor</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -6653,7 +6653,7 @@ between two fighters in either order.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                  <code>Tensor</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -6663,7 +6663,7 @@ between two fighters in either order.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                  <code>Tensor</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -6763,7 +6763,7 @@ between two fighters in either order.</p>
                 <code>data_processor</code>
             </td>
             <td>
-                  <code>DataProcessor</code>
+                  <code><a class="autorefs autorefs-internal" title="ufcpredictor.data_processor.DataProcessor" href="#ufcpredictor.data_processor.DataProcessor">DataProcessor</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -6779,7 +6779,7 @@ between two fighters in either order.</p>
                 <code>fight_ids</code>
             </td>
             <td>
-                  <code>List[str]</code>
+                  <code><span title="typing.List">List</span>[str]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -6795,7 +6795,7 @@ between two fighters in either order.</p>
                 <code>X_set</code>
             </td>
             <td>
-                  <code>Optional[List[str]]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.List">List</span>[str]]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -6994,7 +6994,7 @@ for the given fight ids.</p>
                 <code>fight_ids</code>
             </td>
             <td>
-                  <code>Optional[List[str]]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.List">List</span>[str]]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -7021,7 +7021,7 @@ use all the data in the dataset.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>FloatTensor</code>
+                  <code><span title="torch.FloatTensor">FloatTensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -7031,7 +7031,7 @@ use all the data in the dataset.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                  <code>FloatTensor</code>
+                  <code><span title="torch.FloatTensor">FloatTensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -7041,7 +7041,7 @@ use all the data in the dataset.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                  <code>FloatTensor</code>
+                  <code><span title="torch.FloatTensor">FloatTensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -7051,7 +7051,7 @@ use all the data in the dataset.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                  <code>FloatTensor</code>
+                  <code><span title="torch.FloatTensor">FloatTensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -7061,7 +7061,7 @@ use all the data in the dataset.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                  <code>FloatTensor</code>
+                  <code><span title="torch.FloatTensor">FloatTensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -7343,7 +7343,7 @@ Finally, the data is loaded into torch tensors.</p>
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code>Dataset</code></p>
+              Bases: <code><span title="torch.utils.data.Dataset">Dataset</span></code></p>
 
 
         <p>A dataset class designed to handle forecasting data for UFC fight predictions.</p>
@@ -7554,7 +7554,16 @@ to prepare and normalize the data.</p>
 <span class="normal">476</span>
 <span class="normal">477</span>
 <span class="normal">478</span>
-<span class="normal">479</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">ForecastDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+<span class="normal">479</span>
+<span class="normal">480</span>
+<span class="normal">481</span>
+<span class="normal">482</span>
+<span class="normal">483</span>
+<span class="normal">484</span>
+<span class="normal">485</span>
+<span class="normal">486</span>
+<span class="normal">487</span>
+<span class="normal">488</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">ForecastDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A dataset class designed to handle forecasting data for UFC fight predictions.</span>
 
@@ -7595,14 +7604,14 @@ to prepare and normalize the data.</p>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Columns not found in normalized data: </span><span class="si">{</span><span class="n">not_found</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">get_single_forecast_prediction</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">fighter_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-            <span class="n">opponent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-            <span class="n">event_date</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">,</span>
-            <span class="n">odds1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-            <span class="n">odds2</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-            <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
-            <span class="n">parse_ids</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">fighter_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">opponent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">event_date</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">,</span>
+        <span class="n">odds1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">odds2</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+        <span class="n">parse_ids</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Make a prediction for a single match. Either providing the names of the</span>
@@ -7624,7 +7633,7 @@ to prepare and normalize the data.</p>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_forecast_prediction</span><span class="p">(</span>
             <span class="p">[</span>
-               <span class="n">fighter_name</span><span class="p">,</span>
+                <span class="n">fighter_name</span><span class="p">,</span>
             <span class="p">],</span>
             <span class="p">[</span>
                 <span class="n">opponent_name</span><span class="p">,</span>
@@ -7653,6 +7662,7 @@ to prepare and normalize the data.</p>
         <span class="n">opponent_odds</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
         <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
         <span class="n">parse_ids</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">NDArray</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Make a prediction for a given list of matches. Either providing the names of</span>
@@ -7669,6 +7679,7 @@ to prepare and normalize the data.</p>
 <span class="sd">            parse_ids: Whether to parse the ids of the fighters and opponents. Ids</span>
 <span class="sd">                are parsed in fields &quot;fighter_names&quot; and &quot;opponent_names&quot;if True,</span>
 <span class="sd">                and names are parsed if False.</span>
+<span class="sd">            device: The device to use for the prediction.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            A tuple of two numpy arrays, each containing the predictions for one of the</span>
@@ -7745,10 +7756,17 @@ to prepare and normalize the data.</p>
         <span class="p">]</span>
 
         <span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">,</span> <span class="n">model</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">X1</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+            <span class="n">X2</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+            <span class="n">odds1</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+            <span class="n">odds2</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="p">)</span>
         <span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
         <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
-            <span class="n">predictions_1</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-            <span class="n">predictions_2</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">model</span><span class="p">(</span><span class="n">X2</span><span class="p">,</span> <span class="n">X1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">,</span> <span class="n">odds1</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+            <span class="n">predictions_1</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+            <span class="n">predictions_2</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">model</span><span class="p">(</span><span class="n">X2</span><span class="p">,</span> <span class="n">X1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">,</span> <span class="n">odds1</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
 
         <span class="k">return</span> <span class="n">predictions_1</span><span class="p">,</span> <span class="n">predictions_2</span>
 </code></pre></div></td></tr></table></div>
@@ -7796,7 +7814,7 @@ to prepare and normalize the data.</p>
                 <code>data_processor</code>
             </td>
             <td>
-                  <code>DataProcessor</code>
+                  <code><a class="autorefs autorefs-internal" title="ufcpredictor.data_processor.DataProcessor" href="#ufcpredictor.data_processor.DataProcessor">DataProcessor</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -7812,7 +7830,7 @@ to prepare and normalize the data.</p>
                 <code>X_set</code>
             </td>
             <td>
-                  <code>Optional[List[str]]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.List">List</span>[str]]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -7917,7 +7935,7 @@ columns.</p>
 
 
 <h3 id="ufcpredictor.datasets.ForecastDataset.get_forecast_prediction" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">get_forecast_prediction</span><span class="p">(</span><span class="n">fighter_names</span><span class="p">,</span> <span class="n">opponent_names</span><span class="p">,</span> <span class="n">event_dates</span><span class="p">,</span> <span class="n">fighter_odds</span><span class="p">,</span> <span class="n">opponent_odds</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">parse_ids</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">get_forecast_prediction</span><span class="p">(</span><span class="n">fighter_names</span><span class="p">,</span> <span class="n">opponent_names</span><span class="p">,</span> <span class="n">event_dates</span><span class="p">,</span> <span class="n">fighter_odds</span><span class="p">,</span> <span class="n">opponent_odds</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">parse_ids</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span></code>
 
 </h3>
 
@@ -7960,7 +7978,7 @@ their opponents.</p>
                 <code>opponent_names</code>
             </td>
             <td>
-                  <code>List[str]</code>
+                  <code><span title="typing.List">List</span>[str]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -7976,7 +7994,7 @@ their opponents.</p>
                 <code>event_dates</code>
             </td>
             <td>
-                  <code>List[str | date]</code>
+                  <code><span title="typing.List">List</span>[str | <span title="datetime.date">date</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -7992,7 +8010,7 @@ their opponents.</p>
                 <code>fighter_odds</code>
             </td>
             <td>
-                  <code>List[float]</code>
+                  <code><span title="typing.List">List</span>[float]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -8008,7 +8026,7 @@ their opponents.</p>
                 <code>opponent_odds</code>
             </td>
             <td>
-                  <code>List[float]</code>
+                  <code><span title="typing.List">List</span>[float]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -8024,7 +8042,7 @@ their opponents.</p>
                 <code>model</code>
             </td>
             <td>
-                  <code>Module</code>
+                  <code><span title="torch.nn.Module">Module</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -8053,6 +8071,22 @@ and names are parsed if False.</p>
                   <code>False</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>device</code>
+            </td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The device to use for the prediction.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;cpu&#39;</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -8068,7 +8102,7 @@ and names are parsed if False.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>NDArray</code>
+                  <code><span title="numpy.typing.NDArray">NDArray</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -8078,7 +8112,7 @@ and names are parsed if False.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                  <code>NDArray</code>
+                  <code><span title="numpy.typing.NDArray">NDArray</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -8197,7 +8231,16 @@ and names are parsed if False.</p>
 <span class="normal">476</span>
 <span class="normal">477</span>
 <span class="normal">478</span>
-<span class="normal">479</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_forecast_prediction</span><span class="p">(</span>
+<span class="normal">479</span>
+<span class="normal">480</span>
+<span class="normal">481</span>
+<span class="normal">482</span>
+<span class="normal">483</span>
+<span class="normal">484</span>
+<span class="normal">485</span>
+<span class="normal">486</span>
+<span class="normal">487</span>
+<span class="normal">488</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_forecast_prediction</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">fighter_names</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">opponent_names</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -8206,6 +8249,7 @@ and names are parsed if False.</p>
     <span class="n">opponent_odds</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="n">parse_ids</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">NDArray</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Make a prediction for a given list of matches. Either providing the names of</span>
@@ -8222,6 +8266,7 @@ and names are parsed if False.</p>
 <span class="sd">        parse_ids: Whether to parse the ids of the fighters and opponents. Ids</span>
 <span class="sd">            are parsed in fields &quot;fighter_names&quot; and &quot;opponent_names&quot;if True,</span>
 <span class="sd">            and names are parsed if False.</span>
+<span class="sd">        device: The device to use for the prediction.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        A tuple of two numpy arrays, each containing the predictions for one of the</span>
@@ -8298,10 +8343,17 @@ and names are parsed if False.</p>
     <span class="p">]</span>
 
     <span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span> <span class="o">=</span> <span class="n">data</span>
+    <span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">,</span> <span class="n">model</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">X1</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+        <span class="n">X2</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+        <span class="n">odds1</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+        <span class="n">odds2</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="p">)</span>
     <span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
     <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
-        <span class="n">predictions_1</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-        <span class="n">predictions_2</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">model</span><span class="p">(</span><span class="n">X2</span><span class="p">,</span> <span class="n">X1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">,</span> <span class="n">odds1</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">predictions_1</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">predictions_2</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">model</span><span class="p">(</span><span class="n">X2</span><span class="p">,</span> <span class="n">X1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">,</span> <span class="n">odds1</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
 
     <span class="k">return</span> <span class="n">predictions_1</span><span class="p">,</span> <span class="n">predictions_2</span>
 </code></pre></div></td></tr></table></div>
@@ -8374,7 +8426,7 @@ their opponents.</p>
                 <code>event_date</code>
             </td>
             <td>
-                  <code>str | date</code>
+                  <code>str | <span title="datetime.date">date</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -8422,7 +8474,7 @@ their opponents.</p>
                 <code>model</code>
             </td>
             <td>
-                  <code>Module</code>
+                  <code><span title="torch.nn.Module">Module</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -8506,14 +8558,14 @@ and names are parsed if False.</p>
 <span class="normal">369</span>
 <span class="normal">370</span>
 <span class="normal">371</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_single_forecast_prediction</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">fighter_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">opponent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">event_date</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">,</span>
-        <span class="n">odds1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">odds2</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
-        <span class="n">parse_ids</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">fighter_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">opponent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">event_date</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">,</span>
+    <span class="n">odds1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">odds2</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+    <span class="n">parse_ids</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Make a prediction for a single match. Either providing the names of the</span>
@@ -8535,7 +8587,7 @@ and names are parsed if False.</p>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_forecast_prediction</span><span class="p">(</span>
         <span class="p">[</span>
-           <span class="n">fighter_name</span><span class="p">,</span>
+            <span class="n">fighter_name</span><span class="p">,</span>
         <span class="p">],</span>
         <span class="p">[</span>
             <span class="n">opponent_name</span><span class="p">,</span>
@@ -8619,7 +8671,7 @@ outcomes of the fights, and are used to optimize the model's performance.</p>
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code>Module</code></p>
+              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
 
 
 
@@ -8860,7 +8912,7 @@ this is the net profit.</p>
                 <code>predictions</code>
             </td>
             <td>
-                  <code>Tensor</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -8876,7 +8928,7 @@ this is the net profit.</p>
                 <code>targets</code>
             </td>
             <td>
-                  <code>Tensor</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -8892,7 +8944,7 @@ this is the net profit.</p>
                 <code>odds_1</code>
             </td>
             <td>
-                  <code>Tensor</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -8908,7 +8960,7 @@ this is the net profit.</p>
                 <code>odds_2</code>
             </td>
             <td>
-                  <code>Tensor</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -8934,7 +8986,7 @@ this is the net profit.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>Tensor</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -9070,7 +9122,7 @@ that seems to work well.</p>
                 <code>prediction</code>
             </td>
             <td>
-                  <code>Tensor | float</code>
+                  <code><span title="torch.Tensor">Tensor</span> | float</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -9097,7 +9149,7 @@ prediction.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>Tensor | float</code>
+                  <code><span title="torch.Tensor">Tensor</span> | float</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -9209,7 +9261,7 @@ to calculate the benefit of a bet.</p>
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code>Module</code></p>
+              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
 
 
         <p>A neural network model designed to predict the outcome of a fight based on a single
@@ -9491,7 +9543,7 @@ probability.</p>
                 <code>x</code>
             </td>
             <td>
-                  <code>Tensor</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -9517,7 +9569,7 @@ probability.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>Tensor</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -9600,7 +9652,7 @@ probability.</p>
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code>Module</code></p>
+              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
 
 
         <p>A neural network model designed to predict the outcome of a fight between two
@@ -9936,7 +9988,7 @@ probability.</p>
                 <code>X1</code>
             </td>
             <td>
-                  <code>Tensor</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -9952,7 +10004,7 @@ probability.</p>
                 <code>X2</code>
             </td>
             <td>
-                  <code>Tensor</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -9968,7 +10020,7 @@ probability.</p>
                 <code>odds1</code>
             </td>
             <td>
-                  <code>Tensor</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -9984,7 +10036,7 @@ probability.</p>
                 <code>odds2</code>
             </td>
             <td>
-                  <code>Tensor</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10010,7 +10062,7 @@ probability.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>Tensor</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10181,7 +10233,7 @@ training and testing workflow.</p>
           <tr class="doc-section-item">
             <td><code><span title="ufcpredictor.trainer.Trainer.train_loader">train_loader</span></code></td>
             <td>
-                  <code>DataLoader</code>
+                  <code><span title="torch.utils.data.DataLoader">DataLoader</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10192,7 +10244,7 @@ training and testing workflow.</p>
           <tr class="doc-section-item">
             <td><code><span title="ufcpredictor.trainer.Trainer.test_loader">test_loader</span></code></td>
             <td>
-                  <code>DataLoader</code>
+                  <code><span title="torch.utils.data.DataLoader">DataLoader</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10203,7 +10255,7 @@ training and testing workflow.</p>
           <tr class="doc-section-item">
             <td><code><span title="ufcpredictor.trainer.Trainer.model">model</span></code></td>
             <td>
-                  <code>Module</code>
+                  <code><span title="torch.nn.Module">Module</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10214,7 +10266,7 @@ training and testing workflow.</p>
           <tr class="doc-section-item">
             <td><code><span title="ufcpredictor.trainer.Trainer.optimizer">optimizer</span></code></td>
             <td>
-                  <code>Optimizer</code>
+                  <code><span title="torch.optim.Optimizer">Optimizer</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10225,7 +10277,7 @@ training and testing workflow.</p>
           <tr class="doc-section-item">
             <td><code><span title="ufcpredictor.trainer.Trainer.loss_fn">loss_fn</span></code></td>
             <td>
-                  <code>Module</code>
+                  <code><span title="torch.nn.Module">Module</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10236,7 +10288,7 @@ training and testing workflow.</p>
           <tr class="doc-section-item">
             <td><code><span title="ufcpredictor.trainer.Trainer.scheduler">scheduler</span></code></td>
             <td>
-                  <code>Optional[ReduceLROnPlateau]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="torch.optim.lr_scheduler.ReduceLROnPlateau">ReduceLROnPlateau</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10248,7 +10300,7 @@ rate scheduler to be used.</p>
           <tr class="doc-section-item">
             <td><code><span title="ufcpredictor.trainer.Trainer.device">device</span></code></td>
             <td>
-                  <code>str | device</code>
+                  <code>str | <span title="torch.device">device</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10675,7 +10727,7 @@ rate scheduler to be used.</p>
                 <code>train_loader</code>
             </td>
             <td>
-                  <code>DataLoader</code>
+                  <code><span title="torch.utils.data.DataLoader">DataLoader</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10691,7 +10743,7 @@ rate scheduler to be used.</p>
                 <code>test_loader</code>
             </td>
             <td>
-                  <code>Optional[DataLoader]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="torch.utils.data.DataLoader">DataLoader</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10707,7 +10759,7 @@ rate scheduler to be used.</p>
                 <code>model</code>
             </td>
             <td>
-                  <code>Module</code>
+                  <code><span title="torch.nn.Module">Module</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10723,7 +10775,7 @@ rate scheduler to be used.</p>
                 <code>optimizer</code>
             </td>
             <td>
-                  <code>Optimizer</code>
+                  <code><span title="torch.optim.Optimizer">Optimizer</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10739,7 +10791,7 @@ rate scheduler to be used.</p>
                 <code>loss_fn</code>
             </td>
             <td>
-                  <code>Module</code>
+                  <code><span title="torch.nn.Module">Module</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10755,7 +10807,7 @@ rate scheduler to be used.</p>
                 <code>scheduler</code>
             </td>
             <td>
-                  <code>Optional[ReduceLROnPlateau]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="torch.optim.lr_scheduler.ReduceLROnPlateau">ReduceLROnPlateau</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10771,7 +10823,7 @@ rate scheduler to be used.</p>
                 <code>device</code>
             </td>
             <td>
-                  <code>str | device</code>
+                  <code>str | <span title="torch.device">device</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10881,7 +10933,7 @@ score, proportion of correct predictions, target predictions, and target labels.
                 <code>test_loader</code>
             </td>
             <td>
-                  <code>DataLoader | None</code>
+                  <code><span title="torch.utils.data.DataLoader">DataLoader</span> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -11086,7 +11138,7 @@ passed to the Trainer constructor.</p>
                 <code>train_loader</code>
             </td>
             <td>
-                  <code>DataLoader | None</code>
+                  <code><span title="torch.utils.data.DataLoader">DataLoader</span> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -11103,7 +11155,7 @@ DataLoader passed to the Trainer constructor.</p>
                 <code>test_loader</code>
             </td>
             <td>
-                  <code>DataLoader | None</code>
+                  <code><span title="torch.utils.data.DataLoader">DataLoader</span> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -11669,7 +11721,18 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
 <span class="normal">297</span>
 <span class="normal">298</span>
 <span class="normal">299</span>
-<span class="normal">300</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">PredictionPlots</span><span class="p">:</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">PredictionPlots</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Provides tools for visualizing and analyzing the predictions made by UFC predictor</span>
 <span class="sd">    models.</span>
@@ -11695,6 +11758,7 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
         <span class="n">print_info</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">show_plot</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Shows the prediction detail of a fight and the benefit of the model.</span>
@@ -11715,6 +11779,14 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
 <span class="sd">                created.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">,</span> <span class="n">fighter_names</span><span class="p">,</span> <span class="n">opponent_names</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">,</span> <span class="n">model</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">X1</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+            <span class="n">X2</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+            <span class="n">Y</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+            <span class="n">odds1</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+            <span class="n">odds2</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+        <span class="p">)</span>
         <span class="n">stats</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
@@ -11732,10 +11804,10 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
             <span class="n">predictions</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">predictions_1</span> <span class="o">+</span> <span class="n">predictions_2</span><span class="p">)</span>
             <span class="n">shifts</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">predictions_2</span> <span class="o">-</span> <span class="n">predictions_1</span><span class="p">)</span>
 
-            <span class="n">corrects</span> <span class="o">=</span> <span class="n">predictions</span><span class="o">.</span><span class="n">round</span><span class="p">()</span> <span class="o">==</span> <span class="n">Y</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+            <span class="n">corrects</span> <span class="o">=</span> <span class="n">predictions</span><span class="o">.</span><span class="n">round</span><span class="p">()</span> <span class="o">==</span> <span class="n">Y</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
 
-            <span class="n">odds1</span> <span class="o">=</span> <span class="n">odds1</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-            <span class="n">odds2</span> <span class="o">=</span> <span class="n">odds2</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">odds1</span> <span class="o">=</span> <span class="n">odds1</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">odds2</span> <span class="o">=</span> <span class="n">odds2</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
 
             <span class="n">invested</span> <span class="o">=</span> <span class="mi">0</span>
             <span class="n">earnings</span> <span class="o">=</span> <span class="mi">0</span>
@@ -11753,7 +11825,7 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
                 <span class="n">odds1</span><span class="p">,</span>
                 <span class="n">odds2</span><span class="p">,</span>
                 <span class="n">corrects</span><span class="p">,</span>
-                <span class="n">Y</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+                <span class="n">Y</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
             <span class="p">):</span>
                 <span class="n">prediction</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">prediction</span><span class="p">),</span> <span class="mi">3</span><span class="p">)</span>
                 <span class="n">shift</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">shift</span><span class="p">),</span> <span class="mi">3</span><span class="p">)</span>
@@ -11820,6 +11892,7 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
         <span class="n">print_info</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">show_plot</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Shows the prediction detail of a fight and the benefit of the model.</span>
@@ -11848,6 +11921,7 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
             <span class="n">print_info</span><span class="p">,</span>
             <span class="n">show_plot</span><span class="p">,</span>
             <span class="n">ax</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="k">return</span> <span class="p">[</span>
@@ -12097,18 +12171,7 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/plot_tools.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">215</span>
-<span class="normal">216</span>
-<span class="normal">217</span>
-<span class="normal">218</span>
-<span class="normal">219</span>
-<span class="normal">220</span>
-<span class="normal">221</span>
-<span class="normal">222</span>
-<span class="normal">223</span>
-<span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">226</span>
 <span class="normal">227</span>
 <span class="normal">228</span>
 <span class="normal">229</span>
@@ -12182,7 +12245,18 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
 <span class="normal">297</span>
 <span class="normal">298</span>
 <span class="normal">299</span>
-<span class="normal">300</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span> <span class="nf">plot_single_prediction</span><span class="p">(</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="n">dataset</span><span class="p">:</span> <span class="n">ForecastDataset</span><span class="p">,</span>
@@ -12278,7 +12352,7 @@ Additionally, it can show a plot of the benefit of the model over time.</p>
 
 
 <h3 id="ufcpredictor.plot_tools.PredictionPlots.show_fight_prediction_detail" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">show_fight_prediction_detail</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">print_info</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">show_plot</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">show_fight_prediction_detail</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">print_info</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">show_plot</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
@@ -12520,7 +12594,16 @@ created.</p>
 <span class="normal">165</span>
 <span class="normal">166</span>
 <span class="normal">167</span>
-<span class="normal">168</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span> <span class="nf">show_fight_prediction_detail</span><span class="p">(</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="n">data</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span>
@@ -12535,6 +12618,7 @@ created.</p>
     <span class="n">print_info</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">show_plot</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Shows the prediction detail of a fight and the benefit of the model.</span>
@@ -12555,6 +12639,14 @@ created.</p>
 <span class="sd">            created.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">,</span> <span class="n">fighter_names</span><span class="p">,</span> <span class="n">opponent_names</span> <span class="o">=</span> <span class="n">data</span>
+    <span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">odds1</span><span class="p">,</span> <span class="n">odds2</span><span class="p">,</span> <span class="n">model</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">X1</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+        <span class="n">X2</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+        <span class="n">Y</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+        <span class="n">odds1</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+        <span class="n">odds2</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+    <span class="p">)</span>
     <span class="n">stats</span> <span class="o">=</span> <span class="p">[]</span>
 
     <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
@@ -12572,10 +12664,10 @@ created.</p>
         <span class="n">predictions</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">predictions_1</span> <span class="o">+</span> <span class="n">predictions_2</span><span class="p">)</span>
         <span class="n">shifts</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">predictions_2</span> <span class="o">-</span> <span class="n">predictions_1</span><span class="p">)</span>
 
-        <span class="n">corrects</span> <span class="o">=</span> <span class="n">predictions</span><span class="o">.</span><span class="n">round</span><span class="p">()</span> <span class="o">==</span> <span class="n">Y</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">corrects</span> <span class="o">=</span> <span class="n">predictions</span><span class="o">.</span><span class="n">round</span><span class="p">()</span> <span class="o">==</span> <span class="n">Y</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
 
-        <span class="n">odds1</span> <span class="o">=</span> <span class="n">odds1</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">odds2</span> <span class="o">=</span> <span class="n">odds2</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">odds1</span> <span class="o">=</span> <span class="n">odds1</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">odds2</span> <span class="o">=</span> <span class="n">odds2</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
 
         <span class="n">invested</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">earnings</span> <span class="o">=</span> <span class="mi">0</span>
@@ -12593,7 +12685,7 @@ created.</p>
             <span class="n">odds1</span><span class="p">,</span>
             <span class="n">odds2</span><span class="p">,</span>
             <span class="n">corrects</span><span class="p">,</span>
-            <span class="n">Y</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+            <span class="n">Y</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
         <span class="p">):</span>
             <span class="n">prediction</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">prediction</span><span class="p">),</span> <span class="mi">3</span><span class="p">)</span>
             <span class="n">shift</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">shift</span><span class="p">),</span> <span class="mi">3</span><span class="p">)</span>
@@ -12661,7 +12753,7 @@ created.</p>
 
 
 <h3 id="ufcpredictor.plot_tools.PredictionPlots.show_fight_prediction_detail_from_dataset" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">show_fight_prediction_detail_from_dataset</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">fight_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">print_info</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">show_plot</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">show_fight_prediction_detail_from_dataset</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">fight_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">print_info</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">show_plot</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
@@ -12786,16 +12878,7 @@ created.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/plot_tools.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">179</span>
 <span class="normal">180</span>
 <span class="normal">181</span>
 <span class="normal">182</span>
@@ -12829,7 +12912,18 @@ created.</p>
 <span class="normal">210</span>
 <span class="normal">211</span>
 <span class="normal">212</span>
-<span class="normal">213</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span> <span class="nf">show_fight_prediction_detail_from_dataset</span><span class="p">(</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="n">dataset</span><span class="p">:</span> <span class="n">BasicDataset</span><span class="p">,</span>
@@ -12837,6 +12931,7 @@ created.</p>
     <span class="n">print_info</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">show_plot</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Shows the prediction detail of a fight and the benefit of the model.</span>
@@ -12865,6 +12960,7 @@ created.</p>
         <span class="n">print_info</span><span class="p">,</span>
         <span class="n">show_plot</span><span class="p">,</span>
         <span class="n">ax</span><span class="p">,</span>
+        <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="k">return</span> <span class="p">[</span>
@@ -12982,7 +13078,7 @@ miscellaneous helper functions.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>Optional[int]</code>
+                  <code><span title="typing.Optional">Optional</span>[int]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -13067,7 +13163,7 @@ or "NULL", or if the input is NaN, returns None.</p>
                 <code>odds</code>
             </td>
             <td>
-                  <code>List[int | float] | NDArray[float64 | int_]</code>
+                  <code><span title="typing.List">List</span>[int | float] | <span title="numpy.typing.NDArray">NDArray</span>[<span title="numpy.float64">float64</span> | <span title="numpy.int_">int_</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -13093,7 +13189,7 @@ or "NULL", or if the input is NaN, returns None.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>NDArray[float64]</code>
+                  <code><span title="numpy.typing.NDArray">NDArray</span>[<span title="numpy.float64">float64</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -13183,7 +13279,7 @@ or "NULL", or if the input is NaN, returns None.</p>
                 <code>odds</code>
             </td>
             <td>
-                  <code>NDArray[float64] | List[float]</code>
+                  <code><span title="numpy.typing.NDArray">NDArray</span>[<span title="numpy.float64">float64</span>] | <span title="typing.List">List</span>[float]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -13209,7 +13305,7 @@ or "NULL", or if the input is NaN, returns None.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>NDArray[int_]</code>
+                  <code><span title="numpy.typing.NDArray">NDArray</span>[<span title="numpy.int_">int_</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">

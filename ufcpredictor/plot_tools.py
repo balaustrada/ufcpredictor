@@ -50,6 +50,7 @@ class PredictionPlots:
         print_info: bool = False,
         show_plot: bool = False,
         ax: Optional[plt.Axes] = None,
+        device: str = "cpu",
     ) -> List[Tuple[float, int, float, float, bool, float, float]]:
         """
         Shows the prediction detail of a fight and the benefit of the model.
@@ -70,6 +71,14 @@ class PredictionPlots:
                 created.
         """
         X1, X2, Y, odds1, odds2, fighter_names, opponent_names = data
+        X1, X2, Y, odds1, odds2, model = (
+            X1.to(device),
+            X2.to(device),
+            Y.to(device),
+            odds1.to(device),
+            odds2.to(device),
+            model.to(device),
+        )
         stats = []
 
         with torch.no_grad():
@@ -87,10 +96,10 @@ class PredictionPlots:
             predictions = 0.5 * (predictions_1 + predictions_2)
             shifts = abs(predictions_2 - predictions_1)
 
-            corrects = predictions.round() == Y.numpy()
+            corrects = predictions.round() == Y.cpu().numpy()
 
-            odds1 = odds1.numpy().reshape(-1)
-            odds2 = odds2.numpy().reshape(-1)
+            odds1 = odds1.cpu().numpy().reshape(-1)
+            odds2 = odds2.cpu().numpy().reshape(-1)
 
             invested = 0
             earnings = 0
@@ -108,7 +117,7 @@ class PredictionPlots:
                 odds1,
                 odds2,
                 corrects,
-                Y.numpy().tolist(),
+                Y.cpu().numpy().tolist(),
             ):
                 prediction = round(float(prediction), 3)
                 shift = round(float(shift), 3)
@@ -175,6 +184,7 @@ class PredictionPlots:
         print_info: bool = False,
         show_plot: bool = False,
         ax: Optional[plt.Axes] = None,
+        device: str = "cpu",
     ) -> List[Tuple[float, int, float, float, bool, float, float, str]]:
         """
         Shows the prediction detail of a fight and the benefit of the model.
@@ -203,6 +213,7 @@ class PredictionPlots:
             print_info,
             show_plot,
             ax,
+            device=device,
         )
 
         return [

@@ -319,16 +319,16 @@ class ForecastDataset(Dataset):
 
         if len(not_found) > 0:
             raise ValueError(f"Columns not found in normalized data: {not_found}")
-        
+
     def get_single_forecast_prediction(
-            self,
-            fighter_name: str,
-            opponent_name: str,
-            event_date: str | datetime.date,
-            odds1: int,
-            odds2: int,
-            model: nn.Module,
-            parse_ids: bool = False,
+        self,
+        fighter_name: str,
+        opponent_name: str,
+        event_date: str | datetime.date,
+        odds1: int,
+        odds2: int,
+        model: nn.Module,
+        parse_ids: bool = False,
     ) -> Tuple[float, float]:
         """
         Make a prediction for a single match. Either providing the names of the
@@ -350,7 +350,7 @@ class ForecastDataset(Dataset):
         """
         p1, p2 = self.get_forecast_prediction(
             [
-               fighter_name,
+                fighter_name,
             ],
             [
                 opponent_name,
@@ -379,6 +379,7 @@ class ForecastDataset(Dataset):
         opponent_odds: List[float],
         model: nn.Module,
         parse_ids: bool = False,
+        device: str = "cpu",
     ) -> Tuple[NDArray, NDArray]:
         """
         Make a prediction for a given list of matches. Either providing the names of
@@ -395,6 +396,7 @@ class ForecastDataset(Dataset):
             parse_ids: Whether to parse the ids of the fighters and opponents. Ids
                 are parsed in fields "fighter_names" and "opponent_names"if True,
                 and names are parsed if False.
+            device: The device to use for the prediction.
 
         Returns:
             A tuple of two numpy arrays, each containing the predictions for one of the
@@ -471,9 +473,16 @@ class ForecastDataset(Dataset):
         ]
 
         X1, X2, odds1, odds2 = data
+        X1, X2, odds1, odds2, model = (
+            X1.to(device),
+            X2.to(device),
+            odds1.to(device),
+            odds2.to(device),
+            model.to(device)
+        )
         model.eval()
         with torch.no_grad():
-            predictions_1 = model(X1, X2, odds1, odds2).detach().numpy()
-            predictions_2 = 1 - model(X2, X1, odds2, odds1).detach().numpy()
+            predictions_1 = model(X1, X2, odds1, odds2).detach().cpu().numpy()
+            predictions_2 = 1 - model(X2, X1, odds2, odds1).detach().cpu().numpy()
 
         return predictions_1, predictions_2

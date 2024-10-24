@@ -180,6 +180,9 @@ class TestForecastDataset(unittest.TestCase):
         mock_model = MagicMock()
         mock_model.side_effect = mock_call_return_args
 
+        mock_model.to = MagicMock()
+        mock_model.to.return_value = mock_model
+
         # Call the method under test
         predictions_1, predictions_2 = forecast_dataset.get_forecast_prediction(
             fighter_names=fighter_ids,
@@ -233,6 +236,9 @@ class TestForecastDataset(unittest.TestCase):
         # Mock the model's forward method to return fixed predictions
         mock_model = MagicMock()
         mock_model.side_effect = mock_call_return_args
+
+        mock_model.to = MagicMock()
+        mock_model.to.return_value = mock_model
 
         # Call the method under test
         predictions_1, predictions_2 = forecast_dataset.get_forecast_prediction(

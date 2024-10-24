@@ -163,7 +163,6 @@ class DataProcessor:
 
         # I am merging the fighter data to the previous table
         # This includes height, reach etc...
-        fighter_fields = ["fighter_id", "fighter_name", "fighter_nickname"]
         fighter_data["fighter_name"] = (
             fighter_data["fighter_f_name"]
             + " "
@@ -267,6 +266,7 @@ class DataProcessor:
             The dataframe with the odds in decimal format.
         """
         for field in "opening", "closing_range_min", "closing_range_max":
+            data[field] = data[field].astype(float)
             msk = data[field] > 0
 
             data.loc[msk, field] = data.loc[msk, field] / 100 + 1
@@ -408,11 +408,11 @@ class DataProcessor:
         """
         return [
             c
-            for c in self.scraper.fight_scraper.rounds_handler.columns
+            for c in self.scraper.fight_scraper.rounds_handler.dtypes.keys()
             if c not in ["fight_id", "fighter_id", "round"]
         ] + [
             c + "_opponent"
-            for c in self.scraper.fight_scraper.rounds_handler.columns
+            for c in self.scraper.fight_scraper.rounds_handler.dtypes.keys()
             if c not in ["fight_id", "fighter_id", "round"]
         ]
 

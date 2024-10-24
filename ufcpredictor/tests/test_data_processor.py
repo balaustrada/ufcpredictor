@@ -206,8 +206,9 @@ class BaseTestDataProcessor(object):
 
     def test_round_stat_names(self):
         """Test the round_stat_names property."""
-        # Mock the data inside scraper's fight_scraper.rounds_handler.columns
-        self.processor.scraper.fight_scraper.rounds_handler.columns = [
+        # Mock the data inside scraper's fight_scraper.rounds_handler.dtypes.keys()
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys = MagicMock()
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys.return_value = [
             'fight_id', 'fighter_id', 'round', 'strikes', 'takedowns'
         ]
 
@@ -219,7 +220,8 @@ class BaseTestDataProcessor(object):
     def test_stat_names(self):
         """Test the stat_names property."""
         # Mock the round_stat_names property result
-        self.processor.scraper.fight_scraper.rounds_handler.columns = [
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys = MagicMock()
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys.return_value = [
             'fight_id', 'fighter_id', 'round', 'strikes', 'takedowns'
         ]
         
@@ -234,7 +236,8 @@ class BaseTestDataProcessor(object):
     def test_aggregated_fields(self):
         """Test the aggregated_fields property."""
         # Mock the round_stat_names result
-        self.processor.scraper.fight_scraper.rounds_handler.columns = [
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys = MagicMock()
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys.return_value = [
             'fight_id', 'fighter_id', 'round', 'strikes', 'takedowns'
         ]
         
@@ -249,7 +252,8 @@ class BaseTestDataProcessor(object):
     def test_normalized_fields(self):
         """Test the normalized_fields property."""
         # Mock the aggregated_fields result
-        self.processor.scraper.fight_scraper.rounds_handler.columns = [
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys = MagicMock()
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys.return_value = [
             'fight_id', 'fighter_id', 'round', 'strikes', 'takedowns'
         ]
         
@@ -282,7 +286,8 @@ class BaseTestDataProcessor(object):
         })
 
         # Mock round_stat_names
-        self.processor.scraper.fight_scraper.rounds_handler.columns = [
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys = MagicMock()
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys.return_value = [
             'fight_id', 'fighter_id', 'round', 'strikes', 'takedowns'
         ]
         
@@ -321,7 +326,8 @@ class TestDataProcessor(BaseTestDataProcessor, unittest.TestCase):
         self.processor.data = data.copy()
 
         # Mock aggregated_fields
-        self.processor.scraper.fight_scraper.rounds_handler.columns = [
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys = MagicMock()
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys.return_value = [
             'fight_id', 'fighter_id', 'round', 'strikes', 'takedowns'
         ]
 
@@ -368,7 +374,8 @@ class TestDataProcessor(BaseTestDataProcessor, unittest.TestCase):
         self.processor.data = data.copy()
 
         # Mock aggregated_fields
-        self.processor.scraper.fight_scraper.rounds_handler.columns = [
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys = MagicMock()
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys.return_value = [
             'fight_id', 'fighter_id', 'round', 'strikes', 'takedowns'
         ]
 
@@ -424,7 +431,8 @@ class TestDataProcessor(BaseTestDataProcessor, unittest.TestCase):
         self.processor.data = data.copy()
 
         # Mock aggregated_fields
-        self.processor.scraper.fight_scraper.rounds_handler.columns = [
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys = MagicMock()
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys.return_value = [
             'fight_id', 'fighter_id', 'round', 'strikes', 'takedowns'
         ]
 
@@ -474,7 +482,8 @@ class TestOSRDataProcessor(BaseTestDataProcessor, unittest.TestCase):
         self.processor.data = data.copy()
 
         # Mock aggregated_fields
-        self.processor.scraper.fight_scraper.rounds_handler.columns = [
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys = MagicMock()
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys.return_value = [
             'fight_id', 'fighter_id', 'round', 'strikes', 'takedowns'
         ]
 
@@ -528,7 +537,8 @@ class TestWOSRDataProcessor(BaseTestDataProcessor, unittest.TestCase):
         self.processor.data = data.copy()
 
         # Mock aggregated_fields
-        self.processor.scraper.fight_scraper.rounds_handler.columns = [
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys = MagicMock()
+        self.processor.scraper.fight_scraper.rounds_handler.dtypes.keys.return_value = [
             'fight_id', 'fighter_id', 'round', 'strikes', 'takedowns'
         ]
 

@@ -29,6 +29,9 @@ class TestPredictionPlots(unittest.TestCase):
             torch.tensor([0.2, 0.3, 0.9]),  # predictions_2 (1 - model)
         ]
 
+        # We mock to to return the same mock
+        mock_model.to = MagicMock(return_value=mock_model)
+
         # Call the function with mock data
         PredictionPlots.show_fight_prediction_detail(
             model=mock_model,
@@ -93,6 +96,9 @@ class TestPredictionPlots(unittest.TestCase):
             torch.tensor([0.8, 0.7]),  # predictions_1
             torch.tensor([0.2, 0.3]),  # predictions_2
         ]
+        
+        # We mock to to return the same mock
+        mock_model.to = MagicMock(return_value=mock_model)
 
         # Call the function with the mocked dataset
         PredictionPlots.show_fight_prediction_detail_from_dataset(

@@ -198,6 +198,7 @@ class BaseTestDataProcessor(object):
             'event_date': [pd.Timestamp('2009-01-01'), pd.Timestamp('2007-01-01')],
             'time_format': ['3 Rnd (5-5-5)', '3 Rnd (5-5-5)'],
             'gender': ['M', 'F'],
+            'winner': ['f1', 'f2'],
             'result': ['Decision', 'KO/TKO'],
         })
 

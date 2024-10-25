@@ -2735,7 +2735,7 @@ ufcpredictor.datasets to provide a seamless data preparation workflow.</p>
 <span class="sd">        - With non-standard fight formats (time_format not in [&quot;3 Rnd (5-5-5)&quot;, &quot;5 Rnd (5-5-5-5-5)&quot;])</span>
 <span class="sd">        - With female fighters (gender not in [&quot;M&quot;])</span>
 <span class="sd">        - With disqualified or doctor&#39;s stoppage results (result not in [&quot;Decision&quot;, &quot;KO/TKO&quot;, &quot;Submission&quot;])</span>
-<span class="sd">        - With draws or invalid winners (winner == &quot;Draw&quot; or winner.isna())</span>
+<span class="sd">        - With draws or invalid winners (winner not in (&quot;Draw&quot;, &quot;NC&quot;) or winner.isna())</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            data: The dataframe to be processed.</span>
@@ -2755,8 +2755,8 @@ ufcpredictor.datasets to provide a seamless data preparation workflow.</p>
         <span class="c1"># Remove disqualified and doctor&#39;s stoppage</span>
         <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="s2">&quot;Decision&quot;</span><span class="p">,</span> <span class="s2">&quot;KO/TKO&quot;</span><span class="p">,</span> <span class="s2">&quot;Submission&quot;</span><span class="p">])]</span>
 
-        <span class="c1"># Remove draws and invalid</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;winner&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;Draw&quot;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="o">~</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;winner&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">())]</span>
+        <span class="c1"># Remove draws and invalid and NC</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[(</span><span class="o">~</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;winner&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="s2">&quot;Draw&quot;</span><span class="p">,</span> <span class="s2">&quot;NC&quot;</span><span class="p">]))</span> <span class="o">&amp;</span> <span class="p">(</span><span class="o">~</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;winner&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">())]</span>
 
         <span class="k">return</span> <span class="n">data</span>
 
@@ -3771,7 +3771,7 @@ fighters.</p>
 - With non-standard fight formats (time_format not in ["3 Rnd (5-5-5)", "5 Rnd (5-5-5-5-5)"])
 - With female fighters (gender not in ["M"])
 - With disqualified or doctor's stoppage results (result not in ["Decision", "KO/TKO", "Submission"])
-- With draws or invalid winners (winner == "Draw" or winner.isna())</p>
+- With draws or invalid winners (winner not in ("Draw", "NC") or winner.isna())</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -3872,7 +3872,7 @@ fighters.</p>
 <span class="sd">    - With non-standard fight formats (time_format not in [&quot;3 Rnd (5-5-5)&quot;, &quot;5 Rnd (5-5-5-5-5)&quot;])</span>
 <span class="sd">    - With female fighters (gender not in [&quot;M&quot;])</span>
 <span class="sd">    - With disqualified or doctor&#39;s stoppage results (result not in [&quot;Decision&quot;, &quot;KO/TKO&quot;, &quot;Submission&quot;])</span>
-<span class="sd">    - With draws or invalid winners (winner == &quot;Draw&quot; or winner.isna())</span>
+<span class="sd">    - With draws or invalid winners (winner not in (&quot;Draw&quot;, &quot;NC&quot;) or winner.isna())</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        data: The dataframe to be processed.</span>
@@ -3892,8 +3892,8 @@ fighters.</p>
     <span class="c1"># Remove disqualified and doctor&#39;s stoppage</span>
     <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="s2">&quot;Decision&quot;</span><span class="p">,</span> <span class="s2">&quot;KO/TKO&quot;</span><span class="p">,</span> <span class="s2">&quot;Submission&quot;</span><span class="p">])]</span>
 
-    <span class="c1"># Remove draws and invalid</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;winner&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;Draw&quot;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="o">~</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;winner&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">())]</span>
+    <span class="c1"># Remove draws and invalid and NC</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[(</span><span class="o">~</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;winner&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="s2">&quot;Draw&quot;</span><span class="p">,</span> <span class="s2">&quot;NC&quot;</span><span class="p">]))</span> <span class="o">&amp;</span> <span class="p">(</span><span class="o">~</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;winner&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">())]</span>
 
     <span class="k">return</span> <span class="n">data</span>
 </code></pre></div></td></tr></table></div>

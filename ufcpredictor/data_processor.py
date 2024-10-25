@@ -362,6 +362,7 @@ class DataProcessor:
 
         return data
 
+
     @staticmethod
     def apply_filters(data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -372,6 +373,7 @@ class DataProcessor:
         - With non-standard fight formats (time_format not in ["3 Rnd (5-5-5)", "5 Rnd (5-5-5-5-5)"])
         - With female fighters (gender not in ["M"])
         - With disqualified or doctor's stoppage results (result not in ["Decision", "KO/TKO", "Submission"])
+        - With draws or invalid winners (winner not in ("Draw", "NC") or winner.isna())
 
         Args:
             data: The dataframe to be processed.
@@ -390,6 +392,9 @@ class DataProcessor:
 
         # Remove disqualified and doctor's stoppage
         data = data[data["result"].isin(["Decision", "KO/TKO", "Submission"])]
+
+        # Remove draws and invalid and NC
+        data = data[(~data["winner"].isin(["Draw", "NC"])) & (~data["winner"].isna())]
 
         return data
 

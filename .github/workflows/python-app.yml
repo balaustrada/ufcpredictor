@@ -29,7 +29,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 coverage pytest
+        pip install flake8 coverage
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         pip install git+https://github.com/balaustrada/ufcscraper.git
         pip install .

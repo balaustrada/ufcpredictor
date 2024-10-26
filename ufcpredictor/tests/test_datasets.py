@@ -1,4 +1,3 @@
-import pytest
 import torch
 import pandas as pd
 import numpy as np
@@ -35,7 +34,7 @@ class TestBasicDataset(unittest.TestCase):
         assert len(dataset) == 2  # 2 fights in fight_ids
 
         # Check columns not found error
-        with pytest.raises(ValueError):
+        with self.assertRaises(ValueError):
             BasicDataset(data_processor=mock_processor, fight_ids=fight_ids, X_set=["invalid_column"])
 
     def test_basic_dataset_load_data(self):

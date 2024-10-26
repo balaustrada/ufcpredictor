@@ -811,3 +811,134 @@ class WOSRDataProcessor(DataProcessor):
             diff = abs(new_OSR - df["OSR"]).sum()
 
         self.data_aggregated["OSR"] = new_OSR
+
+class ELODataProcessor(DataProcessor):
+    """
+    Extends the DataProcessor class to add ELO information.
+    """
+    def __init__(
+            self, *args: Any, initial_rating: float = 1000, K_factor: float = 32, **kwargs: Any
+    ) -> None:
+        """
+        Initialize an ELODataProcessor object.
+
+        Args:
+            *args: Any additional positional arguments to be passed to the superclass.
+            initial_rating: The initial rating for the ELO model. Defaults to 1000.
+            K_factor: The K-factor for the ELO model. Defaults to 32.
+            **kwargs: Any additional keyword arguments to be passed to the superclass.
+        """
+        super().__init__(*args, **kwargs)
+
+        self.initial_rating = initial_rating
+        self.K_factor = K_factor
+
+    @staticmethod
+    def expected_ELO_score(r1: float, r2: float) -> float:
+        """
+        Calculate the expected ELO score for a match between two fighters.
+
+        Args:
+            r1: The rating of the first fighter.
+            r2: The rating of the second fighter.
+
+        Returns:
+            The expected score for the match between the two fighters.
+        """
+        return 1 / (1 + 10 ** ((r2 - r1) / 400))
+
+    def add_ELO_rating(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Calculate and add ELO ratings to the dataframe.
+
+        Args:
+            data: The dataframe to add ELO ratings to.
+
+        Returns:
+            The dataframe with ELO ratings added.
+        """
+        ratings = {}
+        updated_ratings = []
+
+        for _, fight in data.sort_values(by="event_date", ascending=True).iterrows():
+            fighter_id = fight["fighter_id"]
+            opponent_id = fight["opponent_id"]
+            winner_id = fight["winner"]
+
+            # Get current ratings, or initialize if not present
+            rating_fighter = ratings.get(fighter_id, self.initial_rating)
+            rating_opponent = ratings.get(opponent_id, self.initial_rating)
+
+            # Calculate expected scores
+            E_fighter = self.expected_ELO_score(rating_fighter, rating_opponent)
+            E_opponent = self.expected_ELO_score(rating_opponent, rating_fighter)
+
+            # Determine scores based on the winner
+            S_fighter = 1 if winner_id == fighter_id else 0
+            S_opponent = 1 if winner_id == opponent_id else 0
+
+            # Update ratings
+            new_rating_fighter = rating_fighter + self.K_factor * (S_fighter - E_fighter)
+            new_rating_opponent = rating_opponent + self.K_factor * (S_opponent - E_opponent)
+
+            # Store the updated ratings
+            ratings[fighter_id] = new_rating_fighter
+            ratings[opponent_id] = new_rating_opponent
+
+            # Append the updated ratings to the list
+            updated_ratings.append(
+                {
+                    "fight_id": fight["fight_id"],
+                    "fighter_id": fighter_id,
+                    "ELO": new_rating_fighter, 
+                    "ELO_opponent": new_rating_opponent
+                }
+            )   
+        updated_ratings_df = pd.DataFrame(updated_ratings)
+
+        data = data.merge(
+            updated_ratings_df,
+            on=["fight_id", "fighter_id"],
+        )
+
+        return data
+    
+    def load_data(self) -> None:
+        """
+        Loads and processes all the data.
+
+        First, it joins all the relevant dataframes (fight, fighters, event, and odds).
+        Then, it fixes the date and time fields, converts the odds to decimal format,
+        fills the weight for each fighter (if not available), adds key statistics
+        (KO, Submission, and Win), applies filters to the data, and adds the ELO
+        rating to the data.
+
+        This method should be called before any other method.
+        """
+        super().load_data()
+        self.data = self.add_ELO_rating(self.data)
+
+    @property
+    def normalized_fields(self) -> List[str]:
+        """
+        The fields that are normalized over the fighter's history.
+
+        These fields are normalized in the sense that they are divided by
+        their mean value in the history of the fighter. This is done to
+        reduce the effect of outliers and to make the data more comparable
+        between different fighters.
+
+        The fields normalized are:
+        - "age"
+        - "time_since_last_fight"
+        - "fighter_height_cm"
+        - "ELO"
+        - All the aggregated fields (see :meth:`aggregated_fields`),
+          and the same fields with "_per_minute" and "_per_fight" appended,
+          which represent the aggregated fields per minute and per fight,
+          respectively.
+
+        Returns:
+            A list of strings, the names of the normalized fields.
+        """
+        return super().normalized_fields + ["ELO",]

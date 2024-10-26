@@ -153,10 +153,20 @@ class DataProcessor:
         data = pd.concat(
             [
                 fight_data.rename(
-                    columns={"fighter_1": "opponent_id", "fighter_2": "fighter_id"}
+                    columns={
+                        "fighter_1": "opponent_id", 
+                        "fighter_2": "fighter_id",
+                        "scores_1": "opponent_score",
+                        "scores_2": "fighter_score",
+                    }
                 ),
                 fight_data.rename(
-                    columns={"fighter_2": "opponent_id", "fighter_1": "fighter_id"}
+                    columns={
+                        "fighter_2": "opponent_id", 
+                        "fighter_1": "fighter_id",
+                        "scores_2": "opponent_score",
+                        "scores_1": "fighter_score",
+                        }
                 ),
             ]
         )

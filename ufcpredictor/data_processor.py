@@ -154,7 +154,7 @@ class DataProcessor:
             [
                 fight_data.rename(
                     columns={
-                        "fighter_1": "opponent_id", 
+                        "fighter_1": "opponent_id",
                         "fighter_2": "fighter_id",
                         "scores_1": "opponent_score",
                         "scores_2": "fighter_score",
@@ -162,11 +162,11 @@ class DataProcessor:
                 ),
                 fight_data.rename(
                     columns={
-                        "fighter_2": "opponent_id", 
+                        "fighter_2": "opponent_id",
                         "fighter_1": "fighter_id",
                         "scores_2": "opponent_score",
                         "scores_1": "fighter_score",
-                        }
+                    }
                 ),
             ]
         )
@@ -371,7 +371,6 @@ class DataProcessor:
         data["age"] = (data["event_date"] - data["fighter_dob"]).dt.days / 365
 
         return data
-
 
     @staticmethod
     def apply_filters(data: pd.DataFrame) -> pd.DataFrame:
@@ -812,12 +811,18 @@ class WOSRDataProcessor(DataProcessor):
 
         self.data_aggregated["OSR"] = new_OSR
 
+
 class ELODataProcessor(DataProcessor):
     """
     Extends the DataProcessor class to add ELO information.
     """
+
     def __init__(
-            self, *args: Any, initial_rating: float = 1000, K_factor: float = 32, **kwargs: Any
+        self,
+        *args: Any,
+        initial_rating: float = 1000,
+        K_factor: float = 32,
+        **kwargs: Any,
     ) -> None:
         """
         Initialize an ELODataProcessor object.
@@ -860,7 +865,12 @@ class ELODataProcessor(DataProcessor):
         ratings = {}
         updated_ratings = []
 
-        for _, fight in data.sort_values(by="event_date", ascending=True).iterrows():
+        unique_fights = data.drop_duplicates(subset="fight_id")
+
+        for _, fight in unique_fights.sort_values(
+            by="event_date", ascending=True
+        ).iterrows():
+            fight_id = fight["fight_id"]
             fighter_id = fight["fighter_id"]
             opponent_id = fight["opponent_id"]
             winner_id = fight["winner"]
@@ -878,22 +888,35 @@ class ELODataProcessor(DataProcessor):
             S_opponent = 1 if winner_id == opponent_id else 0
 
             # Update ratings
-            new_rating_fighter = rating_fighter + self.K_factor * (S_fighter - E_fighter)
-            new_rating_opponent = rating_opponent + self.K_factor * (S_opponent - E_opponent)
+            new_rating_fighter = rating_fighter + self.K_factor * (
+                S_fighter - E_fighter
+            )
+            new_rating_opponent = rating_opponent + self.K_factor * (
+                S_opponent - E_opponent
+            )
 
             # Store the updated ratings
             ratings[fighter_id] = new_rating_fighter
             ratings[opponent_id] = new_rating_opponent
 
             # Append the updated ratings to the list
-            updated_ratings.append(
-                {
-                    "fight_id": fight["fight_id"],
-                    "fighter_id": fighter_id,
-                    "ELO": new_rating_fighter, 
-                    "ELO_opponent": new_rating_opponent
-                }
-            )   
+            updated_ratings.extend(
+                [
+                    {
+                        "fight_id": fight_id,
+                        "fighter_id": fighter_id,
+                        "ELO": new_rating_fighter,
+                        "ELO_opponent": new_rating_opponent,
+                    },
+                    {
+                        "fight_id": fight_id,
+                        "fighter_id": opponent_id,
+                        "ELO": new_rating_opponent,
+                        "ELO_opponent": new_rating_fighter,
+                    },
+                ]
+            )
+
         updated_ratings_df = pd.DataFrame(updated_ratings)
 
         data = data.merge(
@@ -902,7 +925,7 @@ class ELODataProcessor(DataProcessor):
         )
 
         return data
-    
+
     def load_data(self) -> None:
         """
         Loads and processes all the data.
@@ -941,4 +964,184 @@ class ELODataProcessor(DataProcessor):
         Returns:
             A list of strings, the names of the normalized fields.
         """
-        return super().normalized_fields + ["ELO",]
+        return super().normalized_fields + [
+            "ELO",
+        ]
+
+
+class FlexibleELODataProcessor(ELODataProcessor):
+    def __init__(
+        self,
+        *args: any,
+        n_boost_bins: int = 3,
+        boost_values: List[float] = [1, 1.2, 1.4],
+        **kwargs: Any,
+    ):
+        super().__init__(*args, **kwargs)
+
+        self.n_boost_bins = n_boost_bins
+        self.boost_values = boost_values
+
+        self.boost_bins = np.concatenate(
+            (
+                np.linspace(0, 50, n_boost_bins + 1)[:-1],
+                np.linspace(50, 100, n_boost_bins + 1)[1:],
+            )
+        )
+        self.boost_factors = [1 / x for x in boost_values][::-1] + boost_values[1:]
+
+    def get_scores(self, series: pd.Series) -> pd.Series:
+        z_score = (series - series.mean()) / series.std()
+        percentile = z_score.rank(pct=True) * 100
+
+        return pd.cut(
+            percentile,
+            bins=self.boost_bins,
+            labels=self.boost_factors,
+            right=False,
+        ).astype(float)
+
+    def add_scores(self, data: pd.DataFrame) -> pd.DataFrame:
+        strikes_score = self.get_scores(
+            data["strikes_succ"] - data["strikes_succ_opponent"]
+        )
+
+        takedowns_scores = self.get_scores(
+            data["takedown_succ"] - data["takedown_succ_opponent"]
+        )
+
+        control_scores = self.get_scores(data["ctrl_time"] - data["ctrl_time_opponent"])
+
+        knockdown_scores = self.get_scores(
+            data["knockdowns"] - data["knockdowns_opponent"]
+        )
+
+        submission_scores = self.get_scores(
+            (data["Sub"] - data["Sub_opponent"]).apply(
+                lambda x: (
+                    self.boost_factors[-1]
+                    if x == 1
+                    else (1 if x == 0 else self.boost_factors[0])
+                )
+            )
+        )
+
+        KO_scores = self.get_scores(
+            (data["KO"] - data["KO_opponent"]).apply(
+                lambda x: (
+                    self.boost_factors[-1]
+                    if x == 1
+                    else (1 if x == 0 else self.boost_factors[0])
+                )
+            )
+        )
+
+        win_score = (data["winner"] == data["fighter_id"]).apply(
+            lambda x: self.boost_factors[-1] if x else 1
+        )
+
+        points_score = self.get_scores(
+            self.data["fighter_score"] - self.data["opponent_score"]
+        )
+
+        match_score = 1
+        for score in (
+            strikes_score,
+            takedowns_scores,
+            control_scores,
+            knockdown_scores,
+            submission_scores,
+            KO_scores,
+            win_score,
+            points_score,
+        ):
+            match_score *= score.fillna(1)
+
+        data["match_score"] = match_score
+
+        return data
+
+    def add_ELO_rating(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Calculate and add ELO ratings to the dataframe.
+
+        Args:
+            data: The dataframe to add ELO ratings to.
+
+        Returns:
+            The dataframe with ELO ratings added.
+        """
+        ratings = {}
+        updated_ratings = []
+
+        data = self.add_scores(data)
+        unique_fights = data.drop_duplicates(subset="fight_id")
+
+        unique_fights = unique_fights.merge(
+            data[["fight_id", "fighter_id", "match_score"]],
+            left_on=["fight_id", "opponent_id"],
+            right_on=["fight_id", "fighter_id"],
+            suffixes=("", "_opponent"),
+        )
+
+        for _, fight in unique_fights.sort_values(
+            by="event_date", ascending=True
+        ).iterrows():
+            fight_id = fight["fight_id"]
+            fighter_id = fight["fighter_id"]
+            opponent_id = fight["opponent_id"]
+            winner_id = fight["winner"]
+            match_score = fight["match_score"]
+            match_score_opponent = fight["match_score_opponent"]
+
+            # Get current ratings, or initialize if not present
+            rating_fighter = ratings.get(fighter_id, self.initial_rating)
+            rating_opponent = ratings.get(opponent_id, self.initial_rating)
+
+            # Calculate expected scores
+            E_fighter = self.expected_ELO_score(rating_fighter, rating_opponent)
+            E_opponent = self.expected_ELO_score(rating_opponent, rating_fighter)
+
+            # Determine scores based on the winner
+            S_fighter = 1 if winner_id == fighter_id else 0
+            S_opponent = 1 if winner_id == opponent_id else 0
+
+            # Update ratings
+            new_rating_fighter = rating_fighter + self.K_factor * match_score * (
+                S_fighter - E_fighter
+            )
+            new_rating_opponent = (
+                rating_opponent
+                + self.K_factor * match_score_opponent * (S_opponent - E_opponent)
+            )
+
+            # Store the updated ratings
+            ratings[fighter_id] = new_rating_fighter
+            ratings[opponent_id] = new_rating_opponent
+
+            # Append the updated ratings to the list
+            updated_ratings.extend(
+                [
+                    {
+                        "fight_id": fight_id,
+                        "fighter_id": fighter_id,
+                        "ELO": new_rating_fighter,
+                        "ELO_opponent": new_rating_opponent,
+                    },
+                    {
+                        "fight_id": fight_id,
+                        "fighter_id": opponent_id,
+                        "ELO": new_rating_opponent,
+                        "ELO_opponent": new_rating_fighter,
+                    },
+                ]
+            )
+
+        updated_ratings_df = pd.DataFrame(updated_ratings)
+
+        data = data.merge(
+            updated_ratings_df,
+            on=["fight_id", "fighter_id"],
+        )
+
+        return data

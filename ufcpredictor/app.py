@@ -14,7 +14,7 @@ import numpy as np
 import torch
 from huggingface_hub import snapshot_download
 
-from ufcpredictor.data_processor import WOSRDataProcessor as DataProcessor
+from ufcpredictor.data_processor import ELODataProcessor as DataProcessor
 from ufcpredictor.datasets import ForecastDataset
 from ufcpredictor.models import SymmetricFightNet
 from ufcpredictor.utils import convert_odds_to_decimal
@@ -51,7 +51,7 @@ X_set = [
     "Sub_opponent_per_fight",
     "distance_strikes_att_per_minute",
     "knockdowns_per_minute",
-    "OSR",
+    "ELO",
 ]
 
 

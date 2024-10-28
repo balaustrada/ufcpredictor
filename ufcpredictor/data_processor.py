@@ -1145,3 +1145,162 @@ class FlexibleELODataProcessor(ELODataProcessor):
         )
 
         return data
+
+
+class SumFlexibleELODataProcessor(ELODataProcessor):
+    def __init__(
+        self,
+        *args: any,
+        scaling_factor: float = 0.5,
+        **kwargs: Any,
+    ):
+        super().__init__(*args, **kwargs)
+
+        self.scaling_factor = scaling_factor
+
+    def get_scores(self, series: pd.Series) -> pd.Series:
+        z_score = (series - series.mean()) / series.std()
+        return z_score.rank(pct=True)
+
+    def add_scores(self, data: pd.DataFrame) -> pd.DataFrame:
+        strikes_score = self.get_scores(
+            data["strikes_succ"] - data["strikes_succ_opponent"]
+        )
+
+        takedowns_scores = self.get_scores(
+            data["takedown_succ"] - data["takedown_succ_opponent"]
+        )
+
+        control_scores = self.get_scores(data["ctrl_time"] - data["ctrl_time_opponent"])
+
+        knockdown_scores = self.get_scores(
+            data["knockdowns"] - data["knockdowns_opponent"]
+        )
+
+        submission_scores = self.get_scores(
+            (data["Sub"] - data["Sub_opponent"]).apply(
+                lambda x: 1 if x == 1 else 0
+        ))
+
+        KO_scores = self.get_scores(
+            (data["KO"] - data["KO_opponent"]).apply(
+                lambda x: 1 if x == 1 else 0
+        ))
+
+        win_score = (data["winner"] == data["fighter_id"]).apply(
+            lambda x: 1 if x else 0
+        )
+
+        points_score = self.get_scores(
+            self.data["fighter_score"] - self.data["opponent_score"]
+        )
+
+        match_score = 0
+        for score in (
+            strikes_score,
+            takedowns_scores,
+            control_scores,
+            knockdown_scores,
+            submission_scores,
+            KO_scores,
+            win_score,
+            points_score,
+        ):
+            match_score += score.fillna(0)
+
+        data["match_score"] = (
+            strikes_score
+            + takedowns_scores
+            + control_scores
+            + knockdown_scores
+            + submission_scores
+            + KO_scores
+            + win_score
+            + points_score
+        ) / 8
+
+        return data
+
+    def add_ELO_rating(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Calculate and add ELO ratings to the dataframe.
+
+        Args:
+            data: The dataframe to add ELO ratings to.
+
+        Returns:
+            The dataframe with ELO ratings added.
+        """
+        ratings = {}
+        updated_ratings = []
+
+        data = self.add_scores(data)
+        unique_fights = data.drop_duplicates(subset="fight_id")
+
+        unique_fights = unique_fights.merge(
+            data[["fight_id", "fighter_id", "match_score"]],
+            left_on=["fight_id", "opponent_id"],
+            right_on=["fight_id", "fighter_id"],
+            suffixes=("", "_opponent"),
+        )
+
+        for _, fight in unique_fights.sort_values(
+            by="event_date", ascending=True
+        ).iterrows():
+            fight_id = fight["fight_id"]
+            fighter_id = fight["fighter_id"]
+            opponent_id = fight["opponent_id"]
+            winner_id = fight["winner"]
+            match_score = fight["match_score"]
+            match_score_opponent = fight["match_score_opponent"]
+
+            # Get current ratings, or initialize if not present
+            rating_fighter = ratings.get(fighter_id, self.initial_rating)
+            rating_opponent = ratings.get(opponent_id, self.initial_rating)
+
+            # Calculate expected scores
+            E_fighter = self.expected_ELO_score(rating_fighter, rating_opponent)
+            E_opponent = self.expected_ELO_score(rating_opponent, rating_fighter)
+
+            # Determine scores based on the winner
+            S_fighter = 1 if winner_id == fighter_id else 0
+            S_opponent = 1 if winner_id == opponent_id else 0
+
+            # Update ratings
+            new_rating_fighter = rating_fighter + self.K_factor * (
+                S_fighter - E_fighter + self.scaling_factor * (match_score-50)/100
+            )
+            new_rating_opponent = rating_opponent + self.K_factor * (
+                S_opponent - E_opponent + self.scaling_factor * (match_score_opponent-50)/100
+            )
+
+            # Store the updated ratings
+            ratings[fighter_id] = new_rating_fighter
+            ratings[opponent_id] = new_rating_opponent
+
+            # Append the updated ratings to the list
+            updated_ratings.extend(
+                [
+                    {
+                        "fight_id": fight_id,
+                        "fighter_id": fighter_id,
+                        "ELO": new_rating_fighter,
+                        "ELO_opponent": new_rating_opponent,
+                    },
+                    {
+                        "fight_id": fight_id,
+                        "fighter_id": opponent_id,
+                        "ELO": new_rating_opponent,
+                        "ELO_opponent": new_rating_fighter,
+                    },
+                ]
+            )
+
+        updated_ratings_df = pd.DataFrame(updated_ratings)
+
+        data = data.merge(
+            updated_ratings_df,
+            on=["fight_id", "fighter_id"],
+        )
+
+        return data

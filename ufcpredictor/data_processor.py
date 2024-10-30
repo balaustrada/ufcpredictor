@@ -37,6 +37,7 @@ class DataProcessor:
     The DataProcessor is designed to work with the dataset classes in
     ufcpredictor.datasets to provide a seamless data preparation workflow.
     """
+    params: List[str] = []
 
     def __init__(
         self,
@@ -712,6 +713,7 @@ class WOSRDataProcessor(DataProcessor):
         new_OSR = (w1*old_OSR + w2*mean_OSR_opponents + w3*wins/n_fights)
     the weights are [w1, w2, w3]
     """
+    params = ["weights",]
 
     def __init__(
         self, *args: Any, weights: List[float] = [0.3, 0.3, 0.3], **kwargs: Any
@@ -816,6 +818,7 @@ class ELODataProcessor(DataProcessor):
     """
     Extends the DataProcessor class to add ELO information.
     """
+    params = ["initial_rating", "K_factor",]
 
     def __init__(
         self,
@@ -970,6 +973,8 @@ class ELODataProcessor(DataProcessor):
 
 
 class FlexibleELODataProcessor(ELODataProcessor):
+    params = ELODataProcessor.params + ["n_boost_bins", "boost_values"]
+
     def __init__(
         self,
         *args: any,
@@ -1148,6 +1153,8 @@ class FlexibleELODataProcessor(ELODataProcessor):
 
 
 class SumFlexibleELODataProcessor(ELODataProcessor):
+    params = ELODataProcessor.params + ["scaling_factor",]
+    
     def __init__(
         self,
         *args: any,

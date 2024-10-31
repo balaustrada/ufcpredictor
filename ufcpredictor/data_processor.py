@@ -37,6 +37,7 @@ class DataProcessor:
     The DataProcessor is designed to work with the dataset classes in
     ufcpredictor.datasets to provide a seamless data preparation workflow.
     """
+
     params: List[str] = []
 
     def __init__(
@@ -713,7 +714,10 @@ class WOSRDataProcessor(DataProcessor):
         new_OSR = (w1*old_OSR + w2*mean_OSR_opponents + w3*wins/n_fights)
     the weights are [w1, w2, w3]
     """
-    params = ["weights",]
+
+    params = [
+        "weights",
+    ]
 
     def __init__(
         self, *args: Any, weights: List[float] = [0.3, 0.3, 0.3], **kwargs: Any
@@ -818,7 +822,11 @@ class ELODataProcessor(DataProcessor):
     """
     Extends the DataProcessor class to add ELO information.
     """
-    params = ["initial_rating", "K_factor",]
+
+    params = [
+        "initial_rating",
+        "K_factor",
+    ]
 
     def __init__(
         self,
@@ -1153,8 +1161,10 @@ class FlexibleELODataProcessor(ELODataProcessor):
 
 
 class SumFlexibleELODataProcessor(ELODataProcessor):
-    params = ELODataProcessor.params + ["scaling_factor",]
-    
+    params = ELODataProcessor.params + [
+        "scaling_factor",
+    ]
+
     def __init__(
         self,
         *args: any,
@@ -1185,14 +1195,12 @@ class SumFlexibleELODataProcessor(ELODataProcessor):
         )
 
         submission_scores = self.get_scores(
-            (data["Sub"] - data["Sub_opponent"]).apply(
-                lambda x: 1 if x == 1 else 0
-        ))
+            (data["Sub"] - data["Sub_opponent"]).apply(lambda x: 1 if x == 1 else 0)
+        )
 
         KO_scores = self.get_scores(
-            (data["KO"] - data["KO_opponent"]).apply(
-                lambda x: 1 if x == 1 else 0
-        ))
+            (data["KO"] - data["KO_opponent"]).apply(lambda x: 1 if x == 1 else 0)
+        )
 
         win_score = (data["winner"] == data["fighter_id"]).apply(
             lambda x: 1 if x else 0
@@ -1275,10 +1283,12 @@ class SumFlexibleELODataProcessor(ELODataProcessor):
 
             # Update ratings
             new_rating_fighter = rating_fighter + self.K_factor * (
-                S_fighter - E_fighter + self.scaling_factor * (match_score-50)/100
+                S_fighter - E_fighter + self.scaling_factor * (match_score - 50) / 100
             )
             new_rating_opponent = rating_opponent + self.K_factor * (
-                S_opponent - E_opponent + self.scaling_factor * (match_score_opponent-50)/100
+                S_opponent
+                - E_opponent
+                + self.scaling_factor * (match_score_opponent - 50) / 100
             )
 
             # Store the updated ratings

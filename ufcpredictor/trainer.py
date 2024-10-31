@@ -78,7 +78,6 @@ class Trainer:
 
         if self.mlflow_tracking:
             params = {
-                "loss_function": self.loss_fn.__class__.__name__,
                 "optimizer": self.optimizer.__class__.__name__,
                 "learning_rate": self.optimizer.param_groups[0]["lr"],
                 "scheduler": (
@@ -89,17 +88,14 @@ class Trainer:
                 "scheduler_patience": (
                     self.scheduler.patience if self.scheduler else None
                 ),
-                "model": self.model.__class__.__name__,
-                "data_processor": self.train_loader.dataset.data_processor.__class__.__name__,
             }
-            for param in self.train_loader.dataset.data_processor.params:
-                params["data_processor_" + param] = getattr(
-                    self.train_loader.dataset.data_processor,
-                    param,
-                )
-            for param in self.model.params:
-                params["model_" + param] = getattr(self.model, param)
-
+            for label, object_ in zip(
+                ["loss_function", "model", "data_processor"],
+                [self.loss_fn, self.model, self.train_loader.dataset.data_processor],
+            ):
+                params[label] = object_.__class__.__name__
+                for param in object_.params:
+                    params[label + "_" + param] = getattr(object_, param)
             mlflow.log_params(dict(sorted(params.items())))
 
     def train(

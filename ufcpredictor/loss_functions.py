@@ -11,6 +11,10 @@ from torch import nn
 
 
 class BettingLoss(nn.Module):
+
+    params = [
+        "max_bet",
+    ]
     def __init__(self, max_bet: float = 10) -> None:
         """
         Initializes the BettingLoss instance.

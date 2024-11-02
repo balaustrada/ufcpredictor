@@ -151,7 +151,8 @@ class BasicDataset(Dataset):
         # We shift stats because the input for the model should be the
         # stats prior to the fight
         for x in self.X_set:
-            reduced_data[x] = reduced_data.groupby("fighter_id")[x].shift(1)
+            if x not in ["age", "num_fight", "time_since_last_fight"]:
+                reduced_data[x] = reduced_data.groupby("fighter_id")[x].shift(1)
 
         # We remove invalid fights
         reduced_data = reduced_data[reduced_data["fight_id"].isin(self.fight_ids)]

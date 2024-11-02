@@ -371,6 +371,7 @@ class DataProcessor:
         data["win"] = np.where(data["winner"] == data["fighter_id"], 1, 0)
         data["win_opponent"] = np.where(data["winner"] != data["fighter_id"], 1, 0)
         data["age"] = (data["event_date"] - data["fighter_dob"]).dt.days / 365
+        data["age"] = (data["age"].rank(pct=True) * 100) ** 1.2
 
         return data
 
@@ -541,9 +542,42 @@ class DataProcessor:
         """
         logger.info(f"Fields to be aggregated: {self.aggregated_fields}")
 
-        data_aggregated = self.data.copy()
-        data_aggregated["num_fight"] = (
-            data_aggregated.groupby("fighter_id").cumcount() + 1
+        data = self.data[["fight_id", "fighter_id", "event_date", "total_time"] + self.aggregated_fields]
+
+        data_merged = data.drop(columns=self.aggregated_fields + ["total_time"]).merge(
+            data,
+            on="fighter_id",
+            suffixes=("", "_prev"),
+        )
+
+        # Now only preserve combinations where the previous fight is
+        # before the current fight.
+        data_merged = data_merged[
+            data_merged["event_date_prev"] < data_merged["event_date"]
+        ]
+
+        # Compute the distance from previous to current
+        data_merged["weight"] = np.exp(-0.0004 * (data_merged["event_date"] - data_merged["event_date_prev"]).dt.days)
+
+        for column in self.aggregated_fields:
+            data_merged[column] = data_merged[column].astype(float)
+            data_merged[column] = data_merged[column] * data_merged["weight"]
+
+        data_merged["num_fight"] = 1 # This will sum up to the total number of fights.
+        data_merged["total_time"] = data_merged["total_time"]
+        data_merged["weighted_num_fight"] = data_merged["num_fight"] * data_merged["weight"]
+        data_merged["weighted_total_time"] = data_merged["total_time"] * data_merged["weight"]
+        
+        data_aggregated = data_merged.drop(columns=["event_date","event_date_prev", "fight_id_prev"]).groupby(
+            ["fighter_id", "fight_id"]
+        ).sum().reset_index()
+
+        for column in self.aggregated_fields:# + ["weighted_num_fight", "weighted_total_time"]: # Not clear If I should normalize these two quantities.
+            data_aggregated[column] = data_aggregated[column] / data_aggregated["weight"]
+
+        data_aggregated = self.data.drop(columns=self.aggregated_fields).merge(
+            data_aggregated.drop(columns=["weight"]),
+            on=["fighter_id", "fight_id"],
         )
 
         data_aggregated["previous_fight_date"] = data_aggregated.groupby("fighter_id")[
@@ -553,17 +587,39 @@ class DataProcessor:
             data_aggregated["event_date"] - data_aggregated["previous_fight_date"]
         ).dt.days
 
-        for column in self.aggregated_fields:
-            data_aggregated[column] = data_aggregated[column].astype(float)
-            data_aggregated[column] = data_aggregated.groupby("fighter_id")[
-                column
-            ].cumsum()
-
-        data_aggregated["total_time"] = data_aggregated.groupby("fighter_id")[
-            "total_time"
-        ].cumsum()
-
         self.data_aggregated = data_aggregated
+
+
+
+        # data_aggregated["num_fight"] = (
+        #     data_aggregated.groupby("fighter_id").cumcount() + 1
+        # )
+        # data_aggregated["num_fight"] = data_aggregated[
+        #     "num_fight"
+        # ] - data_aggregated.groupby("fighter_id")["num_fight"].shift(6).fillna(0)
+
+        # data_aggregated["previous_fight_date"] = data_aggregated.groupby("fighter_id")[
+        #     "event_date"
+        # ].shift(1)
+        # data_aggregated["time_since_last_fight"] = (
+        #     data_aggregated["event_date"] - data_aggregated["previous_fight_date"]
+        # ).dt.days
+
+        # for column in self.aggregated_fields:
+        #     data_aggregated[column] = data_aggregated[column].astype(float)
+        #     data_aggregated[column] = data_aggregated.groupby("fighter_id")[
+        #         column
+        #     ].cumsum()
+
+        #     data_aggregated[column] = data_aggregated[column] - data_aggregated.groupby(
+        #         "fighter_id"
+        #     )[column].shift(6).fillna(0)
+
+        # data_aggregated["total_time"] = data_aggregated.groupby("fighter_id")[
+        #     "total_time"
+        # ].cumsum()
+
+        # self.data_aggregated = data_aggregated
 
     def add_per_minute_and_fight_stats(self) -> None:
         """
@@ -587,10 +643,10 @@ class DataProcessor:
 
         for column in self.aggregated_fields:
             new_columns[column + "_per_minute"] = (
-                self.data_aggregated[column] / self.data_aggregated["total_time"]
+                self.data_aggregated[column] / self.data_aggregated["weighted_total_time"]
             )
             new_columns[column + "_per_fight"] = (
-                self.data_aggregated[column] / self.data_aggregated["num_fight"]
+                self.data_aggregated[column] / self.data_aggregated["weighted_num_fight"]
             )
 
         self.data_aggregated = pd.concat(

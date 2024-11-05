@@ -14,7 +14,7 @@ import numpy as np
 import torch
 from huggingface_hub import snapshot_download
 
-from ufcpredictor.data_processor import ELODataProcessor as DataProcessor
+from ufcpredictor.data_processor import SumFlexibleELODataProcessor as DataProcessor
 from ufcpredictor.datasets import ForecastDataset
 from ufcpredictor.models import SymmetricFightNet
 from ufcpredictor.utils import convert_odds_to_decimal
@@ -27,31 +27,65 @@ if TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 X_set = [
-    "clinch_strikes_att_opponent_per_minute",
-    "time_since_last_fight",
-    "total_strikes_succ_opponent_per_minute",
-    "takedown_succ_per_minute",
-    "KO_opponent_per_minute",
-    "takedown_att_per_minute",
-    "takedown_succ_opponent_per_minute",
-    "win_opponent_per_fight",
-    "head_strikes_succ_opponent_per_minute",
-    "clinch_strikes_succ_opponent_per_minute",
-    "ground_strikes_succ_opponent_per_minute",
-    "ground_strikes_att_per_minute",
-    "head_strikes_succ_per_minute",
-    "age",
-    "distance_strikes_succ_per_minute",
-    "body_strikes_succ_per_minute",
-    "strikes_succ_opponent_per_minute",
-    "leg_strikes_att_per_minute",
-    "reversals_opponent_per_minute",
-    "strikes_succ_per_minute",
-    "distance_strikes_att_opponent_per_minute",
-    "Sub_opponent_per_fight",
-    "distance_strikes_att_per_minute",
-    "knockdowns_per_minute",
-    "ELO",
+        "age",
+        # "body_strikes_att_opponent_per_minute",
+        # "body_strikes_att_per_minute",
+        "body_strikes_succ_opponent_per_minute",
+        "body_strikes_succ_per_minute",
+        # "clinch_strikes_att_opponent_per_minute",
+        # "clinch_strikes_att_per_minute",
+        "clinch_strikes_succ_opponent_per_minute",
+        "clinch_strikes_succ_per_minute",
+        "ctrl_time_opponent_per_minute",
+        "ctrl_time_per_minute",
+        # "distance_strikes_att_opponent_per_minute",
+        # "distance_strikes_att_per_minute",
+        "distance_strikes_succ_opponent_per_minute",
+        "distance_strikes_succ_per_minute",
+        "fighter_height_cm",
+        # "ground_strikes_att_opponent_per_minute",
+        # "ground_strikes_att_per_minute",
+        "ground_strikes_succ_opponent_per_minute",
+        "ground_strikes_succ_per_minute",
+        # "head_strikes_att_opponent_per_minute",
+        # "head_strikes_att_per_minute",
+        "head_strikes_succ_opponent_per_minute",
+        "head_strikes_succ_per_minute",
+        "knockdowns_opponent_per_minute",
+        "knockdowns_per_minute",
+        # "KO_opponent_per_fight",
+        "KO_opponent_per_minute",
+        "KO_per_fight",
+        "KO_per_minute",
+        # "leg_strikes_att_opponent_per_minute",
+        # "leg_strikes_att_per_minute",
+        "leg_strikes_succ_opponent_per_minute",
+        "leg_strikes_succ_per_minute",
+        "num_fight",
+        # "reversals_opponent_per_minute",
+        # "reversals_per_minute",
+        # "strikes_att_opponent_per_minute",
+        # "strikes_att_per_minute",
+        "strikes_succ_opponent_per_minute",
+        "strikes_succ_per_minute",
+        # "Sub_opponent_per_fight",
+        "Sub_opponent_per_minute",
+        # "Sub_per_fight",
+        "Sub_per_minute",
+        "submission_att_opponent_per_minute",
+        "submission_att_per_minute",
+        # "takedown_att_opponent_per_minute",
+        # "takedown_att_per_minute",
+        "takedown_succ_opponent_per_minute",
+        "takedown_succ_per_minute",
+        "time_since_last_fight",
+        # "total_strikes_att_opponent_per_minute",
+        # "total_strikes_att_per_minute",
+        "total_strikes_succ_opponent_per_minute",
+        "total_strikes_succ_per_minute",
+        "win_opponent_per_fight",
+        "win_per_fight",
+        "ELO",
 ]
 
 
@@ -80,9 +114,14 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
             repo_type="dataset",
             local_dir=args.data_folder,
         )
-
+    data_processor_kwargs = {
+        "data_folder": args.data_folder,
+        "scaling_factor": 0.5,
+        # "boost_values": [1, 2, 3],
+        "K_factor": 40,
+    }
     logger.info("Loading data...")
-    data_processor = DataProcessor(args.data_folder)
+    data_processor = DataProcessor(**data_processor_kwargs)
     data_processor.load_data()
     data_processor.aggregate_data()
     data_processor.add_per_minute_and_fight_stats()

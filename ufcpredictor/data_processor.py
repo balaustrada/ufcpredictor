@@ -315,6 +315,8 @@ class DataProcessor:
             & (data["weight_class"] != "Open Weight")
         ]
 
+        data["weight"] = data["weight"] #(data["weight"].rank(pct=True) * 100) ** 4
+        data["fighter_height_cm"] = (data["fighter_height_cm"].rank(pct=True) * 100) ** 4
         return data
 
     @staticmethod
@@ -489,7 +491,7 @@ class DataProcessor:
         Returns:
             A list of strings, the names of the normalized fields.
         """
-        normalized_fields = ["age", "time_since_last_fight", "fighter_height_cm"]
+        normalized_fields = ["age", "time_since_last_fight", "fighter_height_cm", "weight"]
 
         for field in self.aggregated_fields:
             normalized_fields += [field, field + "_per_minute", field + "_per_fight"]

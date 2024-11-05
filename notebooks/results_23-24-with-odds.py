@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.3
+#       jupytext_version: 1.16.4
 #   kernelspec:
-#     display_name: kaggle
+#     display_name: Python 3 (ipykernel)
 #     language: python
-#     name: kaggle
+#     name: python3
 # ---
 
 # %% [markdown]
@@ -38,7 +38,13 @@ import numpy as np
 import torch
 from huggingface_hub import snapshot_download
 
-from ufcpredictor.data_processor import WOSRDataProcessor as DataProcessor
+from ufcpredictor.data_processor import (
+    OSRDataProcessor,
+    SumFlexibleELODataProcessor,
+    WOSRDataProcessor,
+    ELODataProcessor,
+    FlexibleELODataProcessor,
+)
 from ufcpredictor.datasets import BasicDataset, ForecastDataset
 from ufcpredictor.loss_functions import BettingLoss
 from ufcpredictor.models import SymmetricFightNet
@@ -88,12 +94,21 @@ X_set = [
     "Sub_opponent_per_fight",
     "distance_strikes_att_per_minute",
     "knockdowns_per_minute",
-    "OSR",
+    "ELO",
 ]
 
 # %%
+DataProcessor = SumFlexibleELODataProcessor
+data_processor_kwargs = {
+    "data_folder": "/home/cramirpe/UFC/UFCfightdata",
+    "scaling_factor": 0.5,
+    # "boost_values": [1, 2, 3],
+    "K_factor": 30,
+}
+
+# %%
 # From the full dataset load all the event dates
-general_data_processor = DataProcessor(Path(".").resolve().parents[1] / "data")
+general_data_processor = DataProcessor(**data_processor_kwargs)
 general_data_processor.load_data()
 general_data_processor.aggregate_data()
 general_data_processor.add_per_minute_and_fight_stats()
@@ -136,7 +151,7 @@ for event_date in sorted(event_dates[event_dates > starting_date]):
     ):
         continue
 
-    data_processor = DataProcessor(Path(".").resolve().parents[1] / "data")
+    data_processor = DataProcessor(**data_processor_kwargs)
 
     # Removing fights with date < 4 days before
     # I have to perform it before loading and filtering to ensure
@@ -150,6 +165,13 @@ for event_date in sorted(event_dates[event_dates > starting_date]):
     data_processor.load_data()
     data_processor.aggregate_data()
     data_processor.add_per_minute_and_fight_stats()
+    for field in X_set:
+        if field in ["ELO", "age"]:
+            continue
+        data_processor.data_aggregated[field] = (
+            data_processor.data_aggregated[field].rank(pct=True) * 100
+        ) ** 1.2
+
     data_processor.normalize_data()
 
     ###########################################
@@ -218,6 +240,7 @@ for event_date in sorted(event_dates[event_dates > starting_date]):
         optimizer=optimizer,
         scheduler=scheduler,
         loss_fn=BettingLoss(),
+        mlflow_tracking=False,
     )
 
     # First train
@@ -402,5 +425,13 @@ favourite_correct_faction = df["house correct"].mean()
 
 print(f"Model correct fraction: {model_correct_fraction:.4f}")
 print(f"Favourite correct fraction: {favourite_correct_faction:.4f}")
+
+# %%
+
+# %%
+
+# %%
+
+# %%
 
 # %%

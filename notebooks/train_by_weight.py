@@ -116,7 +116,10 @@ invalid_fights = set(self.data_aggregated[self.data_aggregated["num_fight"] < 4]
 # invalid_fights |= set(self.data_aggregated[self.data_aggregated["event_date"] < "2013-01-01"]["fight_id"])
 
 # %%
-early_split_date = "2017-01-01"
+weight = 125
+
+# %%
+early_split_date = "2012-01-01"
 split_date = "2023-08-01"#"2023-08-01"
 max_date = "2024-11-01" 
 
@@ -125,12 +128,14 @@ early_train_fights = self.data["fight_id"][self.data["event_date"] < split_date]
 train_fights = self.data["fight_id"][(
         (self.data["event_date"] < split_date)
         & (self.data["event_date"] >= early_split_date)
+        & (self.data["weight"] == weight)
     )
 ]
 
     
-test_fights  = self.data["fight_id"][(self.data["event_date"] >= split_date) & (self.data["event_date"] <= max_date)]
-
+test_fights  = self.data["fight_id"][
+    (self.data["weight"] == weight) & (self.data["event_date"] >= split_date) & (self.data["event_date"] <= max_date) 
+]
 early_train_fights = set(early_train_fights) - set(invalid_fights)
 train_fights = set(train_fights) - set(invalid_fights)
 test_fights = set(test_fights) - set(invalid_fights)
@@ -218,13 +223,13 @@ trainer = Trainer(
 
 # %%
 trainer.train(
-    epochs=5,
+    epochs=8,
     train_loader=early_train_dataloader,
     test_loader=test_dataloader,
 )
 
 # %%
-trainer.train(epochs=30) # ~8 is a good match if dropout to 0.35 
+trainer.train(epochs=2) # ~8 is a good match if dropout to 0.35 
 
 # %%
 # Save model dict
@@ -291,8 +296,13 @@ colors = plt.cm.rainbow(np.linspace(0, 1, len(weight_classes)))
 # Plot each weight class with its unique color
 for color, weight_class in zip(colors, reversed(weight_classes)):
     results = df[df["weight_class"] == weight_class].groupby("event_date")[["win", "bet"]].sum()
+        
+    if len(results) == 0:
+        continue
+        
     cumsum_values = np.cumsum(results["win"] - results["bet"])
     ax.plot(results.index, cumsum_values, label=weight_class, color=color)
+
 
     # Place label at the last point of each line
     last_event_date = results.index[-1]

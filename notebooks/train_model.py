@@ -18,15 +18,23 @@ import pandas as pd
 pd.set_option("display.max_columns", None)
 
 # %%
-from ufcpredictor.data_processor import ELODataProcessor as DataProcessor
+from ufcpredictor.data_processor import SumFlexibleELODataProcessor as DataProcessor
 from ufcpredictor.datasets import BasicDataset
 from ufcpredictor.trainer import Trainer
 import torch
 import numpy as np
 
 # %%
+data_processor_kwargs = {
+    "data_folder": "/home/cramirpe/UFC/UFCfightdata",
+    "scaling_factor": 0.5,
+    # "boost_values": [1, 2, 3],
+    "K_factor": 40,
+}
+
+# %%
 self = data_processor = DataProcessor(
-    data_folder="/home/cramirpe/UFC/UFCfightdata",
+    **data_processor_kwargs
 )
 
 # %%
@@ -38,36 +46,71 @@ self.normalize_data()
 # %%
 if True:
     X_set = [
-        'clinch_strikes_att_opponent_per_minute',
-        'time_since_last_fight',
-        'total_strikes_succ_opponent_per_minute',
-        'takedown_succ_per_minute',
-        'KO_opponent_per_minute',
-        'takedown_att_per_minute',
-        'takedown_succ_opponent_per_minute',
-        'win_opponent_per_fight',
-        'head_strikes_succ_opponent_per_minute',
-        'clinch_strikes_succ_opponent_per_minute',
-        'ground_strikes_succ_opponent_per_minute',
-        'ground_strikes_att_per_minute',
-        'head_strikes_succ_per_minute',
-        'age',
-        'distance_strikes_succ_per_minute',
-        'body_strikes_succ_per_minute',
-        'strikes_succ_opponent_per_minute',
-        'leg_strikes_att_per_minute',
-        'reversals_opponent_per_minute',
-        'strikes_succ_per_minute',
-        'distance_strikes_att_opponent_per_minute',
-        'Sub_opponent_per_fight',
-        'distance_strikes_att_per_minute',
-        'knockdowns_per_minute',
-        'ELO',
+        "age",
+        # "body_strikes_att_opponent_per_minute",
+        # "body_strikes_att_per_minute",
+        "body_strikes_succ_opponent_per_minute",
+        "body_strikes_succ_per_minute",
+        # "clinch_strikes_att_opponent_per_minute",
+        # "clinch_strikes_att_per_minute",
+        "clinch_strikes_succ_opponent_per_minute",
+        "clinch_strikes_succ_per_minute",
+        "ctrl_time_opponent_per_minute",
+        "ctrl_time_per_minute",
+        # "distance_strikes_att_opponent_per_minute",
+        # "distance_strikes_att_per_minute",
+        "distance_strikes_succ_opponent_per_minute",
+        "distance_strikes_succ_per_minute",
+        "fighter_height_cm",
+        # "ground_strikes_att_opponent_per_minute",
+        # "ground_strikes_att_per_minute",
+        "ground_strikes_succ_opponent_per_minute",
+        "ground_strikes_succ_per_minute",
+        # "head_strikes_att_opponent_per_minute",
+        # "head_strikes_att_per_minute",
+        "head_strikes_succ_opponent_per_minute",
+        "head_strikes_succ_per_minute",
+        "knockdowns_opponent_per_minute",
+        "knockdowns_per_minute",
+        # "KO_opponent_per_fight",
+        "KO_opponent_per_minute",
+        "KO_per_fight",
+        "KO_per_minute",
+        # "leg_strikes_att_opponent_per_minute",
+        # "leg_strikes_att_per_minute",
+        "leg_strikes_succ_opponent_per_minute",
+        "leg_strikes_succ_per_minute",
+        "num_fight",
+        # "reversals_opponent_per_minute",
+        # "reversals_per_minute",
+        # "strikes_att_opponent_per_minute",
+        # "strikes_att_per_minute",
+        "strikes_succ_opponent_per_minute",
+        "strikes_succ_per_minute",
+        # "Sub_opponent_per_fight",
+        "Sub_opponent_per_minute",
+        # "Sub_per_fight",
+        "Sub_per_minute",
+        "submission_att_opponent_per_minute",
+        "submission_att_per_minute",
+        # "takedown_att_opponent_per_minute",
+        # "takedown_att_per_minute",
+        "takedown_succ_opponent_per_minute",
+        "takedown_succ_per_minute",
+        "time_since_last_fight",
+        # "total_strikes_att_opponent_per_minute",
+        # "total_strikes_att_per_minute",
+        "total_strikes_succ_opponent_per_minute",
+        "total_strikes_succ_per_minute",
+        "win_opponent_per_fight",
+        "win_per_fight",
+        "ELO",
     ]
 else:
     X_set = None
-
-# X_set=BasicDataset.X_set + ["OSR",]
+    X_set = BasicDataset.X_set + [
+        "ELO",
+    ]
 
 # %% [markdown]
 # ----
@@ -76,13 +119,13 @@ else:
 fight_ids = self.data["fight_id"].unique()
 
 # %%
-invalid_fights = set(self.data_aggregated[self.data_aggregated["num_fight"] < 3]["fight_id"]) # The usual is 4
+invalid_fights = set(self.data_aggregated[self.data_aggregated["num_fight"] < 4]["fight_id"]) # The usual is 4
 
 # invalid_fights |= set(self.data_aggregated[self.data_aggregated["event_date"] < "2013-01-01"]["fight_id"])
 
 # %%
 early_split_date = "2019-11-01"
-split_date = "2024-10-25"
+split_date = "2024-11-01"
 
 early_train_fights = self.data["fight_id"][self.data["event_date"] < split_date]
 
@@ -96,7 +139,7 @@ train_fights = set(train_fights) - set(invalid_fights)
 # Now I generate a data_processor specifically for training, so 
 # I avoid any possible contamination from the test sample:
 train_data_processor = DataProcessor(
-    "/home/cramirpe/UFC/UFCfightdata",
+    **data_processor_kwargs,
 )
 train_data_processor.scraper.event_scraper.data = (
     train_data_processor.scraper.event_scraper.data[
@@ -144,9 +187,9 @@ model = SymmetricFightNet(
         input_size=len(train_dataset.X_set),
         dropout_prob=0.35, # 0.35
 )
-optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3)
+optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=2e-5)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=2
+        optimizer, mode="min", factor=0.7, patience=2
 )
 
 trainer = Trainer(
@@ -166,7 +209,7 @@ trainer.train(
 )
 
 # %%
-trainer.train(epochs=3) # ~8 is a good match if dropout to 0.35 
+trainer.train(epochs=30) # ~8 is a good match if dropout to 0.35 
 
 # %%
 # Save model dict
@@ -175,6 +218,9 @@ torch.save(model.state_dict(), 'model.pth')
 # %%
 from ufcpredictor.plot_tools import PredictionPlots
 import matplotlib.pyplot as plt
+
+# %%
+a=10
 
 # %%
 fig, ax = plt.subplots()

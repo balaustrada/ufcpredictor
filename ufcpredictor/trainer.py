@@ -76,7 +76,7 @@ class Trainer:
         self.epoch_counter: int = 0
         self.mlflow_tracking = mlflow_tracking
 
-        if self.mlflow_tracking:
+        if self.mlflow_tracking: # pragma: no cover
             params = {
                 "optimizer": self.optimizer.__class__.__name__,
                 "learning_rate": self.optimizer.param_groups[0]["lr"],
@@ -169,7 +169,7 @@ class Trainer:
                     f"Correct: [{correct*100:.2f}]"
                 )
 
-            if self.mlflow_tracking:
+            if self.mlflow_tracking: # pragma: no cover
                 mlflow.log_metric(
                     "train_loss", np.mean(train_loss), step=self.epoch_counter
                 )

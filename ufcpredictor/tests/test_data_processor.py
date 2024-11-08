@@ -12,18 +12,11 @@ import pandas as pd
 import torch
 from torch import nn
 
-from ufcpredictor.data_processor import (  # Assuming the class is in 'your_module'
-    DataProcessor,
-    OSRDataProcessor,
-    WOSRDataProcessor,
-)
-from ufcpredictor.extra_fields import (
-    ELOExtraField,
-    FlexibleELOExtraField,
-    RankedFields,
-    SumFlexibleELOExtraField,
-)
 from ufcpredictor.data_aggregator import WeightedDataAggregator
+from ufcpredictor.data_processor import DataProcessor
+from ufcpredictor.extra_fields import (OSR, WOSR, ELOExtraField,
+                                       FlexibleELOExtraField, RankedFields,
+                                       SumFlexibleELOExtraField)
 
 THIS_DIR = Path(__file__).parent
 
@@ -599,8 +592,9 @@ class TestDataProcessor(BaseTestDataProcessor, unittest.TestCase):
 
 
 class TestOSRDataProcessor(BaseTestDataProcessor, unittest.TestCase):
-    data_processor = OSRDataProcessor
-
+    init_kwargs = {
+        "extra_fields": [OSR(),],
+    }
     def test_aggregate_data(self):
         """Test the aggregate_data method."""
         data = pd.DataFrame(
@@ -676,8 +670,9 @@ class TestOSRDataProcessor(BaseTestDataProcessor, unittest.TestCase):
 
 
 class TestWOSRDataProcessor(BaseTestDataProcessor, unittest.TestCase):
-    data_processor = WOSRDataProcessor
-    init_kwargs = {"weights": [0.1, 0.2, 0.7]}
+    init_kwargs = {
+        "extra_fields": [WOSR(weights=[0.1, 0.2, 0.7]),],
+    }
 
     def test_aggregate_data(self):
         """Test the aggregate_data method."""

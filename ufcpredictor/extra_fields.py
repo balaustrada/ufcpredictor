@@ -46,7 +46,178 @@ class RankedFields(ExtraField):
         for field, exponent in zip(self.fields, self.exponents):
             data[field] = (data[field].rank(pct=True) * 100) ** exponent
         return data
+
+class OSR(ExtraField):
+    """
+    Extends the DataProcessor class to add OSR information.
+
+    The OSR shows the strength of a given fighter by showing its win/loss ratio
+    with contributions from their opponents win/loss ratio.
+
+    The OSR is computed iteratively, for each iteration the new OSR is computed
+    as:
+        new_OSR = (old_OSR + mean_OSR_opponents + wins/n_fights)
+    """
+
+    def add_aggregated_fields(
+        self, data_processor: DataProcessor
+    ) -> pd.DataFrame:
+        """
+        Aggregate data by computing the fighters' statistics and OSR.
+
+        This method aggregates the data by computing the fighters' statistics and
+        OSR (Opponent Strength Rating). The OSR is computed as the average of the
+        opponent's OSR and the fighter's win rate.
+
+        The OSR is calculated iteratively until the difference between the new and
+        old values is less than 0.1.
+        """
+        data_aggregated = data_processor.data_aggregated
+        # Adding OSR information
+        df = data_aggregated[
+            ["fighter_id", "fight_id", "opponent_id", "event_date"]
+        ].copy()
+        df["S"] = data_aggregated["win"] / data_aggregated["num_fight"]
+        df["OSR"] = df["S"]
+
+        diff = 1
+        new_OSR = df["S"]
+
+        while diff > 0.1:
+            df["OSR"] = new_OSR
+            df["OSR_past"] = df.groupby("fighter_id")["OSR"].shift(1)
+
+            merged_df = df.merge(
+                df,
+                left_on="fighter_id",
+                right_on="opponent_id",
+                suffixes=("_x", "_y"),
+                how="left",
+            )
+
+            merged_df = merged_df[
+                (merged_df["event_date_x"] > merged_df["event_date_y"])
+            ]
+
+            OSR_opponent = merged_df.groupby(["fighter_id_x", "fight_id_x"])[
+                "OSR_y"
+            ].mean()
+
+            df = (
+                df[
+                    [
+                        "fighter_id",
+                        "fight_id",
+                        "opponent_id",
+                        "event_date",
+                        "S",
+                        "OSR",
+                        "OSR_past",
+                    ]
+                ]
+                .merge(
+                    OSR_opponent,
+                    left_on=["fighter_id", "fight_id"],
+                    right_on=["fighter_id_x", "fight_id_x"],
+                    how="left",
+                )
+                .rename(columns={"OSR_y": "OSR_opp"})
+            )
+
+            new_OSR = df[["S", "OSR_opp", "OSR_past"]].mean(axis=1)
+
+            diff = abs(new_OSR - df["OSR"]).sum()
+
+        data_aggregated["OSR"] = new_OSR
+        
+        return data_aggregated
     
+class WOSR(OSR):
+    """
+    Extends the OSRDataProcessor class to add weights to the different components
+    of the OSR estimation.
+
+    The OSR is computed iteratively, for each iteration the new OSR is computed
+    as:
+        new_OSR = (w1*old_OSR + w2*mean_OSR_opponents + w3*wins/n_fights)
+    the weights are [w1, w2, w3]
+    """
+    def __init__(self, weights: List[float] = [0.3, 0.3, 0.3]):
+        self.skills_weight, self.past_OSR_weight, self.opponent_OSR_weight = weights
+
+    def add_aggregated_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
+        data_aggregated = data_processor.data_aggregated
+        # Adding OSR information
+        df = data_aggregated[
+            ["fighter_id", "fight_id", "opponent_id", "event_date"]
+        ].copy()
+        df["S"] = data_aggregated["win"] / data_aggregated["num_fight"]
+        df["OSR"] = df["S"]
+
+        diff = 1
+        new_OSR = df["S"]
+
+        while diff > 0.1:
+            df["OSR"] = new_OSR
+            df["OSR_past"] = df.groupby("fighter_id")["OSR"].shift(1)
+
+            merged_df = df.merge(
+                df,
+                left_on="fighter_id",
+                right_on="opponent_id",
+                suffixes=("_x", "_y"),
+                how="left",
+            )
+
+            merged_df = merged_df[
+                (merged_df["event_date_x"] > merged_df["event_date_y"])
+            ]
+
+            OSR_opponent = merged_df.groupby(["fighter_id_x", "fight_id_x"])[
+                "OSR_y"
+            ].mean()
+
+            df = (
+                df[
+                    [
+                        "fighter_id",
+                        "fight_id",
+                        "opponent_id",
+                        "event_date",
+                        "S",
+                        "OSR",
+                        "OSR_past",
+                    ]
+                ]
+                .merge(
+                    OSR_opponent,
+                    left_on=["fighter_id", "fight_id"],
+                    right_on=["fighter_id_x", "fight_id_x"],
+                    how="left",
+                )
+                .rename(columns={"OSR_y": "OSR_opp"})
+            )
+
+            new_OSR = (
+                df["S"].fillna(0) * self.skills_weight
+                + df["OSR_past"].fillna(0) * self.past_OSR_weight
+                + df["OSR_opp"].fillna(0) * self.opponent_OSR_weight
+            )
+            weight_sum = (
+                (~df["S"].isna()) * self.skills_weight
+                + (~df["OSR_past"].isna()) * self.past_OSR_weight
+                + (~df["OSR_opp"].isna()) * self.opponent_OSR_weight
+            )
+            new_OSR /= weight_sum
+
+            # new_OSR = df[["S", "OSR_opp", "OSR_past"]].mean(axis=1)
+
+            diff = abs(new_OSR - df["OSR"]).sum()
+
+        data_aggregated["OSR"] = new_OSR
+
+        return data_aggregated
+
 class ELOExtraField(ExtraField):
     def __init__(self, initial_rating: float = 1000, K_factor: float = 32):
         """

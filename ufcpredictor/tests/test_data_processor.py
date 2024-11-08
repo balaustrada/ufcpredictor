@@ -861,7 +861,7 @@ class TestELODataProcessor(unittest.TestCase):
     def compare_dataframes(self, df, expected_csv_path):
         """Helper method to compare a dataframe to an expected CSV file."""
         # Check if we should update the CSV files
-        if os.getenv("UPDATE_TEST_FILES") == "True":
+        if os.getenv("UPDATE_TEST_FILES") == "True": # pragma: no cover
             df.to_csv(expected_csv_path, index=False)
             # Load expected data
 

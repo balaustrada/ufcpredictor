@@ -14,7 +14,9 @@ import numpy as np
 import torch
 from huggingface_hub import snapshot_download
 
-from ufcpredictor.data_processor import SumFlexibleELODataProcessor as DataProcessor
+from ufcpredictor.data_processor import DataProcessor
+from ufcpredictor.extra_fields import SumFlexibleELOExtraField
+from ufcpredictor.data_aggregator import WeightedDataAggregator
 from ufcpredictor.datasets import ForecastDataset
 from ufcpredictor.models import SymmetricFightNet
 from ufcpredictor.utils import convert_odds_to_decimal
@@ -116,9 +118,13 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         )
     data_processor_kwargs = {
         "data_folder": args.data_folder,
-        "scaling_factor": 0.5,
-        # "boost_values": [1, 2, 3],
-        "K_factor": 40,
+        "data_aggregator": WeightedDataAggregator(),
+        "extra_fields": [
+            SumFlexibleELOExtraField(
+                scaling_factor=0.5,
+                K_factor = 40,
+            )
+        ],
     }
     logger.info("Loading data...")
     data_processor = DataProcessor(**data_processor_kwargs)

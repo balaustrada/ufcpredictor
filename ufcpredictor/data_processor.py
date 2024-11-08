@@ -8,20 +8,24 @@ Handles data transformation, normalization, and feature engineering.
 from __future__ import annotations
 
 import datetime
-from fuzzywuzzy.process import extractOne
 import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
+from fuzzywuzzy.process import extractOne
 from ufcscraper.odds_scraper import BestFightOddsScraper
 from ufcscraper.ufc_scraper import UFCScraper
 
+from ufcpredictor.data_aggregator import DefaultDataAggregator
 from ufcpredictor.utils import convert_minutes_to_seconds, weight_dict
 
 if TYPE_CHECKING:  # pragma: no cover
     from pathlib import Path
     from typing import Any, List, Optional
+
+    from ufcpredictor.data_aggregator import DataAggregator
+    from ufcpredictor.extra_fields import ExtraField
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +49,8 @@ class DataProcessor:
         data_folder: Optional[Path | str] = None,
         ufc_scraper: Optional[UFCScraper] = None,
         bfo_scraper: Optional[BestFightOddsScraper] = None,
+        data_aggregator: Optional[DataAggregator] = None,
+        extra_fields: List[ExtraField] = [],
     ) -> None:
         """
         Constructor for DataProcessor.
@@ -53,6 +59,7 @@ class DataProcessor:
             data_folder: The folder containing the data.
             ufc_scraper: The scraper to use for ufc data.
             bfo_scraper: The scraper to use for best fight odds data.
+            data_aggregator: The data aggregator to use for aggregating data.
 
         Raises:
             ValueError: If data_folder is None and both ufc_scraper and
@@ -68,6 +75,9 @@ class DataProcessor:
         self.bfo_scraper = bfo_scraper or BestFightOddsScraper(
             data_folder=data_folder, n_sessions=-1
         )
+
+        self.data_aggregator = data_aggregator or DefaultDataAggregator()
+        self.extra_fields = extra_fields
 
     def load_data(self) -> None:
         """
@@ -90,6 +100,9 @@ class DataProcessor:
         data = self.apply_filters(data)
         self.data = self.group_round_data(data)
 
+        for extra_field in self.extra_fields:
+            self.data = extra_field.add_data_fields(self)
+
         names = self.data["fighter_name"].values
         ids = self.data["fighter_id"].values
 
@@ -100,7 +113,7 @@ class DataProcessor:
         """
         Returns the name of the fighter with the given id.
 
-        Args:
+        Args:cla
             id_: The id of the fighter.
 
         Returns:
@@ -315,8 +328,6 @@ class DataProcessor:
             & (data["weight_class"] != "Open Weight")
         ]
 
-        data["weight"] = data["weight"] #(data["weight"].rank(pct=True) * 100) ** 4 #@uncomment this
-        data["fighter_height_cm"] = (data["fighter_height_cm"].rank(pct=True) * 100) ** 4 #@uncomment this
         return data
 
     @staticmethod
@@ -373,7 +384,6 @@ class DataProcessor:
         data["win"] = np.where(data["winner"] == data["fighter_id"], 1, 0)
         data["win_opponent"] = np.where(data["winner"] != data["fighter_id"], 1, 0)
         data["age"] = (data["event_date"] - data["fighter_dob"]).dt.days / 365
-        data["age"] = (data["age"].rank(pct=True) * 100) ** 1.2 #@uncomment this
 
         return data
 
@@ -467,7 +477,12 @@ class DataProcessor:
         Returns:
             A list of strings, the names of the aggregated fields.
         """
-        return self.stat_names
+        aggregated_fields = self.stat_names
+
+        for extra_field in self.extra_fields:
+            aggregated_fields += extra_field.aggregated_fields
+
+        return aggregated_fields
 
     @property
     def normalized_fields(self) -> List[str]:
@@ -491,10 +506,18 @@ class DataProcessor:
         Returns:
             A list of strings, the names of the normalized fields.
         """
-        normalized_fields = ["age", "time_since_last_fight", "fighter_height_cm", "weight"]
+        normalized_fields = [
+            "age",
+            "time_since_last_fight",
+            "fighter_height_cm",
+            "weight",  # @uncomment
+        ]
 
         for field in self.aggregated_fields:
             normalized_fields += [field, field + "_per_minute", field + "_per_fight"]
+
+        for extra_field in self.extra_fields:
+            normalized_fields += extra_field.normalized_fields
 
         return normalized_fields
 
@@ -542,33 +565,10 @@ class DataProcessor:
 
         The aggregated data is stored in the attribute data_aggregated.
         """
-        logger.info(f"Fields to be aggregated: {self.aggregated_fields}")
+        self.data_aggregated = self.data_aggregator.aggregate_data(self)
 
-        data_aggregated = self.data.copy()
-        data_aggregated["num_fight"] = (
-            data_aggregated.groupby("fighter_id").cumcount() + 1
-        )
-
-        data_aggregated["previous_fight_date"] = data_aggregated.groupby("fighter_id")[
-            "event_date"
-        ].shift(1)
-        data_aggregated["time_since_last_fight"] = (
-            data_aggregated["event_date"] - data_aggregated["previous_fight_date"]
-        ).dt.days
-
-        for column in self.aggregated_fields:
-            data_aggregated[column] = data_aggregated[column].astype(float)
-            data_aggregated[column] = data_aggregated.groupby("fighter_id")[
-                column
-            ].cumsum()
-
-        data_aggregated["total_time"] = data_aggregated.groupby("fighter_id")[
-            "total_time"
-        ].cumsum()
-        data_aggregated["weighted_total_time"] = data_aggregated["total_time"]
-        data_aggregated["weighted_num_fight"] = data_aggregated["num_fight"]
-
-        self.data_aggregated = data_aggregated
+        for extra_field in self.extra_fields:
+            self.data_aggregated = extra_field.add_aggregated_fields(self)
 
     def add_per_minute_and_fight_stats(self) -> None:
         """
@@ -592,10 +592,12 @@ class DataProcessor:
 
         for column in self.aggregated_fields:
             new_columns[column + "_per_minute"] = (
-                self.data_aggregated[column] / self.data_aggregated["weighted_total_time"]
+                self.data_aggregated[column]
+                / self.data_aggregated["weighted_total_time"]
             )
             new_columns[column + "_per_fight"] = (
-                self.data_aggregated[column] / self.data_aggregated["weighted_num_fight"]
+                self.data_aggregated[column]
+                / self.data_aggregated["weighted_num_fight"]
             )
 
         self.data_aggregated = pd.concat(
@@ -821,568 +823,3 @@ class WOSRDataProcessor(DataProcessor):
             diff = abs(new_OSR - df["OSR"]).sum()
 
         self.data_aggregated["OSR"] = new_OSR
-
-
-class ELODataProcessor(DataProcessor):
-    """
-    Extends the DataProcessor class to add ELO information.
-    """
-
-    params = [
-        "initial_rating",
-        "K_factor",
-    ]
-
-    def __init__(
-        self,
-        *args: Any,
-        initial_rating: float = 1000,
-        K_factor: float = 32,
-        **kwargs: Any,
-    ) -> None:
-        """
-        Initialize an ELODataProcessor object.
-
-        Args:
-            *args: Any additional positional arguments to be passed to the superclass.
-            initial_rating: The initial rating for the ELO model. Defaults to 1000.
-            K_factor: The K-factor for the ELO model. Defaults to 32.
-            **kwargs: Any additional keyword arguments to be passed to the superclass.
-        """
-        super().__init__(*args, **kwargs)
-
-        self.initial_rating = initial_rating
-        self.K_factor = K_factor
-
-    def aggregate_data(self) -> None:
-        """
-        Aggregate the data by summing the round statistics over the history of the
-        fighters.
-
-        The data is copied and then the round statistics are summed over the history
-        of the fighters. The total time is also summed over the history of the
-        fighters.
-
-        The aggregated data is stored in the attribute data_aggregated.
-        """
-        logger.info(f"Fields to be aggregated: {self.aggregated_fields}")
-
-        data = self.data[["fight_id", "fighter_id", "event_date", "total_time"] + self.aggregated_fields]
-
-        data_merged = data.drop(columns=self.aggregated_fields + ["total_time"]).merge(
-            data,
-            on="fighter_id",
-            suffixes=("", "_prev"),
-        )
-
-        # Now only preserve combinations where the previous fight is
-        # before the current fight.
-        data_merged = data_merged[
-            data_merged["event_date_prev"] < data_merged["event_date"]
-        ]
-
-        # Compute the distance from previous to current
-        data_merged["weight"] = np.exp(-0.0004 * (data_merged["event_date"] - data_merged["event_date_prev"]).dt.days)
-
-        for column in self.aggregated_fields:
-            data_merged[column] = data_merged[column].astype(float)
-            data_merged[column] = data_merged[column] * data_merged["weight"]
-
-        data_merged["num_fight"] = 1 # This will sum up to the total number of fights.
-        data_merged["total_time"] = data_merged["total_time"]
-        data_merged["weighted_num_fight"] = data_merged["num_fight"] * data_merged["weight"]
-        data_merged["weighted_total_time"] = data_merged["total_time"] * data_merged["weight"]
-        
-        data_aggregated = data_merged.drop(columns=["event_date","event_date_prev", "fight_id_prev"]).groupby(
-            ["fighter_id", "fight_id"]
-        ).sum().reset_index()
-
-        for column in self.aggregated_fields:# + ["weighted_num_fight", "weighted_total_time"]: # Not clear If I should normalize these two quantities.
-            data_aggregated[column] = data_aggregated[column] / data_aggregated["weight"]
-
-        data_aggregated = self.data.drop(columns=self.aggregated_fields).merge(
-            data_aggregated.drop(columns=["weight"]),
-            on=["fighter_id", "fight_id"],
-        )
-
-        data_aggregated["previous_fight_date"] = data_aggregated.groupby("fighter_id")[
-            "event_date"
-        ].shift(1)
-        data_aggregated["time_since_last_fight"] = (
-            data_aggregated["event_date"] - data_aggregated["previous_fight_date"]
-        ).dt.days
-
-        self.data_aggregated = data_aggregated
-
-    @staticmethod
-    def expected_ELO_score(r1: float, r2: float) -> float:
-        """
-        Calculate the expected ELO score for a match between two fighters.
-
-        Args:
-            r1: The rating of the first fighter.
-            r2: The rating of the second fighter.
-
-        Returns:
-            The expected score for the match between the two fighters.
-        """
-        return 1 / (1 + 10 ** ((r2 - r1) / 400))
-
-    def add_ELO_rating(self, data: pd.DataFrame) -> pd.DataFrame:
-        """
-        Calculate and add ELO ratings to the dataframe.
-
-        Args:
-            data: The dataframe to add ELO ratings to.
-
-        Returns:
-            The dataframe with ELO ratings added.
-        """
-        ratings = {}
-        updated_ratings = []
-
-        unique_fights = data.drop_duplicates(subset="fight_id")
-
-        for _, fight in unique_fights.sort_values(
-            by="event_date", ascending=True
-        ).iterrows():
-            fight_id = fight["fight_id"]
-            fighter_id = fight["fighter_id"]
-            opponent_id = fight["opponent_id"]
-            winner_id = fight["winner"]
-
-            # Get current ratings, or initialize if not present
-            rating_fighter = ratings.get(fighter_id, self.initial_rating)
-            rating_opponent = ratings.get(opponent_id, self.initial_rating)
-
-            # Calculate expected scores
-            E_fighter = self.expected_ELO_score(rating_fighter, rating_opponent)
-            E_opponent = self.expected_ELO_score(rating_opponent, rating_fighter)
-
-            # Determine scores based on the winner
-            S_fighter = 1 if winner_id == fighter_id else 0
-            S_opponent = 1 if winner_id == opponent_id else 0
-
-            # Update ratings
-            new_rating_fighter = rating_fighter + self.K_factor * (
-                S_fighter - E_fighter
-            )
-            new_rating_opponent = rating_opponent + self.K_factor * (
-                S_opponent - E_opponent
-            )
-
-            # Store the updated ratings
-            ratings[fighter_id] = new_rating_fighter
-            ratings[opponent_id] = new_rating_opponent
-
-            # Append the updated ratings to the list
-            updated_ratings.extend(
-                [
-                    {
-                        "fight_id": fight_id,
-                        "fighter_id": fighter_id,
-                        "ELO": new_rating_fighter,
-                        "ELO_opponent": new_rating_opponent,
-                    },
-                    {
-                        "fight_id": fight_id,
-                        "fighter_id": opponent_id,
-                        "ELO": new_rating_opponent,
-                        "ELO_opponent": new_rating_fighter,
-                    },
-                ]
-            )
-
-        updated_ratings_df = pd.DataFrame(updated_ratings)
-
-        data = data.merge(
-            updated_ratings_df,
-            on=["fight_id", "fighter_id"],
-        )
-
-        return data
-
-    def load_data(self) -> None:
-        """
-        Loads and processes all the data.
-
-        First, it joins all the relevant dataframes (fight, fighters, event, and odds).
-        Then, it fixes the date and time fields, converts the odds to decimal format,
-        fills the weight for each fighter (if not available), adds key statistics
-        (KO, Submission, and Win), applies filters to the data, and adds the ELO
-        rating to the data.
-
-        This method should be called before any other method.
-        """
-        super().load_data()
-        self.data = self.add_ELO_rating(self.data)
-
-    @property
-    def normalized_fields(self) -> List[str]:
-        """
-        The fields that are normalized over the fighter's history.
-
-        These fields are normalized in the sense that they are divided by
-        their mean value in the history of the fighter. This is done to
-        reduce the effect of outliers and to make the data more comparable
-        between different fighters.
-
-        The fields normalized are:
-        - "age"
-        - "time_since_last_fight"
-        - "fighter_height_cm"
-        - "ELO"
-        - All the aggregated fields (see :meth:`aggregated_fields`),
-          and the same fields with "_per_minute" and "_per_fight" appended,
-          which represent the aggregated fields per minute and per fight,
-          respectively.
-
-        Returns:
-            A list of strings, the names of the normalized fields.
-        """
-        return super().normalized_fields + [
-            "ELO",
-        ]
-
-
-class FlexibleELODataProcessor(ELODataProcessor):
-    params = ELODataProcessor.params + ["n_boost_bins", "boost_values"]
-
-    def __init__(
-        self,
-        *args: any,
-        n_boost_bins: int = 3,
-        boost_values: List[float] = [1, 1.2, 1.4],
-        **kwargs: Any,
-    ):
-        super().__init__(*args, **kwargs)
-
-        self.n_boost_bins = n_boost_bins
-        self.boost_values = boost_values
-
-        self.boost_bins = np.concatenate(
-            (
-                np.linspace(0, 50, n_boost_bins + 1)[:-1],
-                np.linspace(50, 100, n_boost_bins + 1)[1:],
-            )
-        )
-        self.boost_factors = [1 / x for x in boost_values][::-1] + boost_values[1:]
-
-    def get_scores(self, series: pd.Series) -> pd.Series:
-        z_score = (series - series.mean()) / series.std()
-        percentile = z_score.rank(pct=True) * 100
-
-        return pd.cut(
-            percentile,
-            bins=self.boost_bins,
-            labels=self.boost_factors,
-            right=False,
-        ).astype(float)
-
-    def add_scores(self, data: pd.DataFrame) -> pd.DataFrame:
-        strikes_score = self.get_scores(
-            data["strikes_succ"] - data["strikes_succ_opponent"]
-        )
-
-        takedowns_scores = self.get_scores(
-            data["takedown_succ"] - data["takedown_succ_opponent"]
-        )
-
-        control_scores = self.get_scores(data["ctrl_time"] - data["ctrl_time_opponent"])
-
-        knockdown_scores = self.get_scores(
-            data["knockdowns"] - data["knockdowns_opponent"]
-        )
-
-        submission_scores = self.get_scores(
-            (data["Sub"] - data["Sub_opponent"]).apply(
-                lambda x: (
-                    self.boost_factors[-1]
-                    if x == 1
-                    else (1 if x == 0 else self.boost_factors[0])
-                )
-            )
-        )
-
-        KO_scores = self.get_scores(
-            (data["KO"] - data["KO_opponent"]).apply(
-                lambda x: (
-                    self.boost_factors[-1]
-                    if x == 1
-                    else (1 if x == 0 else self.boost_factors[0])
-                )
-            )
-        )
-
-        win_score = (data["winner"] == data["fighter_id"]).apply(
-            lambda x: self.boost_factors[-1] if x else 1
-        )
-
-        points_score = self.get_scores(
-            self.data["fighter_score"] - self.data["opponent_score"]
-        )
-
-        match_score = 1
-        for score in (
-            strikes_score,
-            takedowns_scores,
-            control_scores,
-            knockdown_scores,
-            submission_scores,
-            KO_scores,
-            win_score,
-            points_score,
-        ):
-            match_score *= score.fillna(1)
-
-        data["match_score"] = match_score
-
-        return data
-
-    def add_ELO_rating(self, data: pd.DataFrame) -> pd.DataFrame:
-        """
-        Calculate and add ELO ratings to the dataframe.
-
-        Args:
-            data: The dataframe to add ELO ratings to.
-
-        Returns:
-            The dataframe with ELO ratings added.
-        """
-        ratings = {}
-        updated_ratings = []
-
-        data = self.add_scores(data)
-        unique_fights = data.drop_duplicates(subset="fight_id")
-
-        unique_fights = unique_fights.merge(
-            data[["fight_id", "fighter_id", "match_score"]],
-            left_on=["fight_id", "opponent_id"],
-            right_on=["fight_id", "fighter_id"],
-            suffixes=("", "_opponent"),
-        )
-
-        for _, fight in unique_fights.sort_values(
-            by="event_date", ascending=True
-        ).iterrows():
-            fight_id = fight["fight_id"]
-            fighter_id = fight["fighter_id"]
-            opponent_id = fight["opponent_id"]
-            winner_id = fight["winner"]
-            match_score = fight["match_score"]
-            match_score_opponent = fight["match_score_opponent"]
-
-            # Get current ratings, or initialize if not present
-            rating_fighter = ratings.get(fighter_id, self.initial_rating)
-            rating_opponent = ratings.get(opponent_id, self.initial_rating)
-
-            # Calculate expected scores
-            E_fighter = self.expected_ELO_score(rating_fighter, rating_opponent)
-            E_opponent = self.expected_ELO_score(rating_opponent, rating_fighter)
-
-            # Determine scores based on the winner
-            S_fighter = 1 if winner_id == fighter_id else 0
-            S_opponent = 1 if winner_id == opponent_id else 0
-
-            # Update ratings
-            new_rating_fighter = rating_fighter + self.K_factor * match_score * (
-                S_fighter - E_fighter
-            )
-            new_rating_opponent = (
-                rating_opponent
-                + self.K_factor * match_score_opponent * (S_opponent - E_opponent)
-            )
-
-            # Store the updated ratings
-            ratings[fighter_id] = new_rating_fighter
-            ratings[opponent_id] = new_rating_opponent
-
-            # Append the updated ratings to the list
-            updated_ratings.extend(
-                [
-                    {
-                        "fight_id": fight_id,
-                        "fighter_id": fighter_id,
-                        "ELO": new_rating_fighter,
-                        "ELO_opponent": new_rating_opponent,
-                    },
-                    {
-                        "fight_id": fight_id,
-                        "fighter_id": opponent_id,
-                        "ELO": new_rating_opponent,
-                        "ELO_opponent": new_rating_fighter,
-                    },
-                ]
-            )
-
-        updated_ratings_df = pd.DataFrame(updated_ratings)
-
-        data = data.merge(
-            updated_ratings_df,
-            on=["fight_id", "fighter_id"],
-        )
-
-        return data
-
-
-class SumFlexibleELODataProcessor(ELODataProcessor):
-    params = ELODataProcessor.params + [
-        "scaling_factor",
-    ]
-
-    def __init__(
-        self,
-        *args: any,
-        scaling_factor: float = 0.5,
-        **kwargs: Any,
-    ):
-        super().__init__(*args, **kwargs)
-
-        self.scaling_factor = scaling_factor
-
-    def get_scores(self, series: pd.Series) -> pd.Series:
-        z_score = (series - series.mean()) / series.std()
-        return z_score.rank(pct=True)
-
-    def add_scores(self, data: pd.DataFrame) -> pd.DataFrame:
-        strikes_score = self.get_scores(
-            data["strikes_succ"] - data["strikes_succ_opponent"]
-        )
-
-        takedowns_scores = self.get_scores(
-            data["takedown_succ"] - data["takedown_succ_opponent"]
-        )
-
-        control_scores = self.get_scores(data["ctrl_time"] - data["ctrl_time_opponent"])
-
-        knockdown_scores = self.get_scores(
-            data["knockdowns"] - data["knockdowns_opponent"]
-        )
-
-        submission_scores = self.get_scores(
-            (data["Sub"] - data["Sub_opponent"]).apply(lambda x: 1 if x == 1 else 0)
-        )
-
-        KO_scores = self.get_scores(
-            (data["KO"] - data["KO_opponent"]).apply(lambda x: 1 if x == 1 else 0)
-        )
-
-        win_score = (data["winner"] == data["fighter_id"]).apply(
-            lambda x: 1 if x else 0
-        )
-
-        points_score = self.get_scores(
-            self.data["fighter_score"] - self.data["opponent_score"]
-        )
-
-        match_score = 0
-        for score in (
-            strikes_score,
-            takedowns_scores,
-            control_scores,
-            knockdown_scores,
-            submission_scores,
-            KO_scores,
-            win_score,
-            points_score,
-        ):
-            match_score += score.fillna(0)
-
-        data["match_score"] = (
-            strikes_score
-            + takedowns_scores
-            + control_scores
-            + knockdown_scores
-            + submission_scores
-            + KO_scores
-            + win_score
-            + points_score
-        ) / 8
-
-        return data
-
-    def add_ELO_rating(self, data: pd.DataFrame) -> pd.DataFrame:
-        """
-        Calculate and add ELO ratings to the dataframe.
-
-        Args:
-            data: The dataframe to add ELO ratings to.
-
-        Returns:
-            The dataframe with ELO ratings added.
-        """
-        ratings = {}
-        updated_ratings = []
-
-        data = self.add_scores(data)
-        unique_fights = data.drop_duplicates(subset="fight_id")
-
-        unique_fights = unique_fights.merge(
-            data[["fight_id", "fighter_id", "match_score"]],
-            left_on=["fight_id", "opponent_id"],
-            right_on=["fight_id", "fighter_id"],
-            suffixes=("", "_opponent"),
-        )
-
-        for _, fight in unique_fights.sort_values(
-            by="event_date", ascending=True
-        ).iterrows():
-            fight_id = fight["fight_id"]
-            fighter_id = fight["fighter_id"]
-            opponent_id = fight["opponent_id"]
-            winner_id = fight["winner"]
-            match_score = fight["match_score"]
-            match_score_opponent = fight["match_score_opponent"]
-
-            # Get current ratings, or initialize if not present
-            rating_fighter = ratings.get(fighter_id, self.initial_rating)
-            rating_opponent = ratings.get(opponent_id, self.initial_rating)
-
-            # Calculate expected scores
-            E_fighter = self.expected_ELO_score(rating_fighter, rating_opponent)
-            E_opponent = self.expected_ELO_score(rating_opponent, rating_fighter)
-
-            # Determine scores based on the winner
-            S_fighter = 1 if winner_id == fighter_id else 0
-            S_opponent = 1 if winner_id == opponent_id else 0
-
-            # Update ratings
-            new_rating_fighter = rating_fighter + self.K_factor * (
-                S_fighter - E_fighter + self.scaling_factor * (match_score - 50) / 100
-            )
-            new_rating_opponent = rating_opponent + self.K_factor * (
-                S_opponent
-                - E_opponent
-                + self.scaling_factor * (match_score_opponent - 50) / 100
-            )
-
-            # Store the updated ratings
-            ratings[fighter_id] = new_rating_fighter
-            ratings[opponent_id] = new_rating_opponent
-
-            # Append the updated ratings to the list
-            updated_ratings.extend(
-                [
-                    {
-                        "fight_id": fight_id,
-                        "fighter_id": fighter_id,
-                        "ELO": new_rating_fighter,
-                        "ELO_opponent": new_rating_opponent,
-                    },
-                    {
-                        "fight_id": fight_id,
-                        "fighter_id": opponent_id,
-                        "ELO": new_rating_opponent,
-                        "ELO_opponent": new_rating_fighter,
-                    },
-                ]
-            )
-
-        updated_ratings_df = pd.DataFrame(updated_ratings)
-
-        data = data.merge(
-            updated_ratings_df,
-            on=["fight_id", "fighter_id"],
-        )
-
-        return data

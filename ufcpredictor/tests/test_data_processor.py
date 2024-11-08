@@ -1,31 +1,29 @@
 from __future__ import annotations
 
+import datetime
+import os
 import unittest
 from pathlib import Path
 from shutil import rmtree
+from unittest.mock import MagicMock, patch
+
+import numpy as np
+import pandas as pd
 import torch
 from torch import nn
-import numpy as np
-import os
 
-from ufcpredictor.loss_functions import BettingLoss
-
-
-import unittest
-from unittest.mock import MagicMock, patch
-import pandas as pd
-from pathlib import Path
-from ufcpredictor.data_processor import (
+from ufcpredictor.data_processor import (  # Assuming the class is in 'your_module'
     DataProcessor,
-    ELODataProcessor,
-    FlexibleELODataProcessor,
-    SumFlexibleELODataProcessor,
     OSRDataProcessor,
     WOSRDataProcessor,
-)  # Assuming the class is in 'your_module'
-import datetime
-import numpy as np
-from unittest.mock import patch
+)
+from ufcpredictor.extra_fields import (
+    ELOExtraField,
+    FlexibleELOExtraField,
+    RankedFields,
+    SumFlexibleELOExtraField,
+)
+from ufcpredictor.data_aggregator import WeightedDataAggregator
 
 THIS_DIR = Path(__file__).parent
 
@@ -304,6 +302,7 @@ class BaseTestDataProcessor(object):
             "age",
             "time_since_last_fight",
             "fighter_height_cm",
+            "weight",
             "strikes",
             "strikes_per_minute",
             "strikes_per_fight",
@@ -559,6 +558,7 @@ class TestDataProcessor(BaseTestDataProcessor, unittest.TestCase):
                 "win": [1, 0, 0, 1],
                 "win_opponent": [0, 1, 1, 0],
                 "age": [30, 25, 30, 25],
+                "weight": [145, 145, 145, 145],
             }
         )
 
@@ -834,16 +834,28 @@ class TestELODataProcessor(unittest.TestCase):
         # Define the configuration for initializing ELODataProcessor
         cls.data_processor_kwargs = {
             "data_folder": THIS_DIR / "test_files",
+            "data_aggregator": WeightedDataAggregator(),
+            "extra_fields": [
+                ELOExtraField(),
+                RankedFields(
+                    fields=["age", "fighter_height_cm"],
+                    exponents=[1.2, 4],
+                ),
+            ],
         }
-        
+
         csv_files_path = THIS_DIR / "test_files" / "ELODataProcessor"
         # Expected CSV file paths
         cls.expected_data_path = csv_files_path / "expected_data.csv"
-        cls.expected_aggregated_data_path = csv_files_path / "expected_data_aggregated.csv"
-        cls.expected_normalized_data_path = csv_files_path / "expected_data_normalized.csv"
-        
-        # Initialize ELODataProcessor instance
-        cls.data_processor = ELODataProcessor(**cls.data_processor_kwargs)
+        cls.expected_aggregated_data_path = (
+            csv_files_path / "expected_data_aggregated.csv"
+        )
+        cls.expected_normalized_data_path = (
+            csv_files_path / "expected_data_normalized.csv"
+        )
+
+        # Initialize DataProcessor instance
+        cls.data_processor = DataProcessor(**cls.data_processor_kwargs)
 
         # Process data through the necessary steps
         cls.data_processor.load_data()
@@ -851,29 +863,32 @@ class TestELODataProcessor(unittest.TestCase):
         cls.data_processor.add_per_minute_and_fight_stats()
         cls.data_processor.normalize_data()
 
-
     def compare_dataframes(self, df, expected_csv_path):
         """Helper method to compare a dataframe to an expected CSV file."""
         # Check if we should update the CSV files
         if os.getenv("UPDATE_TEST_FILES") == "True":
             df.to_csv(expected_csv_path, index=False)
-                    # Load expected data
+            # Load expected data
 
         expected_df = pd.read_csv(expected_csv_path)
-        
+
         # Align dtypes and datetime formats for comparison
         for col in df.columns:
             if col in expected_df.columns:
                 # Convert datetime columns to string format YYYY-MM-DD
                 if pd.api.types.is_datetime64_any_dtype(df[col]):
-                    df[col] = pd.to_datetime(df[col]).dt.strftime('%Y-%m-%d')
-                    expected_df[col] = pd.to_datetime(expected_df[col]).dt.strftime('%Y-%m-%d')
+                    df[col] = pd.to_datetime(df[col]).dt.strftime("%Y-%m-%d")
+                    expected_df[col] = pd.to_datetime(expected_df[col]).dt.strftime(
+                        "%Y-%m-%d"
+                    )
                 else:
                     # Align types
                     expected_df[col] = expected_df[col].astype(df[col].dtype)
-        
+
         # Compare dataframes
-        pd.testing.assert_frame_equal(df.reset_index(drop=True), expected_df.reset_index(drop=True))
+        pd.testing.assert_frame_equal(
+            df.reset_index(drop=True), expected_df.reset_index(drop=True)
+        )
 
     def test_data(self):
         """Test that data matches expected CSV output."""
@@ -881,30 +896,48 @@ class TestELODataProcessor(unittest.TestCase):
 
     def test_data_aggregated(self):
         """Test that aggregated data matches expected CSV output."""
-        self.compare_dataframes(self.data_processor.data_aggregated, self.expected_aggregated_data_path)
+        self.compare_dataframes(
+            self.data_processor.data_aggregated, self.expected_aggregated_data_path
+        )
 
     def test_data_normalized(self):
         """Test that normalized data matches expected CSV output."""
-        self.compare_dataframes(self.data_processor.data_normalized, self.expected_normalized_data_path)
+        self.compare_dataframes(
+            self.data_processor.data_normalized, self.expected_normalized_data_path
+        )
+
 
 class TestFlexibleELODataProcessor(TestELODataProcessor, unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        # Define the configuration for initializing ELODataProcessor
+        # Define the configuration for initializing DataProcessor
         cls.data_processor_kwargs = {
             "data_folder": THIS_DIR / "test_files",
-            "n_boost_bins": 3,
-            "boost_values": [1, 1.2, 1.4],
+            "data_aggregator": WeightedDataAggregator(),
+            "extra_fields": [
+                FlexibleELOExtraField(
+                    n_boost_bins=3,
+                    boost_values=[1, 1.2, 1.4],
+                ),
+                RankedFields(
+                    fields=["age", "fighter_height_cm"],
+                    exponents=[1.2, 4],
+                ),
+            ],
         }
-        
+
         csv_files_path = THIS_DIR / "test_files" / "FlexibleELODataProcessor"
         # Expected CSV file paths
         cls.expected_data_path = csv_files_path / "expected_data.csv"
-        cls.expected_aggregated_data_path = csv_files_path / "expected_data_aggregated.csv"
-        cls.expected_normalized_data_path = csv_files_path / "expected_data_normalized.csv"
-        
-        # Initialize ELODataProcessor instance
-        cls.data_processor = FlexibleELODataProcessor(**cls.data_processor_kwargs)
+        cls.expected_aggregated_data_path = (
+            csv_files_path / "expected_data_aggregated.csv"
+        )
+        cls.expected_normalized_data_path = (
+            csv_files_path / "expected_data_normalized.csv"
+        )
+
+        # Initialize DataProcessor instance
+        cls.data_processor = DataProcessor(**cls.data_processor_kwargs)
 
         # Process data through the necessary steps
         cls.data_processor.load_data()
@@ -912,23 +945,37 @@ class TestFlexibleELODataProcessor(TestELODataProcessor, unittest.TestCase):
         cls.data_processor.add_per_minute_and_fight_stats()
         cls.data_processor.normalize_data()
 
+
 class TestSumFlexibleELODataProcessor(TestELODataProcessor, unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        # Define the configuration for initializing ELODataProcessor
+        # Define the configuration for initializing DataProcessor
         cls.data_processor_kwargs = {
             "data_folder": THIS_DIR / "test_files",
-            "scaling_factor": 0.8,
+            "data_aggregator": WeightedDataAggregator(),
+            "extra_fields": [
+                SumFlexibleELOExtraField(
+                    scaling_factor=0.8,
+                ),
+                RankedFields(
+                    fields=["age", "fighter_height_cm"],
+                    exponents=[1.2, 4],
+                ),
+            ],
         }
-        
+
         csv_files_path = THIS_DIR / "test_files" / "SumFlexibleELODataProcessor"
         # Expected CSV file paths
         cls.expected_data_path = csv_files_path / "expected_data.csv"
-        cls.expected_aggregated_data_path = csv_files_path / "expected_data_aggregated.csv"
-        cls.expected_normalized_data_path = csv_files_path / "expected_data_normalized.csv"
-        
+        cls.expected_aggregated_data_path = (
+            csv_files_path / "expected_data_aggregated.csv"
+        )
+        cls.expected_normalized_data_path = (
+            csv_files_path / "expected_data_normalized.csv"
+        )
+
         # Initialize ELODataProcessor instance
-        cls.data_processor = SumFlexibleELODataProcessor(**cls.data_processor_kwargs)
+        cls.data_processor = DataProcessor(**cls.data_processor_kwargs)
 
         # Process data through the necessary steps
         cls.data_processor.load_data()

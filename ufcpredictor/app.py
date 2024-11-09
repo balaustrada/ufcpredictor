@@ -65,6 +65,7 @@ def get_data_parameters():
         ],
     }
     days_to_early_split = 1825
+    min_num_fights = 4
     batch_size = 128
 
     X_set = [
@@ -134,6 +135,7 @@ def get_data_parameters():
         data_processor_kwargs,
         days_to_early_split,
         batch_size,
+        min_num_fights,
     )
 
 
@@ -163,7 +165,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
             local_dir=args.data_folder,
         )
 
-    (X_set, data_processor_kwargs, days_to_early_split, batch_size) = (
+    (X_set, data_processor_kwargs, days_to_early_split, batch_size, min_num_fights) = (
         get_data_parameters()
     )
 
@@ -191,6 +193,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         X_set=X_set,
         days_to_early_split=days_to_early_split,
         batch_size=batch_size,
+        min_num_fights=min_num_fights,
         test=True,
     )
     logger.info("Training model (final)...")
@@ -199,6 +202,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         X_set=X_set,
         days_to_early_split=days_to_early_split,
         batch_size=batch_size,
+        min_num_fights=min_num_fights,
         test=False,
     )
 
@@ -280,12 +284,13 @@ def train_model(
     X_set: List[str],
     days_to_early_split: int,
     batch_size: int,
+    min_num_fights: int,
     test: bool,
 ) -> torch.nn.Module:
     invalid_fights = set(
-        data_processor.data_aggregated[data_processor.data_aggregated["num_fight"] < 4][
-            "fight_id"
-        ]
+        data_processor.data_aggregated[
+            data_processor.data_aggregated["num_fight"] < min_num_fights
+        ]["fight_id"]
     )  # The usual is 4
     # Early split date should be today - 5 years
     early_split_date = (

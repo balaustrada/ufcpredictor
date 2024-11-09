@@ -25,7 +25,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from typing import List, Optional
 
     from ufcpredictor.data_aggregator import DataAggregator
-    from ufcpredictor.extra_fields import ExtraField
+    from ufcpredictor.data_enhancers import DataEnhancer
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class DataProcessor:
         ufc_scraper: Optional[UFCScraper] = None,
         bfo_scraper: Optional[BestFightOddsScraper] = None,
         data_aggregator: Optional[DataAggregator] = None,
-        extra_fields: List[ExtraField] = [],
+        data_enhancers: List[DataEnhancer] = [],
     ) -> None:
         """
         Constructor for DataProcessor.
@@ -77,7 +77,7 @@ class DataProcessor:
         )
 
         self.data_aggregator = data_aggregator or DefaultDataAggregator()
-        self.extra_fields = extra_fields
+        self.data_enhancers = data_enhancers
 
     def load_data(self) -> None:
         """
@@ -100,8 +100,8 @@ class DataProcessor:
         data = self.apply_filters(data)
         self.data = self.group_round_data(data)
 
-        for extra_field in self.extra_fields:
-            self.data = extra_field.add_data_fields(self)
+        for data_enhancer in self.data_enhancers:
+            self.data = data_enhancer.add_data_fields(self)
 
         names = self.data["fighter_name"].values
         ids = self.data["fighter_id"].values
@@ -479,8 +479,8 @@ class DataProcessor:
         """
         aggregated_fields = self.stat_names
 
-        for extra_field in self.extra_fields:
-            aggregated_fields += extra_field.aggregated_fields
+        for data_enhancer in self.data_enhancers:
+            aggregated_fields += data_enhancer.aggregated_fields
 
         return aggregated_fields
 
@@ -516,8 +516,8 @@ class DataProcessor:
         for field in self.aggregated_fields:
             normalized_fields += [field, field + "_per_minute", field + "_per_fight"]
 
-        for extra_field in self.extra_fields:
-            normalized_fields += extra_field.normalized_fields
+        for data_enhancer in self.data_enhancers:
+            normalized_fields += data_enhancer.normalized_fields
 
         return normalized_fields
 
@@ -567,8 +567,8 @@ class DataProcessor:
         """
         self.data_aggregated = self.data_aggregator.aggregate_data(self)
 
-        for extra_field in self.extra_fields:
-            self.data_aggregated = extra_field.add_aggregated_fields(self)
+        for data_enhancer in self.data_enhancers:
+            self.data_aggregated = data_enhancer.add_aggregated_fields(self)
 
     def add_per_minute_and_fight_stats(self) -> None:
         """

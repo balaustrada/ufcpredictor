@@ -15,7 +15,7 @@ if TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
-class ExtraField:
+class DataEnhancer:
     mlflow_params: List[str] = []
 
     @property
@@ -33,7 +33,7 @@ class ExtraField:
         return data_processor.data_aggregated
 
 
-class RankedFields(ExtraField):
+class RankedFields(DataEnhancer):
     mlflow_params: List[str] = ["fields", "exponents"]
 
     def __init__(self, fields: List[str], exponents: List[float] | float):
@@ -51,7 +51,7 @@ class RankedFields(ExtraField):
         return data
 
 
-class OSR(ExtraField):
+class OSR(DataEnhancer):
     """
     Extends the DataProcessor class to add OSR information.
 
@@ -229,12 +229,12 @@ class WOSR(OSR):
         return data_aggregated
 
 
-class ELOExtraField(ExtraField):
+class ELO(DataEnhancer):
     mlflow_params: List[str] = ["initial_rating", "K_factor"]
 
     def __init__(self, initial_rating: float = 1000, K_factor: float = 32):
         """
-        Initializes the ELOExtraField instance.
+        Initializes the ELO instance.
 
         Args:
             initial_rating: The initial rating of the fighters.
@@ -338,7 +338,7 @@ class ELOExtraField(ExtraField):
         return 1 / (1 + 10 ** ((r2 - r1) / 400))
 
 
-class FlexibleELOExtraField(ELOExtraField):
+class FlexibleELO(ELO):
     mlflow_params: List[str] = ["n_boost_bins", "boost_values"]
 
     def __init__(
@@ -349,7 +349,7 @@ class FlexibleELOExtraField(ELOExtraField):
         **kwargs: Any,
     ):
         """
-        Initializes the ELOExtraField instance.
+        Initializes the ELO instance.
 
         Args:
             initial_rating: The initial rating of the fighters.
@@ -525,12 +525,12 @@ class FlexibleELOExtraField(ELOExtraField):
         return data
 
 
-class SumFlexibleELOExtraField(ELOExtraField):
+class SumFlexibleELO(ELO):
     mlflow_params: List[str] = ["scaling_factor"]
 
     def __init__(self, *args: Any, scaling_factor: float = 0.5, **kwargs: Any):
         """
-        Initializes the SumFlexibleELOExtraField instance.
+        Initializes the SumFlexibleELO instance.
         """
         super().__init__(*args, **kwargs)
 

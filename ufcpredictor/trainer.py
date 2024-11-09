@@ -107,15 +107,15 @@ class Trainer:
                     for param in object_.mlflow_params:
                         params[label + "_" + param] = getattr(object_, param)
 
-            extra_fields = data_processor.extra_fields
+            data_enhancers = data_processor.data_enhancers
             # sort extra fields by name
-            extra_fields.sort(key=lambda x: x.__class__.__name__)
+            data_enhancers.sort(key=lambda x: x.__class__.__name__)
 
-            for i, extra_field in enumerate(data_processor.extra_fields):
-                params["extra_field_" + str(i)] = extra_field.__class__.__name__
-                for param in extra_field.mlflow_params:
-                    params["extra_field_" + str(i) + "_" + param] = getattr(
-                        extra_field, param
+            for i, data_enhancer in enumerate(data_processor.data_enhancers):
+                params["data_enhancer_" + str(i)] = data_enhancer.__class__.__name__
+                for param in data_enhancer.mlflow_params:
+                    params["data_enhancer_" + str(i) + "_" + param] = getattr(
+                        data_enhancer, param
                     )
 
             mlflow.log_params(dict(sorted(params.items())))

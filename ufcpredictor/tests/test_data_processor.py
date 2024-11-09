@@ -10,13 +10,13 @@ import pandas as pd
 
 from ufcpredictor.data_aggregator import WeightedDataAggregator
 from ufcpredictor.data_processor import DataProcessor
-from ufcpredictor.extra_fields import (
+from ufcpredictor.data_enhancers import (
     OSR,
     WOSR,
-    ELOExtraField,
-    FlexibleELOExtraField,
+    ELO,
+    FlexibleELO,
     RankedFields,
-    SumFlexibleELOExtraField,
+    SumFlexibleELO,
 )
 
 THIS_DIR = Path(__file__).parent
@@ -594,7 +594,7 @@ class TestDataProcessor(BaseTestDataProcessor, unittest.TestCase):
 
 class TestOSRDataProcessor(BaseTestDataProcessor, unittest.TestCase):
     init_kwargs = {
-        "extra_fields": [
+        "data_enhancers": [
             OSR(),
         ],
     }
@@ -675,7 +675,7 @@ class TestOSRDataProcessor(BaseTestDataProcessor, unittest.TestCase):
 
 class TestWOSRDataProcessor(BaseTestDataProcessor, unittest.TestCase):
     init_kwargs = {
-        "extra_fields": [
+        "data_enhancers": [
             WOSR(weights=[0.1, 0.2, 0.7]),
         ],
     }
@@ -836,8 +836,8 @@ class TestELODataProcessor(unittest.TestCase):
         cls.data_processor_kwargs = {
             "data_folder": THIS_DIR / "test_files",
             "data_aggregator": WeightedDataAggregator(),
-            "extra_fields": [
-                ELOExtraField(),
+            "data_enhancers": [
+                ELO(),
                 RankedFields(
                     fields=["age", "fighter_height_cm"],
                     exponents=[1.2, 4],
@@ -915,8 +915,8 @@ class TestFlexibleELODataProcessor(TestELODataProcessor, unittest.TestCase):
         cls.data_processor_kwargs = {
             "data_folder": THIS_DIR / "test_files",
             "data_aggregator": WeightedDataAggregator(),
-            "extra_fields": [
-                FlexibleELOExtraField(
+            "data_enhancers": [
+                FlexibleELO(
                     n_boost_bins=3,
                     boost_values=[1, 1.2, 1.4],
                 ),
@@ -954,8 +954,8 @@ class TestSumFlexibleELODataProcessor(TestELODataProcessor, unittest.TestCase):
         cls.data_processor_kwargs = {
             "data_folder": THIS_DIR / "test_files",
             "data_aggregator": WeightedDataAggregator(),
-            "extra_fields": [
-                SumFlexibleELOExtraField(
+            "data_enhancers": [
+                SumFlexibleELO(
                     scaling_factor=0.8,
                 ),
                 RankedFields(

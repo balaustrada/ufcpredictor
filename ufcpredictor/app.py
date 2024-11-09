@@ -19,7 +19,7 @@ from huggingface_hub import snapshot_download
 from ufcpredictor.data_aggregator import WeightedDataAggregator
 from ufcpredictor.data_processor import DataProcessor
 from ufcpredictor.datasets import BasicDataset, ForecastDataset
-from ufcpredictor.extra_fields import SumFlexibleELOExtraField
+from ufcpredictor.data_enhancers import SumFlexibleELO
 from ufcpredictor.loss_functions import BettingLoss
 from ufcpredictor.models import SymmetricFightNet
 from ufcpredictor.plot_tools import PredictionPlots
@@ -57,8 +57,8 @@ def get_model_parameters(
 def get_data_parameters() -> Tuple[List[str], Dict[str, Any], int, int, int]:
     data_processor_kwargs = {
         "data_aggregator": WeightedDataAggregator(),
-        "extra_fields": [
-            SumFlexibleELOExtraField(
+        "data_enhancers": [
+            SumFlexibleELO(
                 scaling_factor=0.5,
                 K_factor=40,
             )

@@ -25,7 +25,7 @@ class FighterNet(nn.Module):
     fight. It can be used to make predictions on the outcome of a fight and to
     calculate the benefit of a bet.
     """
-    params: List[str] = ["dropout_prob",]
+    mlflow_params: List[str] = ["dropout_prob",]
 
     def __init__(self, input_size: int, dropout_prob: float = 0.0) -> None:
         """
@@ -88,7 +88,7 @@ class SymmetricFightNet(nn.Module):
     The model can be used to make predictions on the outcome of a fight and to calculate
     the benefit of a bet.
     """
-    params: List[str] = ["dropout_prob",]
+    mlflow_params: List[str] = ["dropout_prob",]
 
     def __init__(self, input_size: int, dropout_prob: float = 0.0) -> None:
         """

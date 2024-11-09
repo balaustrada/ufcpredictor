@@ -42,7 +42,7 @@ class DataProcessor:
     ufcpredictor.datasets to provide a seamless data preparation workflow.
     """
 
-    params: List[str] = []
+    mlflow_params: List[str] = []
 
     def __init__(
         self,

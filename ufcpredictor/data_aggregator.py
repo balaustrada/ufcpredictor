@@ -10,19 +10,23 @@ import pandas as pd
 if TYPE_CHECKING:  # pragma: no cover
     from pathlib import Path
     from typing import Any, List, Optional
-    
+
     from ufcpredictor.data_processor import DataProcessor
 
 logger = logging.getLogger(__name__)
 
 
 class DataAggregator(ABC):
+    mlflow_params: List[str] = []
+
     @abstractmethod
     def aggregate_data(self, data_processor: DataProcessor) -> pd.DataFrame:
         pass
 
 
 class DefaultDataAggregator(DataAggregator):
+    mlflow_params: List[str] = []
+
     def aggregate_data(self, data_processor: DataProcessor) -> pd.DataFrame:
         logger.info(f"Fields to be aggregated: {data_processor.aggregated_fields}")
 
@@ -54,7 +58,11 @@ class DefaultDataAggregator(DataAggregator):
 
 
 class WeightedDataAggregator(DataAggregator):
-    def __init__(self, alpha: float=-0.0004) -> None:
+    mlflow_params: List[str] = [
+        "alpha",
+    ]
+
+    def __init__(self, alpha: float = -0.0004) -> None:
         self.alpha = alpha
 
     def aggregate_data(self, data_processor: DataProcessor) -> pd.DataFrame:

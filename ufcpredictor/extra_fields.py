@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class ExtraField:
+    mlflow_params: List[str] = []
     @property
     def aggregated_fields(self) -> List[str]:
         return []
@@ -33,6 +34,7 @@ class ExtraField:
         return data_processor.data_aggregated
     
 class RankedFields(ExtraField):
+    mlflow_params: List[str] = ["fields", "exponents"]
     def __init__(self, fields: List[str], exponents: List[float] | float):
         if isinstance(exponents, float): # pragma: no cover
             exponents = [exponents] * len(fields)
@@ -58,6 +60,7 @@ class OSR(ExtraField):
     as:
         new_OSR = (old_OSR + mean_OSR_opponents + wins/n_fights)
     """
+    mlflow_params: List[str] = []
 
     def add_aggregated_fields(
         self, data_processor: DataProcessor
@@ -142,6 +145,8 @@ class WOSR(OSR):
         new_OSR = (w1*old_OSR + w2*mean_OSR_opponents + w3*wins/n_fights)
     the weights are [w1, w2, w3]
     """
+    mlflow_params: List[str] = ["weights",]
+
     def __init__(self, weights: List[float] = [0.3, 0.3, 0.3]):
         self.skills_weight, self.past_OSR_weight, self.opponent_OSR_weight = weights
 
@@ -219,6 +224,7 @@ class WOSR(OSR):
         return data_aggregated
 
 class ELOExtraField(ExtraField):
+    mlflow_params: List[str] = ["initial_rating", "K_factor"]
     def __init__(self, initial_rating: float = 1000, K_factor: float = 32):
         """
         Initializes the ELOExtraField instance.
@@ -324,6 +330,7 @@ class ELOExtraField(ExtraField):
 
 
 class FlexibleELOExtraField(ELOExtraField):
+    mlflow_params: List[str] = ["n_boost_bins", "boost_values"]
     def __init__(self, *args: Any, n_boost_bins: int = 3, boost_values: List[float] = [1, 1.2, 1.4], **kwargs: Any):
         """
         Initializes the ELOExtraField instance.
@@ -504,6 +511,7 @@ class FlexibleELOExtraField(ELOExtraField):
         return data
 
 class SumFlexibleELOExtraField(ELOExtraField):
+    mlflow_params: List[str] = ["scaling_factor"]
     def __init__(self, *args: Any, scaling_factor: float = 0.5, **kwargs: Any):
         """
         Initializes the SumFlexibleELOExtraField instance.

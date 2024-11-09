@@ -10,13 +10,17 @@ PyTorch model.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import cast, TYPE_CHECKING
 
 import mlflow
 import numpy as np
 import torch
 from sklearn.metrics import f1_score
 from tqdm import tqdm
+
+from ufcpredictor.datasets import BasicDataset
+from ufcpredictor.data_processor import DataProcessor
+from ufcpredictor.data_aggregator import DataAggregator
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import List, Optional, Tuple
@@ -76,7 +80,7 @@ class Trainer:
         self.epoch_counter: int = 0
         self.mlflow_tracking = mlflow_tracking
 
-        if self.mlflow_tracking: # pragma: no cover
+        if self.mlflow_tracking:  # pragma: no cover
             params = {
                 "optimizer": self.optimizer.__class__.__name__,
                 "learning_rate": self.optimizer.param_groups[0]["lr"],
@@ -89,13 +93,29 @@ class Trainer:
                     self.scheduler.patience if self.scheduler else None
                 ),
             }
+            data_processor = cast(BasicDataset, self.train_loader.dataset).data_processor
+            data_aggregator = data_processor.data_aggregator
+
             for label, object_ in zip(
-                ["loss_function", "model", "data_processor"],
-                [self.loss_fn, self.model, self.train_loader.dataset.data_processor],
+                ["loss_function", "model", "data_processor", "data_aggregator"],
+                [self.loss_fn, self.model, data_processor, data_aggregator],
             ):
                 params[label] = object_.__class__.__name__
-                for param in object_.params:
-                    params[label + "_" + param] = getattr(object_, param)
+                if hasattr(object_, "mlflow_params"):
+                    for param in object_.mlflow_params:
+                        params[label + "_" + param] = getattr(object_, param)
+
+            extra_fields = data_processor.extra_fields
+            # sort extra fields by name
+            extra_fields.sort(key=lambda x: x.__class__.__name__)
+
+            for i, extra_field in enumerate(data_processor.extra_fields):
+                params["extra_field_" + str(i)] = extra_field.__class__.__name__
+                for param in extra_field.mlflow_params:
+                    params["extra_field_" + str(i) + "_" + param] = getattr(
+                        extra_field, param
+                    )
+
             mlflow.log_params(dict(sorted(params.items())))
 
     def train(
@@ -169,12 +189,12 @@ class Trainer:
                     f"Correct: [{correct*100:.2f}]"
                 )
 
-            if self.mlflow_tracking: # pragma: no cover
+            if self.mlflow_tracking:  # pragma: no cover
                 mlflow.log_metric(
                     "train_loss", np.mean(train_loss), step=self.epoch_counter
                 )
                 mlflow.log_metric(
-                    "val_loss", np.mean(val_loss), step=self.epoch_counter
+                    "val_loss", cast(float, np.mean(val_loss)), step=self.epoch_counter
                 )
                 mlflow.log_metric(
                     "val_f1_score", val_target_f1, step=self.epoch_counter

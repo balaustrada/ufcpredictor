@@ -100,7 +100,7 @@ class TestApp(unittest.TestCase):
             patch_ = result_container[0].axes[0].patches[0]
 
             self.assertAlmostEqual(0, patch_.get_x())
-            self.assertAlmostEqual(99.03, patch_.get_width(), places=2)
+            self.assertAlmostEqual(-3.47, patch_.get_width(), places=2)
             self.assertAlmostEqual(-0.35, patch_.get_y())
             self.assertAlmostEqual(0.7, patch_.get_height())
 

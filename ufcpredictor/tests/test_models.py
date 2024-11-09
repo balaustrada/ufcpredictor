@@ -6,11 +6,14 @@ from ufcpredictor.models import FighterNet, SymmetricFightNet
 
 # Assuming FighterNet and SymmetricFightNet are imported here
 
+
 class TestFighterNet(unittest.TestCase):
     def setUp(self):
         self.input_size = 10  # Example input size
         self.dropout_prob = 0.5
-        self.model = FighterNet(input_size=self.input_size, dropout_prob=self.dropout_prob)
+        self.model = FighterNet(
+            input_size=self.input_size, dropout_prob=self.dropout_prob
+        )
 
     def test_forward_pass(self):
         # Create a dummy input tensor of shape (batch_size, input_size)
@@ -38,7 +41,9 @@ class TestSymmetricFightNet(unittest.TestCase):
     def setUp(self):
         self.input_size = 10  # Example input size
         self.dropout_prob = 0.5
-        self.model = SymmetricFightNet(input_size=self.input_size, dropout_prob=self.dropout_prob)
+        self.model = SymmetricFightNet(
+            input_size=self.input_size, dropout_prob=self.dropout_prob
+        )
 
     def test_forward_pass(self):
         # Create dummy input tensors of shape (batch_size, input_size)
@@ -78,5 +83,6 @@ class TestSymmetricFightNet(unittest.TestCase):
         # Since the model should be symmetric, the two outputs should be very similar
         self.assertTrue(torch.allclose(output1, output2, atol=1e-2))
 
-if __name__ == '__main__': # pragma: no cover
+
+if __name__ == "__main__":  # pragma: no cover
     unittest.main()

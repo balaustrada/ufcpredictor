@@ -93,7 +93,9 @@ class Trainer:
                     self.scheduler.patience if self.scheduler else None
                 ),
             }
-            data_processor = cast(BasicDataset, self.train_loader.dataset).data_processor
+            data_processor = cast(
+                BasicDataset, self.train_loader.dataset
+            ).data_processor
             data_aggregator = data_processor.data_aggregator
 
             for label, object_ in zip(

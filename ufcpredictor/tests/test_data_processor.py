@@ -14,9 +14,14 @@ from torch import nn
 
 from ufcpredictor.data_aggregator import WeightedDataAggregator
 from ufcpredictor.data_processor import DataProcessor
-from ufcpredictor.extra_fields import (OSR, WOSR, ELOExtraField,
-                                       FlexibleELOExtraField, RankedFields,
-                                       SumFlexibleELOExtraField)
+from ufcpredictor.extra_fields import (
+    OSR,
+    WOSR,
+    ELOExtraField,
+    FlexibleELOExtraField,
+    RankedFields,
+    SumFlexibleELOExtraField,
+)
 
 THIS_DIR = Path(__file__).parent
 
@@ -593,8 +598,11 @@ class TestDataProcessor(BaseTestDataProcessor, unittest.TestCase):
 
 class TestOSRDataProcessor(BaseTestDataProcessor, unittest.TestCase):
     init_kwargs = {
-        "extra_fields": [OSR(),],
+        "extra_fields": [
+            OSR(),
+        ],
     }
+
     def test_aggregate_data(self):
         """Test the aggregate_data method."""
         data = pd.DataFrame(
@@ -671,7 +679,9 @@ class TestOSRDataProcessor(BaseTestDataProcessor, unittest.TestCase):
 
 class TestWOSRDataProcessor(BaseTestDataProcessor, unittest.TestCase):
     init_kwargs = {
-        "extra_fields": [WOSR(weights=[0.1, 0.2, 0.7]),],
+        "extra_fields": [
+            WOSR(weights=[0.1, 0.2, 0.7]),
+        ],
     }
 
     def test_aggregate_data(self):
@@ -861,7 +871,7 @@ class TestELODataProcessor(unittest.TestCase):
     def compare_dataframes(self, df, expected_csv_path):
         """Helper method to compare a dataframe to an expected CSV file."""
         # Check if we should update the CSV files
-        if os.getenv("UPDATE_TEST_FILES") == "True": # pragma: no cover
+        if os.getenv("UPDATE_TEST_FILES") == "True":  # pragma: no cover
             df.to_csv(expected_csv_path, index=False)
             # Load expected data
 

@@ -5,6 +5,7 @@ the outcome of UFC fights.
 The loss functions take into account the predictions made by the model and the actual 
 outcomes of the fights, and are used to optimize the model's performance.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -21,6 +22,7 @@ class BettingLoss(nn.Module):
     mlflow_params: List[str] = [
         "max_bet",
     ]
+
     def __init__(self, max_bet: float = 10) -> None:
         """
         Initializes the BettingLoss instance.

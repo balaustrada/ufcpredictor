@@ -104,5 +104,6 @@ class TestApp(unittest.TestCase):
             self.assertAlmostEqual(-0.35, patch_.get_y())
             self.assertAlmostEqual(0.7, patch_.get_height())
 
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 class ExtraField:
     mlflow_params: List[str] = []
+
     @property
     def aggregated_fields(self) -> List[str]:
         return []
@@ -28,15 +29,15 @@ class ExtraField:
     def add_data_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
         return data_processor.data
 
-    def add_aggregated_fields(
-        self, data_processor: DataProcessor
-    ) -> pd.DataFrame:
+    def add_aggregated_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
         return data_processor.data_aggregated
-    
+
+
 class RankedFields(ExtraField):
     mlflow_params: List[str] = ["fields", "exponents"]
+
     def __init__(self, fields: List[str], exponents: List[float] | float):
-        if isinstance(exponents, float): # pragma: no cover
+        if isinstance(exponents, float):  # pragma: no cover
             exponents = [exponents] * len(fields)
 
         self.fields = fields
@@ -49,6 +50,7 @@ class RankedFields(ExtraField):
             data[field] = (data[field].rank(pct=True) * 100) ** exponent
         return data
 
+
 class OSR(ExtraField):
     """
     Extends the DataProcessor class to add OSR information.
@@ -60,11 +62,10 @@ class OSR(ExtraField):
     as:
         new_OSR = (old_OSR + mean_OSR_opponents + wins/n_fights)
     """
+
     mlflow_params: List[str] = []
 
-    def add_aggregated_fields(
-        self, data_processor: DataProcessor
-    ) -> pd.DataFrame:
+    def add_aggregated_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
         """
         Aggregate data by computing the fighters' statistics and OSR.
 
@@ -132,9 +133,10 @@ class OSR(ExtraField):
             diff = abs(new_OSR - df["OSR"]).sum()
 
         data_aggregated["OSR"] = new_OSR
-        
+
         return data_aggregated
-    
+
+
 class WOSR(OSR):
     """
     Extends the OSRDataProcessor class to add weights to the different components
@@ -145,7 +147,10 @@ class WOSR(OSR):
         new_OSR = (w1*old_OSR + w2*mean_OSR_opponents + w3*wins/n_fights)
     the weights are [w1, w2, w3]
     """
-    mlflow_params: List[str] = ["weights",]
+
+    mlflow_params: List[str] = [
+        "weights",
+    ]
 
     def __init__(self, weights: List[float] = [0.3, 0.3, 0.3]):
         self.skills_weight, self.past_OSR_weight, self.opponent_OSR_weight = weights
@@ -223,8 +228,10 @@ class WOSR(OSR):
 
         return data_aggregated
 
+
 class ELOExtraField(ExtraField):
     mlflow_params: List[str] = ["initial_rating", "K_factor"]
+
     def __init__(self, initial_rating: float = 1000, K_factor: float = 32):
         """
         Initializes the ELOExtraField instance.
@@ -240,7 +247,9 @@ class ELOExtraField(ExtraField):
 
     @property
     def normalized_fields(self) -> List[str]:
-        return ["ELO", ]
+        return [
+            "ELO",
+        ]
 
     def add_data_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
         """
@@ -313,7 +322,7 @@ class ELOExtraField(ExtraField):
             updated_ratings_df,
             on=["fight_id", "fighter_id"],
         )
-    
+
     @staticmethod
     def expected_ELO_score(r1: float, r2: float) -> float:
         """
@@ -331,7 +340,14 @@ class ELOExtraField(ExtraField):
 
 class FlexibleELOExtraField(ELOExtraField):
     mlflow_params: List[str] = ["n_boost_bins", "boost_values"]
-    def __init__(self, *args: Any, n_boost_bins: int = 3, boost_values: List[float] = [1, 1.2, 1.4], **kwargs: Any):
+
+    def __init__(
+        self,
+        *args: Any,
+        n_boost_bins: int = 3,
+        boost_values: List[float] = [1, 1.2, 1.4],
+        **kwargs: Any,
+    ):
         """
         Initializes the ELOExtraField instance.
 
@@ -402,9 +418,7 @@ class FlexibleELOExtraField(ELOExtraField):
             lambda x: self.boost_factors[-1] if x else 1
         )
 
-        points_score = self.get_scores(
-            data["fighter_score"] - data["opponent_score"]
-        )
+        points_score = self.get_scores(data["fighter_score"] - data["opponent_score"])
 
         match_score = 1
         for score in (
@@ -422,7 +436,7 @@ class FlexibleELOExtraField(ELOExtraField):
         data["match_score"] = match_score
 
         return data
-    
+
     def add_data_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
         """
         Calculate and add ELO ratings to the dataframe.
@@ -510,8 +524,10 @@ class FlexibleELOExtraField(ELOExtraField):
 
         return data
 
+
 class SumFlexibleELOExtraField(ELOExtraField):
     mlflow_params: List[str] = ["scaling_factor"]
+
     def __init__(self, *args: Any, scaling_factor: float = 0.5, **kwargs: Any):
         """
         Initializes the SumFlexibleELOExtraField instance.
@@ -551,9 +567,7 @@ class SumFlexibleELOExtraField(ELOExtraField):
             lambda x: 1 if x else 0
         )
 
-        points_score = self.get_scores(
-            data["fighter_score"] - data["opponent_score"]
-        )
+        points_score = self.get_scores(data["fighter_score"] - data["opponent_score"])
 
         match_score = 0
         for score in (

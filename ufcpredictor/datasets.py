@@ -479,7 +479,7 @@ class ForecastDataset(Dataset):
             X2.to(device),
             odds1.to(device),
             odds2.to(device),
-            model.to(device)
+            model.to(device),
         )
         model.eval()
         with torch.no_grad():

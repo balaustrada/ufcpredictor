@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
-from shutil import rmtree
-import torch
-from torch import nn
+
 import numpy as np
 
-from ufcpredictor.utils import convert_minutes_to_seconds, convert_odds_to_decimal, convert_odds_to_moneyline
+from ufcpredictor.utils import (
+    convert_minutes_to_seconds,
+    convert_odds_to_decimal,
+    convert_odds_to_moneyline,
+)
 
 THIS_DIR = Path(__file__).parent
+
 
 class TestUtils(unittest.TestCase):
     def test_convert_minutes_to_seconds(self):
@@ -25,7 +28,7 @@ class TestUtils(unittest.TestCase):
 
     def test_convert_odds_to_decimal(self):
         # Test conversion for positive odds (greater than 0)
-        
+
         odds = [150, 200, 300]
         expected = [2.5, 3.0, 4.0]
         result = convert_odds_to_decimal(np.asarray(odds, dtype=np.float64))
@@ -36,7 +39,6 @@ class TestUtils(unittest.TestCase):
         expected = [1.66667, 1.5, 1.33333]
         result = convert_odds_to_decimal(np.asarray(odds, dtype=np.float64))
         np.testing.assert_array_almost_equal(result, expected, decimal=5)
-
 
         result = convert_odds_to_decimal(odds)
         np.testing.assert_array_almost_equal(result, expected, decimal=5)
@@ -49,7 +51,7 @@ class TestUtils(unittest.TestCase):
         np.testing.assert_array_almost_equal(result, expected, decimal=5)
 
         # Test conversion for decimal odds less than or equal to 2
-        odds = [5/3, 1.5, 12/9]
+        odds = [5 / 3, 1.5, 12 / 9]
         expected = [-150.0, -200, -300]
         result = convert_odds_to_moneyline(np.asarray(odds, dtype=np.float64))
         np.testing.assert_array_almost_equal(result, expected, decimal=5)
@@ -57,5 +59,6 @@ class TestUtils(unittest.TestCase):
         result = convert_odds_to_moneyline(odds)
         np.testing.assert_array_almost_equal(result, expected, decimal=5)
 
-if __name__ == '__main__': # pragma: no cover
+
+if __name__ == "__main__":  # pragma: no cover
     unittest.main()

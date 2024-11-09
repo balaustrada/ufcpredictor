@@ -10,12 +10,17 @@ PyTorch model.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import torch
 from sklearn.metrics import f1_score
 from tqdm import tqdm
+
+import mlflow
+from ufcpredictor.data_aggregator import DataAggregator
+from ufcpredictor.data_processor import DataProcessor
+from ufcpredictor.datasets import BasicDataset
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import List, Optional, Tuple
@@ -51,6 +56,7 @@ class Trainer:
         test_loader: Optional[torch.utils.data.DataLoader] = None,
         scheduler: Optional[torch.optim.lr_scheduler.ReduceLROnPlateau] = None,
         device: str | torch.device = "cpu",
+        mlflow_tracking: bool = False,
     ):
         """
         Initialize the Trainer object.
@@ -71,6 +77,48 @@ class Trainer:
         self.scheduler = scheduler
         self.device = device
         self.loss_fn = loss_fn.to(device)
+        self.epoch_counter: int = 0
+        self.mlflow_tracking = mlflow_tracking
+
+        if self.mlflow_tracking:  # pragma: no cover
+            params = {
+                "optimizer": self.optimizer.__class__.__name__,
+                "learning_rate": self.optimizer.param_groups[0]["lr"],
+                "scheduler": (
+                    self.scheduler.__class__.__name__ if self.scheduler else None
+                ),
+                "scheduler_mode": self.scheduler.mode if self.scheduler else None,
+                "scheduler_factor": self.scheduler.factor if self.scheduler else None,
+                "scheduler_patience": (
+                    self.scheduler.patience if self.scheduler else None
+                ),
+            }
+            data_processor = cast(
+                BasicDataset, self.train_loader.dataset
+            ).data_processor
+            data_aggregator = data_processor.data_aggregator
+
+            for label, object_ in zip(
+                ["loss_function", "model", "data_processor", "data_aggregator"],
+                [self.loss_fn, self.model, data_processor, data_aggregator],
+            ):
+                params[label] = object_.__class__.__name__
+                if hasattr(object_, "mlflow_params"):
+                    for param in object_.mlflow_params:
+                        params[label + "_" + param] = getattr(object_, param)
+
+            data_enhancers = data_processor.data_enhancers
+            # sort extra fields by name
+            data_enhancers.sort(key=lambda x: x.__class__.__name__)
+
+            for i, data_enhancer in enumerate(data_processor.data_enhancers):
+                params["data_enhancer_" + str(i)] = data_enhancer.__class__.__name__
+                for param in data_enhancer.mlflow_params:
+                    params["data_enhancer_" + str(i) + "_" + param] = getattr(
+                        data_enhancer, param
+                    )
+
+            mlflow.log_params(dict(sorted(params.items())))
 
     def train(
         self,
@@ -102,6 +150,7 @@ class Trainer:
         target_labels = []
 
         for epoch in range(1, epochs + 1):
+            self.epoch_counter += 1
             self.model.train()
             train_loss = []
 
@@ -133,13 +182,24 @@ class Trainer:
             ).reshape(-1)
 
             val_loss, val_target_f1, correct, _, _ = self.test(test_loader)
-            
+
             if not silent:
                 print(f"Train acc: [{match.sum() / len(match):.5f}]")
                 print(
                     f"Epoch : [{epoch}] Train Loss : [{np.mean(train_loss):.5f}] "
                     f"Val Loss : [{val_loss:.5f}] Disaster? F1 : [{val_target_f1:.5f}] "
                     f"Correct: [{correct*100:.2f}]"
+                )
+
+            if self.mlflow_tracking:  # pragma: no cover
+                mlflow.log_metric(
+                    "train_loss", np.mean(train_loss), step=self.epoch_counter
+                )
+                mlflow.log_metric(
+                    "val_loss", cast(float, np.mean(val_loss)), step=self.epoch_counter
+                )
+                mlflow.log_metric(
+                    "val_f1_score", val_target_f1, step=self.epoch_counter
                 )
 
             if self.scheduler is not None:

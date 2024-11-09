@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.3
+#       jupytext_version: 1.16.4
 #   kernelspec:
-#     display_name: kaggle
+#     display_name: Python 3 (ipykernel)
 #     language: python
-#     name: kaggle
+#     name: python3
 # ---
 
 # %%
@@ -18,23 +18,39 @@ import pandas as pd
 pd.set_option("display.max_columns", None)
 
 # %%
-from ufcpredictor.data_processor import WOSRDataProcessor as DataProcessor
+from ufcpredictor.data_processor import (
+    OSRDataProcessor,
+    SumFlexibleELODataProcessor,
+    WOSRDataProcessor,
+    ELODataProcessor,
+    FlexibleELODataProcessor,
+)
 from ufcpredictor.datasets import BasicDataset
 from ufcpredictor.trainer import Trainer
 import torch
 import numpy as np
 
 # %%
-self = data_processor = DataProcessor(
-    data_folder="/home/cramirez/kaggle/ufc_scraper/data",
-    weights=[0.3, 0.3, 0.3]
-)
+# DataProcessor = ELODataProcessor
+# data_processor_kwargs = {
+#     "data_folder": "/home/cramirpe/UFC/UFCfightdata",
+#     # "scaling_factor": 0.5,
+#     # "boost_values": [1, 2, 3],
+#     # "K_factor": 30,
+# }
+
+DataProcessor = SumFlexibleELODataProcessor
+data_processor_kwargs = {
+    "data_folder": "/home/cramirpe/UFC/UFCfightdata",
+    "scaling_factor": 0.5,
+    # "boost_values": [1, 2, 3],
+    "K_factor": 30,
+}
 
 # %%
-self.load_data()
-self.aggregate_data()
-self.add_per_minute_and_fight_stats()
-self.normalize_data()
+self = data_processor = DataProcessor(
+    **data_processor_kwargs
+)
 
 # %%
 if True:
@@ -44,6 +60,7 @@ if True:
         'total_strikes_succ_opponent_per_minute',
         'takedown_succ_per_minute',
         'KO_opponent_per_minute',
+        'KO_per_minute',
         'takedown_att_per_minute',
         'takedown_succ_opponent_per_minute',
         'win_opponent_per_fight',
@@ -63,12 +80,29 @@ if True:
         'Sub_opponent_per_fight',
         'distance_strikes_att_per_minute',
         'knockdowns_per_minute',
-        'OSR',
+        'ELO',
+        'weight',
+        'fighter_height_cm',
     ]
 else:
     X_set = None
 
 # X_set=BasicDataset.X_set + ["OSR",]
+
+# %%
+len(X_set)
+
+# %%
+self.load_data()
+self.aggregate_data()
+self.add_per_minute_and_fight_stats()
+
+# for field in X_set:
+#     if field in ["ELO", "age"]:
+#         continue
+#     self.data_aggregated[field] = (self.data_aggregated[field].rank(pct=True) * 100) ** 1.2
+
+self.normalize_data()
 
 # %% [markdown]
 # ----
@@ -83,7 +117,7 @@ invalid_fights = set(self.data_aggregated[self.data_aggregated["num_fight"] < 4]
 
 # %%
 early_split_date = "2017-01-01"
-split_date = "2024-01-01"#"2023-08-01"
+split_date = "2023-08-01"#"2023-08-01"
 max_date = "2024-11-01" 
 
 early_train_fights = self.data["fight_id"][self.data["event_date"] < split_date]
@@ -105,7 +139,7 @@ test_fights = set(test_fights) - set(invalid_fights)
 # Now I generate a data_processor specifically for training, so 
 # I avoid any possible contamination from the test sample:
 train_data_processor = DataProcessor(
-    "/home/cramirez/kaggle/ufc_scraper/data",
+    **data_processor_kwargs
 )
 train_data_processor.scraper.event_scraper.data = (
     train_data_processor.scraper.event_scraper.data[
@@ -117,6 +151,14 @@ train_data_processor.scraper.event_scraper.data = (
 train_data_processor.load_data()
 train_data_processor.aggregate_data()
 train_data_processor.add_per_minute_and_fight_stats()
+
+# for field in X_set:
+#     if field in ["age"]:
+#         continue
+#     train_data_processor.data_aggregated[field] = (
+#         train_data_processor.data_aggregated[field].rank(pct=True) * 100
+#     ) ** 1.2
+    
 train_data_processor.normalize_data()
 
 # %%
@@ -139,9 +181,9 @@ test_dataset = BasicDataset(
 )
 
 # %%
-early_train_dataloader = torch.utils.data.DataLoader(early_train_dataset, batch_size=64, shuffle=True)
-train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=64, shuffle=True)
-test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=64, shuffle=False)
+early_train_dataloader = torch.utils.data.DataLoader(early_train_dataset, batch_size=256, shuffle=True)
+train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=256, shuffle=True)
+test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=256, shuffle=False)
 
 # %%
 from ufcpredictor.models import SymmetricFightNet
@@ -149,7 +191,7 @@ from ufcpredictor.loss_functions import BettingLoss
 
 
 # %%
-seed = 43
+seed = 30
 torch.manual_seed(seed)
 import random
 random.seed(seed)
@@ -160,9 +202,9 @@ model = SymmetricFightNet(
         input_size=len(train_dataset.X_set),
         dropout_prob=0.35, # 0.35
 )
-optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3)
+optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=2e-5)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=2
+        optimizer, mode="min", factor=0.7, patience=2
 )
 
 trainer = Trainer(
@@ -182,7 +224,7 @@ trainer.train(
 )
 
 # %%
-trainer.train(epochs=3) # ~8 is a good match if dropout to 0.35 
+trainer.train(epochs=30) # ~8 is a good match if dropout to 0.35 
 
 # %%
 # Save model dict
@@ -223,29 +265,61 @@ df = pd.DataFrame(
 )
 
 df = df.merge(
-    data_processor.data[["fight_id", "event_date"]],
+    data_processor.data[["fight_id", "fighter_id", "event_date", "event_id", "weight_class"]],
     on="fight_id",
 )
 
-results = df.groupby("event_date")[["bet", "win"]].sum().reset_index()
-results
 
 # %%
 fig, ax = plt.subplots()
 
+
+results = df.groupby("event_date")[["bet", "win"]].sum().reset_index()
 ax.plot(
     results["event_date"],
-    np.cumsum(results["win"] - results["bet"])
+    np.cumsum(results["win"] - results["bet"]), #/ np.cumsum(results["bet"]) * 100,
+    ls='--',
+    c='k',
 )
+
+
+# Generate evenly spaced colors from the rainbow colormap
+#unique_weight_classes = df["weight_class"].unique()
+weight_classes = ["Flyweight", "Bantamweight", "Featherweight", "Lightweight", "Welterweight", "Middleweight", "Light Heavyweight", "Heavyweight"]
+colors = plt.cm.rainbow(np.linspace(0, 1, len(weight_classes)))
+
+# Plot each weight class with its unique color
+for color, weight_class in zip(colors, reversed(weight_classes)):
+    results = df[df["weight_class"] == weight_class].groupby("event_date")[["win", "bet"]].sum()
+    cumsum_values = np.cumsum(results["win"] - results["bet"])
+    ax.plot(results.index, cumsum_values, label=weight_class, color=color)
+
+    # Place label at the last point of each line
+    last_event_date = results.index[-1]
+    last_cumsum_value = cumsum_values.iloc[-1]
+    ax.text(last_event_date, last_cumsum_value, weight_class, color=color, fontsize=8, va='center')
+
+# ax.set_ylim(-20, 20)
 # Put x labels rotated 90 degrees
 ax.tick_params(axis="x", labelrotation=90)
-
+ax.set_ylim(None, None)
 ax.grid()
 ax.axhline(0, color="black")
+ax.legend()
 
 # %%
+data = df.merge(
+    data_processor.data[["fight_id", "fighter_name", "fighter_name_opponent", "event_date"]],
+    on="fight_id",
+).drop_duplicates(subset=["fight_id"])
 
 # %%
+# sort by win-bet
+data["win-bet"] = data["win"] - data["bet"]
+data = data.sort_values(by='win-bet', ascending=False)
+
+# %%
+results["bet"].sum()
 
 # %%
 
@@ -310,6 +384,52 @@ df[["correct", "house correct"]].mean()
 
 # %%
 (df["correct"].mean() - df["house correct"].mean()) * 100
+
+# %%
+
+# %%
+data_processor.scraper.event_scraper
+
+# %%
+data_processor.scraper.fight_scraper.data.columns
+
+# %%
+df = df.merge(
+    data_processor.scraper.fight_scraper.data[["fight_id", "weight_class"]],
+    on="fight_id",
+)
+
+df = df.merge(
+    data_processor.scraper.event_scraper.data[["event_id", "event_name"]],
+    on="event_id",
+)
+
+# %%
+group = df.groupby("weight_class")
+
+# %%
+(df["win"] - df["bet"]).sum()
+
+# %%
+weight_classes = ["Flyweight", "Bantamweight", "Featherweight", "Lightweight", "Welterweight", "Middleweight", "Light Heavyweight", "Heavyweight"]
+len(weight_classes)
+
+# %%
+((group["win"].sum() - group["bet"].sum()) / group["bet"].count() )[weight_classes]
+
+# %%
+group["bet"].count()
+
+# %%
+fight_night = df["event_name"].str.contains("Fight Night")
+
+group = df.groupby(fight_night)
+
+# %%
+group["win"].sum() - group["bet"].sum()
+
+# %%
+group["bet"].count()
 
 # %%
 

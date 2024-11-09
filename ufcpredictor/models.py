@@ -7,9 +7,16 @@ of the fights, and can be used to make predictions on the outcome of a fight and
 to calculate the benefit of a bet.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import torch
 import torch.nn.functional as F
 from torch import nn
+
+if TYPE_CHECKING:  # pragma: no cover
+    from typing import List
 
 
 class FighterNet(nn.Module):
@@ -21,6 +28,10 @@ class FighterNet(nn.Module):
     fight. It can be used to make predictions on the outcome of a fight and to
     calculate the benefit of a bet.
     """
+
+    mlflow_params: List[str] = [
+        "dropout_prob",
+    ]
 
     def __init__(self, input_size: int, dropout_prob: float = 0.0) -> None:
         """
@@ -44,6 +55,8 @@ class FighterNet(nn.Module):
         self.dropout3 = nn.Dropout(p=dropout_prob)
         self.dropout4 = nn.Dropout(p=dropout_prob)
         self.dropout5 = nn.Dropout(p=dropout_prob)
+
+        self.dropout_prob = dropout_prob
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -82,6 +95,10 @@ class SymmetricFightNet(nn.Module):
     the benefit of a bet.
     """
 
+    mlflow_params: List[str] = [
+        "dropout_prob",
+    ]
+
     def __init__(self, input_size: int, dropout_prob: float = 0.0) -> None:
         """
         Initialize the SymmetricFightNet model with the given input size and dropout
@@ -108,6 +125,7 @@ class SymmetricFightNet(nn.Module):
 
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
+        self.dropout_prob = dropout_prob
 
     def forward(
         self,

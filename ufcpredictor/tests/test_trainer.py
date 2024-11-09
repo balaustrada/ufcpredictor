@@ -1,11 +1,11 @@
 import unittest
-import torch
-from torch.utils.data import DataLoader, TensorDataset
-from torch import nn
-import torch.optim.lr_scheduler as scheduler
 
-from ufcpredictor.trainer import Trainer
+import torch
+from torch import nn
+from torch.utils.data import DataLoader, TensorDataset
+
 from ufcpredictor.loss_functions import BettingLoss
+from ufcpredictor.trainer import Trainer
 
 
 class SimpleNet(nn.Module):
@@ -14,7 +14,7 @@ class SimpleNet(nn.Module):
         self.fc1 = nn.Linear(10, 1)
 
     def forward(self, X1, X2, odds1=None, odds2=None):
-        
+
         return torch.sigmoid(self.fc1(X1) + self.fc1(X2))
 
 
@@ -46,6 +46,7 @@ class TestTrainer(unittest.TestCase):
             loss_fn=self.loss_fn,
             device=self.device,
         )
+
     def test_train(self):
         # Test training loop for a single epoch
         self.trainer.train(epochs=1)
@@ -73,8 +74,7 @@ class TestTrainer(unittest.TestCase):
             result,
             (0, 0, 0, [], []),
         )
-    
-        
+
 
 class TestTrainerWithScheduler(unittest.TestCase):
     def setUp(self):
@@ -95,8 +95,8 @@ class TestTrainerWithScheduler(unittest.TestCase):
         self.loss_fn = BettingLoss()
         self.device = "cpu"
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        self.optimizer, mode="min", factor=0.5, patience=2
-)
+            self.optimizer, mode="min", factor=0.5, patience=2
+        )
 
         # Initialize Trainer
         self.trainer = Trainer(
@@ -106,8 +106,9 @@ class TestTrainerWithScheduler(unittest.TestCase):
             optimizer=self.optimizer,
             loss_fn=self.loss_fn,
             device=self.device,
-            scheduler = self.scheduler
+            scheduler=self.scheduler,
         )
+
     def test_train(self):
         # Test training loop for a single epoch
         self.trainer.train(epochs=1)
@@ -187,5 +188,5 @@ class TestTrainerWithScheduler(unittest.TestCase):
     #     )
 
 
-if __name__ == "__main__": # pragma: no cover
+if __name__ == "__main__":  # pragma: no cover
     unittest.main()

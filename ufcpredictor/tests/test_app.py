@@ -1,12 +1,11 @@
-import unittest
-from unittest.mock import patch, MagicMock
 import os
+import unittest
 from datetime import datetime
 from pathlib import Path
-from ufcpredictor.app import (
-    main,
-    get_args,
-)  # Replace 'your_module_name' with the actual module name
+from unittest.mock import MagicMock, patch
+
+from ufcpredictor.app import (  # Replace 'your_module_name' with the actual module name
+    get_args, main)
 
 THIS_DIR = Path(__file__).parent
 
@@ -82,8 +81,8 @@ class TestApp(unittest.TestCase):
 
             def click_side_effect(function, inputs, outputs):
                 result = function(
-                    "ae4a02b9c3d4",
-                    "49f8b3f4f4cf",
+                    "c38479d31855",
+                    "c61affbad5e4",
                     datetime(2024, 10, 1).timestamp(),
                     -188,
                     188,
@@ -100,7 +99,7 @@ class TestApp(unittest.TestCase):
             patch_ = result_container[0].axes[0].patches[0]
 
             self.assertAlmostEqual(0, patch_.get_x())
-            self.assertAlmostEqual(79.84, patch_.get_width(), places=2)
+            self.assertAlmostEqual(-3.47, patch_.get_width(), places=2)
             self.assertAlmostEqual(-0.35, patch_.get_y())
             self.assertAlmostEqual(0.7, patch_.get_height())
 

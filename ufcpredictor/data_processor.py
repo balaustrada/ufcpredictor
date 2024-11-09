@@ -8,20 +8,24 @@ Handles data transformation, normalization, and feature engineering.
 from __future__ import annotations
 
 import datetime
-from fuzzywuzzy.process import extractOne
 import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
+from fuzzywuzzy.process import extractOne
 from ufcscraper.odds_scraper import BestFightOddsScraper
 from ufcscraper.ufc_scraper import UFCScraper
 
+from ufcpredictor.data_aggregator import DefaultDataAggregator
 from ufcpredictor.utils import convert_minutes_to_seconds, weight_dict
 
 if TYPE_CHECKING:  # pragma: no cover
     from pathlib import Path
-    from typing import Any, List, Optional
+    from typing import List, Optional
+
+    from ufcpredictor.data_aggregator import DataAggregator
+    from ufcpredictor.data_enhancers import DataEnhancer
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +42,15 @@ class DataProcessor:
     ufcpredictor.datasets to provide a seamless data preparation workflow.
     """
 
+    mlflow_params: List[str] = []
+
     def __init__(
         self,
         data_folder: Optional[Path | str] = None,
         ufc_scraper: Optional[UFCScraper] = None,
         bfo_scraper: Optional[BestFightOddsScraper] = None,
+        data_aggregator: Optional[DataAggregator] = None,
+        data_enhancers: List[DataEnhancer] = [],
     ) -> None:
         """
         Constructor for DataProcessor.
@@ -51,6 +59,8 @@ class DataProcessor:
             data_folder: The folder containing the data.
             ufc_scraper: The scraper to use for ufc data.
             bfo_scraper: The scraper to use for best fight odds data.
+            data_aggregator: The data aggregator to use for aggregating data.
+            data_enhancers: The list of data enhancers to apply to the data.
 
         Raises:
             ValueError: If data_folder is None and both ufc_scraper and
@@ -66,6 +76,9 @@ class DataProcessor:
         self.bfo_scraper = bfo_scraper or BestFightOddsScraper(
             data_folder=data_folder, n_sessions=-1
         )
+
+        self.data_aggregator = data_aggregator or DefaultDataAggregator()
+        self.data_enhancers = data_enhancers
 
     def load_data(self) -> None:
         """
@@ -88,6 +101,9 @@ class DataProcessor:
         data = self.apply_filters(data)
         self.data = self.group_round_data(data)
 
+        for data_enhancer in self.data_enhancers:
+            self.data = data_enhancer.add_data_fields(self)
+
         names = self.data["fighter_name"].values
         ids = self.data["fighter_id"].values
 
@@ -98,7 +114,7 @@ class DataProcessor:
         """
         Returns the name of the fighter with the given id.
 
-        Args:
+        Args:cla
             id_: The id of the fighter.
 
         Returns:
@@ -154,7 +170,7 @@ class DataProcessor:
             [
                 fight_data.rename(
                     columns={
-                        "fighter_1": "opponent_id", 
+                        "fighter_1": "opponent_id",
                         "fighter_2": "fighter_id",
                         "scores_1": "opponent_score",
                         "scores_2": "fighter_score",
@@ -162,11 +178,11 @@ class DataProcessor:
                 ),
                 fight_data.rename(
                     columns={
-                        "fighter_2": "opponent_id", 
+                        "fighter_2": "opponent_id",
                         "fighter_1": "fighter_id",
                         "scores_2": "opponent_score",
                         "scores_1": "fighter_score",
-                        }
+                    }
                 ),
             ]
         )
@@ -372,7 +388,6 @@ class DataProcessor:
 
         return data
 
-
     @staticmethod
     def apply_filters(data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -459,11 +474,17 @@ class DataProcessor:
 
         This property returns all the statistic names, including the ones
         with "_opponent" appended to represent the opponent's statistics.
+        It also returns the aggregated fields added by the data enhancers.
 
         Returns:
             A list of strings, the names of the aggregated fields.
         """
-        return self.stat_names
+        aggregated_fields = self.stat_names
+
+        for data_enhancer in self.data_enhancers:
+            aggregated_fields += data_enhancer.aggregated_fields
+
+        return aggregated_fields
 
     @property
     def normalized_fields(self) -> List[str]:
@@ -479,18 +500,29 @@ class DataProcessor:
         - "age"
         - "time_since_last_fight"
         - "fighter_height_cm"
+        - "weight",
         - All the aggregated fields (see :meth:`aggregated_fields`),
           and the same fields with "_per_minute" and "_per_fight" appended,
           which represent the aggregated fields per minute and per fight,
           respectively.
+        
+        It also returns the normalized fields added by the data enhancers.
 
         Returns:
             A list of strings, the names of the normalized fields.
         """
-        normalized_fields = ["age", "time_since_last_fight", "fighter_height_cm"]
+        normalized_fields = [
+            "age",
+            "time_since_last_fight",
+            "fighter_height_cm",
+            "weight",
+        ]
 
         for field in self.aggregated_fields:
             normalized_fields += [field, field + "_per_minute", field + "_per_fight"]
+
+        for data_enhancer in self.data_enhancers:
+            normalized_fields += data_enhancer.normalized_fields
 
         return normalized_fields
 
@@ -529,40 +561,17 @@ class DataProcessor:
 
     def aggregate_data(self) -> None:
         """
-        Aggregate the data by summing the round statistics over the history of the
-        fighters.
-
-        The data is copied and then the round statistics are summed over the history
-        of the fighters. The total time is also summed over the history of the
+        Aggregate the data by combining the round statistics over the history of the
         fighters.
 
         The aggregated data is stored in the attribute data_aggregated.
+
+        The specific implementation depends on the DataAggregator used.
         """
-        logger.info(f"Fields to be aggregated: {self.aggregated_fields}")
+        self.data_aggregated = self.data_aggregator.aggregate_data(self)
 
-        data_aggregated = self.data.copy()
-        data_aggregated["num_fight"] = (
-            data_aggregated.groupby("fighter_id").cumcount() + 1
-        )
-
-        data_aggregated["previous_fight_date"] = data_aggregated.groupby("fighter_id")[
-            "event_date"
-        ].shift(1)
-        data_aggregated["time_since_last_fight"] = (
-            data_aggregated["event_date"] - data_aggregated["previous_fight_date"]
-        ).dt.days
-
-        for column in self.aggregated_fields:
-            data_aggregated[column] = data_aggregated[column].astype(float)
-            data_aggregated[column] = data_aggregated.groupby("fighter_id")[
-                column
-            ].cumsum()
-
-        data_aggregated["total_time"] = data_aggregated.groupby("fighter_id")[
-            "total_time"
-        ].cumsum()
-
-        self.data_aggregated = data_aggregated
+        for data_enhancer in self.data_enhancers:
+            self.data_aggregated = data_enhancer.add_aggregated_fields(self)
 
     def add_per_minute_and_fight_stats(self) -> None:
         """
@@ -586,10 +595,12 @@ class DataProcessor:
 
         for column in self.aggregated_fields:
             new_columns[column + "_per_minute"] = (
-                self.data_aggregated[column] / self.data_aggregated["total_time"]
+                self.data_aggregated[column]
+                / self.data_aggregated["weighted_total_time"]
             )
             new_columns[column + "_per_fight"] = (
-                self.data_aggregated[column] / self.data_aggregated["num_fight"]
+                self.data_aggregated[column]
+                / self.data_aggregated["weighted_num_fight"]
             )
 
         self.data_aggregated = pd.concat(
@@ -618,196 +629,3 @@ class DataProcessor:
             data_normalized[column] = data_normalized[column] / mean
 
         self.data_normalized = data_normalized
-
-
-class OSRDataProcessor(DataProcessor):
-    """
-    Extends the DataProcessor class to add OSR information.
-
-    The OSR shows the strength of a given fighter by showing its win/loss ratio
-    with contributions from their opponents win/loss ratio.
-
-    The OSR is computed iteratively, for each iteration the new OSR is computed
-    as:
-        new_OSR = (old_OSR + mean_OSR_opponents + wins/n_fights)
-    """
-
-    def aggregate_data(self) -> None:
-        """
-        Aggregate data by computing the fighters' statistics and OSR.
-
-        This method aggregates the data by computing the fighters' statistics and
-        OSR (Opponent Strength Rating). The OSR is computed as the average of the
-        opponent's OSR and the fighter's win rate.
-
-        The OSR is calculated iteratively until the difference between the new and
-        old values is less than 0.1.
-        """
-        super().aggregate_data()
-
-        # Adding OSR information
-        df = self.data_aggregated[
-            ["fighter_id", "fight_id", "opponent_id", "event_date"]
-        ].copy()
-        df["S"] = self.data_aggregated["win"] / self.data_aggregated["num_fight"]
-        df["OSR"] = df["S"]
-
-        diff = 1
-        new_OSR = df["S"]
-
-        while diff > 0.1:
-            df["OSR"] = new_OSR
-            df["OSR_past"] = df.groupby("fighter_id")["OSR"].shift(1)
-
-            merged_df = df.merge(
-                df,
-                left_on="fighter_id",
-                right_on="opponent_id",
-                suffixes=("_x", "_y"),
-                how="left",
-            )
-
-            merged_df = merged_df[
-                (merged_df["event_date_x"] > merged_df["event_date_y"])
-            ]
-
-            OSR_opponent = merged_df.groupby(["fighter_id_x", "fight_id_x"])[
-                "OSR_y"
-            ].mean()
-
-            df = (
-                df[
-                    [
-                        "fighter_id",
-                        "fight_id",
-                        "opponent_id",
-                        "event_date",
-                        "S",
-                        "OSR",
-                        "OSR_past",
-                    ]
-                ]
-                .merge(
-                    OSR_opponent,
-                    left_on=["fighter_id", "fight_id"],
-                    right_on=["fighter_id_x", "fight_id_x"],
-                    how="left",
-                )
-                .rename(columns={"OSR_y": "OSR_opp"})
-            )
-
-            new_OSR = df[["S", "OSR_opp", "OSR_past"]].mean(axis=1)
-
-            diff = abs(new_OSR - df["OSR"]).sum()
-
-        self.data_aggregated["OSR"] = new_OSR
-
-
-class WOSRDataProcessor(DataProcessor):
-    """
-    Extends the OSRDataProcessor class to add weights to the different components
-    of the OSR estimation.
-
-    The OSR is computed iteratively, for each iteration the new OSR is computed
-    as:
-        new_OSR = (w1*old_OSR + w2*mean_OSR_opponents + w3*wins/n_fights)
-    the weights are [w1, w2, w3]
-    """
-
-    def __init__(
-        self, *args: Any, weights: List[float] = [0.3, 0.3, 0.3], **kwargs: Any
-    ) -> None:
-        """
-        Initialize a WOSRDataProcessor object.
-
-        Args:
-            *args: Any additional positional arguments to be passed to the superclass.
-            weights : Weights for the skills, past OSR, and opponent OSR when
-                calculating the OSR. Defaults to [0.3, 0.3, 0.3].
-            **kwargs: Any additional keyword arguments to be passed to the superclass.
-        """
-        super().__init__(*args, **kwargs)
-
-        self.skills_weight, self.past_OSR_weight, self.opponent_OSR_weight = weights
-
-    def aggregate_data(self) -> None:
-        """
-        Aggregate data by computing the Weighted Opponent Skill Rating (WOSR).
-
-        The WOSR is calculated by taking the weighted average of the fighter's past
-        win ratio, the fighter's past OSR, and the opponent's OSR. The weights are
-        specified by the parameters of the constructor.
-
-        The WOSR is calculated iteratively until the difference between the new and
-        old values is less than 0.1.
-        """
-        super().aggregate_data()
-
-        # Adding OSR information
-        df = self.data_aggregated[
-            ["fighter_id", "fight_id", "opponent_id", "event_date"]
-        ].copy()
-        df["S"] = self.data_aggregated["win"] / self.data_aggregated["num_fight"]
-        df["OSR"] = df["S"]
-
-        diff = 1
-        new_OSR = df["S"]
-
-        while diff > 0.1:
-            df["OSR"] = new_OSR
-            df["OSR_past"] = df.groupby("fighter_id")["OSR"].shift(1)
-
-            merged_df = df.merge(
-                df,
-                left_on="fighter_id",
-                right_on="opponent_id",
-                suffixes=("_x", "_y"),
-                how="left",
-            )
-
-            merged_df = merged_df[
-                (merged_df["event_date_x"] > merged_df["event_date_y"])
-            ]
-
-            OSR_opponent = merged_df.groupby(["fighter_id_x", "fight_id_x"])[
-                "OSR_y"
-            ].mean()
-
-            df = (
-                df[
-                    [
-                        "fighter_id",
-                        "fight_id",
-                        "opponent_id",
-                        "event_date",
-                        "S",
-                        "OSR",
-                        "OSR_past",
-                    ]
-                ]
-                .merge(
-                    OSR_opponent,
-                    left_on=["fighter_id", "fight_id"],
-                    right_on=["fighter_id_x", "fight_id_x"],
-                    how="left",
-                )
-                .rename(columns={"OSR_y": "OSR_opp"})
-            )
-
-            new_OSR = (
-                df["S"].fillna(0) * self.skills_weight
-                + df["OSR_past"].fillna(0) * self.past_OSR_weight
-                + df["OSR_opp"].fillna(0) * self.opponent_OSR_weight
-            )
-            weight_sum = (
-                (~df["S"].isna()) * self.skills_weight
-                + (~df["OSR_past"].isna()) * self.past_OSR_weight
-                + (~df["OSR_opp"].isna()) * self.opponent_OSR_weight
-            )
-            new_OSR /= weight_sum
-
-            # new_OSR = df[["S", "OSR_opp", "OSR_past"]].mean(axis=1)
-
-            diff = abs(new_OSR - df["OSR"]).sum()
-
-        self.data_aggregated["OSR"] = new_OSR

@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import List, Optional
@@ -55,7 +55,10 @@ def convert_minutes_to_seconds(time_str: str) -> Optional[int]:
         minutes, seconds = map(int, time_str.split(":"))
         return minutes * 60 + seconds
 
-def convert_odds_to_decimal(odds: List[int | float] | NDArray[np.float64 | np.int_]) -> NDArray[np.float64]:
+
+def convert_odds_to_decimal(
+    odds: List[int | float] | NDArray[np.float64 | np.int_],
+) -> NDArray[np.float64]:
     """
     Convert odds from American format to decimal format.
 
@@ -78,7 +81,9 @@ def convert_odds_to_decimal(odds: List[int | float] | NDArray[np.float64 | np.in
     return odds
 
 
-def convert_odds_to_moneyline(odds: NDArray[np.float64] | List[float]) -> NDArray[np.int_]:
+def convert_odds_to_moneyline(
+    odds: NDArray[np.float64] | List[float],
+) -> NDArray[np.int_]:
     """
     Convert odds from decimal format to moneyline format.
 

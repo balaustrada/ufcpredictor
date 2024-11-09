@@ -35,4 +35,4 @@ COPY --chown=user . $HOME/app
 EXPOSE 7860
 
 # Command to run your Jupyter notebook (you can change this as necessary)
-CMD ["ufcpredictor_app", "--data-folder", "data", "--model-path", "models/model.pth", "--port", "7860", "--server-name", "0.0.0.0", "--download-dataset"]
+CMD ["ufcpredictor_app", "--data-folder", "data", "--port", "7860", "--server-name", "0.0.0.0", "--download-dataset"]

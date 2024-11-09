@@ -18,6 +18,7 @@ dependencies = [
     "huggingface_hub",
     "gradio",
     "matplotlib",
+    "mlflow",
     "scikit_learn",
     "torch",
     "tqdm",

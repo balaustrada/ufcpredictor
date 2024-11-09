@@ -1,6 +1,6 @@
 import unittest
+
 import torch
-from torch import nn
 
 from ufcpredictor.models import FighterNet, SymmetricFightNet
 

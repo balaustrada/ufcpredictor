@@ -1,12 +1,11 @@
-import unittest
-from unittest.mock import patch, MagicMock
 import os
+import unittest
 from datetime import datetime
 from pathlib import Path
-from ufcpredictor.app import (
-    main,
-    get_args,
-)  # Replace 'your_module_name' with the actual module name
+from unittest.mock import MagicMock, patch
+
+from ufcpredictor.app import (  # Replace 'your_module_name' with the actual module name
+    get_args, main)
 
 THIS_DIR = Path(__file__).parent
 

@@ -3,9 +3,8 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 from shutil import rmtree
+
 import torch
-from torch import nn
-import numpy as np
 
 from ufcpredictor.loss_functions import BettingLoss
 

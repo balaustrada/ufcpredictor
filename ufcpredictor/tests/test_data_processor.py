@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-import datetime
 import os
 import unittest
 from pathlib import Path
-from shutil import rmtree
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
-import torch
-from torch import nn
 
 from ufcpredictor.data_aggregator import WeightedDataAggregator
 from ufcpredictor.data_processor import DataProcessor

@@ -1,11 +1,11 @@
 import unittest
-import torch
-from torch.utils.data import DataLoader, TensorDataset
-from torch import nn
-import torch.optim.lr_scheduler as scheduler
 
-from ufcpredictor.trainer import Trainer
+import torch
+from torch import nn
+from torch.utils.data import DataLoader, TensorDataset
+
 from ufcpredictor.loss_functions import BettingLoss
+from ufcpredictor.trainer import Trainer
 
 
 class SimpleNet(nn.Module):

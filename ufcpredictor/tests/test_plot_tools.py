@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
-import torch
+
 import numpy as np
-import matplotlib.pyplot as plt
+import torch
 
 from ufcpredictor.plot_tools import PredictionPlots
 

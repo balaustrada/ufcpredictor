@@ -8,7 +8,9 @@ to calculate the benefit of a bet.
 """
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 import torch
 import torch.nn.functional as F
 from torch import nn

@@ -10,17 +10,17 @@ PyTorch model.
 from __future__ import annotations
 
 import logging
-from typing import cast, TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
-import mlflow
 import numpy as np
 import torch
 from sklearn.metrics import f1_score
 from tqdm import tqdm
 
-from ufcpredictor.datasets import BasicDataset
-from ufcpredictor.data_processor import DataProcessor
+import mlflow
 from ufcpredictor.data_aggregator import DataAggregator
+from ufcpredictor.data_processor import DataProcessor
+from ufcpredictor.datasets import BasicDataset
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import List, Optional, Tuple

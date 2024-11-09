@@ -22,7 +22,7 @@ from ufcpredictor.utils import convert_minutes_to_seconds, weight_dict
 
 if TYPE_CHECKING:  # pragma: no cover
     from pathlib import Path
-    from typing import Any, List, Optional
+    from typing import List, Optional
 
     from ufcpredictor.data_aggregator import DataAggregator
     from ufcpredictor.extra_fields import ExtraField

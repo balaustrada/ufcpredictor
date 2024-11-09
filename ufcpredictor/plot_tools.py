@@ -5,19 +5,19 @@ predictor models.
 
 from __future__ import annotations
 
+import datetime
 import logging
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import datetime
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import List, Optional, Tuple
 
-    from torch import nn
     from numpy.typing import NDArray
+    from torch import nn
 
     from ufcpredictor.datasets import BasicDataset, ForecastDataset
 

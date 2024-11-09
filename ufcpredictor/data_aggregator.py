@@ -8,8 +8,7 @@ import numpy as np
 import pandas as pd
 
 if TYPE_CHECKING:  # pragma: no cover
-    from pathlib import Path
-    from typing import Any, List, Optional
+    from typing import List,
 
     from ufcpredictor.data_processor import DataProcessor
 

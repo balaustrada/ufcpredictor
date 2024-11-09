@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 def get_model_parameters(
     X_set: List[str],
 ) -> tuple[
-    torch.nn.Module, torch.optim.Optimizer, torch.optim.lr_scheduler._LRScheduler
+    torch.nn.Module, torch.optim.Optimizer, torch.optim.lr_scheduler.ReduceLROnPlateau
 ]:
     seed = 30
     torch.manual_seed(seed)

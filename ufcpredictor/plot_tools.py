@@ -98,9 +98,6 @@ class PredictionPlots:
 
             corrects = predictions.round() == Y.cpu().numpy()
 
-            odds1 = odds1.cpu().numpy().reshape(-1)
-            odds2 = odds2.cpu().numpy().reshape(-1)
-
             invested = 0
             earnings = 0
             fights = 0
@@ -114,8 +111,8 @@ class PredictionPlots:
                 opponent_names,
                 predictions,
                 shifts,
-                odds1,
-                odds2,
+                odds1.cpu().numpy().reshape(-1),
+                odds2.cpu().numpy().reshape(-1),
                 corrects,
                 Y.cpu().numpy().tolist(),
             ):

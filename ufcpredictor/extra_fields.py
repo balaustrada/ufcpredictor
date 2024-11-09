@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any, List
+    from typing import Any, Dict, List
 
     from ufcpredictor.data_processor import DataProcessor
 
@@ -233,7 +233,7 @@ class ELOExtraField(ExtraField):
         self.K_factor = K_factor
 
     @property
-    def normalized_fields(self):
+    def normalized_fields(self) -> List[str]:
         return ["ELO", ]
 
     def add_data_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
@@ -246,8 +246,8 @@ class ELOExtraField(ExtraField):
         Returns:
             The dataframe with ELO ratings added.
         """
-        ratings = {}
-        updated_ratings = []
+        ratings: Dict[int, float] = {}
+        updated_ratings: List[Dict[str, float | str]] = []
 
         unique_fights = data_processor.data.drop_duplicates(subset="fight_id")
 
@@ -426,8 +426,8 @@ class FlexibleELOExtraField(ELOExtraField):
         Returns:
             The dataframe with ELO ratings added.
         """
-        ratings = {}
-        updated_ratings = []
+        ratings: Dict[int, float] = {}
+        updated_ratings: List[Dict[str, float | str]] = []
 
         data = data_processor.data
 
@@ -583,8 +583,8 @@ class SumFlexibleELOExtraField(ELOExtraField):
         Returns:
             The dataframe with ELO ratings added.
         """
-        ratings = {}
-        updated_ratings = []
+        ratings: Dict[int, float] = {}
+        updated_ratings: List[Dict[str, float | str]] = []
 
         data = self.add_scores(data_processor.data)
         unique_fights = data.drop_duplicates(subset="fight_id")

@@ -27,7 +27,7 @@ from ufcpredictor.trainer import Trainer
 from ufcpredictor.utils import convert_odds_to_decimal
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import List, Optional
+    from typing import Any, Dict, List, Optional, Tuple
 
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ def get_model_parameters(
     return model, optimizer, scheduler
 
 
-def get_data_parameters():
+def get_data_parameters() -> Tuple[List[str], Dict[str, Any], int, int, int]:
     data_processor_kwargs = {
         "data_aggregator": WeightedDataAggregator(),
         "extra_fields": [

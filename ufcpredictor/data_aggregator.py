@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -15,8 +16,10 @@ if TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
-class DataAggregator:
-    pass
+class DataAggregator(ABC):
+    @abstractmethod
+    def aggregate_data(self, data_processor: DataProcessor) -> pd.DataFrame:
+        pass
 
 
 class DefaultDataAggregator(DataAggregator):
@@ -51,7 +54,7 @@ class DefaultDataAggregator(DataAggregator):
 
 
 class WeightedDataAggregator(DataAggregator):
-    def __init__(self, alpha=-0.0004):
+    def __init__(self, alpha: float=-0.0004) -> None:
         self.alpha = alpha
 
     def aggregate_data(self, data_processor: DataProcessor) -> pd.DataFrame:

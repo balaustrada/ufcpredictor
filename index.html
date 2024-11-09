@@ -2288,7 +2288,10 @@ ufcpredictor.datasets to provide a seamless data preparation workflow.</p>
 <span class="normal">625</span>
 <span class="normal">626</span>
 <span class="normal">627</span>
-<span class="normal">628</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">DataProcessor</span><span class="p">:</span>
+<span class="normal">628</span>
+<span class="normal">629</span>
+<span class="normal">630</span>
+<span class="normal">631</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">DataProcessor</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A data processor class designed to prepare and normalize UFC fight data for</span>
 <span class="sd">    training and testing neural network models.</span>
@@ -2318,6 +2321,7 @@ ufcpredictor.datasets to provide a seamless data preparation workflow.</p>
 <span class="sd">            ufc_scraper: The scraper to use for ufc data.</span>
 <span class="sd">            bfo_scraper: The scraper to use for best fight odds data.</span>
 <span class="sd">            data_aggregator: The data aggregator to use for aggregating data.</span>
+<span class="sd">            data_enhancers: The list of data enhancers to apply to the data.</span>
 
 <span class="sd">        Raises:</span>
 <span class="sd">            ValueError: If data_folder is None and both ufc_scraper and</span>
@@ -2731,6 +2735,7 @@ ufcpredictor.datasets to provide a seamless data preparation workflow.</p>
 
 <span class="sd">        This property returns all the statistic names, including the ones</span>
 <span class="sd">        with &quot;_opponent&quot; appended to represent the opponent&#39;s statistics.</span>
+<span class="sd">        It also returns the aggregated fields added by the data enhancers.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            A list of strings, the names of the aggregated fields.</span>
@@ -2756,10 +2761,13 @@ ufcpredictor.datasets to provide a seamless data preparation workflow.</p>
 <span class="sd">        - &quot;age&quot;</span>
 <span class="sd">        - &quot;time_since_last_fight&quot;</span>
 <span class="sd">        - &quot;fighter_height_cm&quot;</span>
+<span class="sd">        - &quot;weight&quot;,</span>
 <span class="sd">        - All the aggregated fields (see :meth:`aggregated_fields`),</span>
 <span class="sd">          and the same fields with &quot;_per_minute&quot; and &quot;_per_fight&quot; appended,</span>
 <span class="sd">          which represent the aggregated fields per minute and per fight,</span>
 <span class="sd">          respectively.</span>
+
+<span class="sd">        It also returns the normalized fields added by the data enhancers.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            A list of strings, the names of the normalized fields.</span>
@@ -2768,7 +2776,7 @@ ufcpredictor.datasets to provide a seamless data preparation workflow.</p>
             <span class="s2">&quot;age&quot;</span><span class="p">,</span>
             <span class="s2">&quot;time_since_last_fight&quot;</span><span class="p">,</span>
             <span class="s2">&quot;fighter_height_cm&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;weight&quot;</span><span class="p">,</span>  <span class="c1"># @uncomment</span>
+            <span class="s2">&quot;weight&quot;</span><span class="p">,</span>
         <span class="p">]</span>
 
         <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">aggregated_fields</span><span class="p">:</span>
@@ -2814,14 +2822,12 @@ ufcpredictor.datasets to provide a seamless data preparation workflow.</p>
 
     <span class="k">def</span> <span class="nf">aggregate_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Aggregate the data by summing the round statistics over the history of the</span>
-<span class="sd">        fighters.</span>
-
-<span class="sd">        The data is copied and then the round statistics are summed over the history</span>
-<span class="sd">        of the fighters. The total time is also summed over the history of the</span>
+<span class="sd">        Aggregate the data by combining the round statistics over the history of the</span>
 <span class="sd">        fighters.</span>
 
 <span class="sd">        The aggregated data is stored in the attribute data_aggregated.</span>
+
+<span class="sd">        The specific implementation depends on the DataAggregator used.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data_aggregated</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_aggregator</span><span class="o">.</span><span class="n">aggregate_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
@@ -2915,7 +2921,8 @@ ufcpredictor.datasets to provide a seamless data preparation workflow.</p>
 
         <p>The fields that are aggregated over the fighter's history.</p>
 <p>This property returns all the statistic names, including the ones
-with "_opponent" appended to represent the opponent's statistics.</p>
+with "_opponent" appended to represent the opponent's statistics.
+It also returns the aggregated fields added by the data enhancers.</p>
 
 
     <p><span class="doc-section-title">Returns:</span></p>
@@ -2968,10 +2975,12 @@ between different fighters.</p>
 - "age"
 - "time_since_last_fight"
 - "fighter_height_cm"
+- "weight",
 - All the aggregated fields (see :meth:<code>aggregated_fields</code>),
   and the same fields with "_per_minute" and "_per_fight" appended,
   which represent the aggregated fields per minute and per fight,
   respectively.</p>
+<p>It also returns the normalized fields added by the data enhancers.</p>
 
 
     <p><span class="doc-section-title">Returns:</span></p>
@@ -3188,6 +3197,22 @@ represent the opponent's result.</p>
                   <code>None</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>data_enhancers</code>
+            </td>
+            <td>
+                  <code><span title="typing.List">List</span>[<span title="ufcpredictor.data_enhancers.DataEnhancer">DataEnhancer</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The list of data enhancers to apply to the data.</p>
+              </div>
+            </td>
+            <td>
+                  <code>[]</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -3250,7 +3275,8 @@ bfo_scraper are None.</p>
 <span class="normal">77</span>
 <span class="normal">78</span>
 <span class="normal">79</span>
-<span class="normal">80</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">80</span>
+<span class="normal">81</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">data_folder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">ufc_scraper</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">UFCScraper</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -3266,6 +3292,7 @@ bfo_scraper are None.</p>
 <span class="sd">        ufc_scraper: The scraper to use for ufc data.</span>
 <span class="sd">        bfo_scraper: The scraper to use for best fight odds data.</span>
 <span class="sd">        data_aggregator: The data aggregator to use for aggregating data.</span>
+<span class="sd">        data_enhancers: The list of data enhancers to apply to the data.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If data_folder is None and both ufc_scraper and</span>
@@ -3367,8 +3394,7 @@ indicating the age of the fighter at the time of the fight.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/data_processor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">333</span>
-<span class="normal">334</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">334</span>
 <span class="normal">335</span>
 <span class="normal">336</span>
 <span class="normal">337</span>
@@ -3422,7 +3448,8 @@ indicating the age of the fighter at the time of the fight.</p>
 <span class="normal">385</span>
 <span class="normal">386</span>
 <span class="normal">387</span>
-<span class="normal">388</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">388</span>
+<span class="normal">389</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span> <span class="nf">add_key_stats</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Add key statistics to the dataframe.</span>
@@ -3528,10 +3555,7 @@ where <statistic> is the name of the statistic.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/data_processor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">573</span>
-<span class="normal">574</span>
-<span class="normal">575</span>
-<span class="normal">576</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">576</span>
 <span class="normal">577</span>
 <span class="normal">578</span>
 <span class="normal">579</span>
@@ -3560,7 +3584,10 @@ where <statistic> is the name of the statistic.</p>
 <span class="normal">602</span>
 <span class="normal">603</span>
 <span class="normal">604</span>
-<span class="normal">605</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">add_per_minute_and_fight_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">605</span>
+<span class="normal">606</span>
+<span class="normal">607</span>
+<span class="normal">608</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">add_per_minute_and_fight_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Add two new columns to the aggregated data for each statistic.</span>
 
@@ -3610,21 +3637,14 @@ where <statistic> is the name of the statistic.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Aggregate the data by summing the round statistics over the history of the
-fighters.</p>
-<p>The data is copied and then the round statistics are summed over the history
-of the fighters. The total time is also summed over the history of the
+        <p>Aggregate the data by combining the round statistics over the history of the
 fighters.</p>
 <p>The aggregated data is stored in the attribute data_aggregated.</p>
+<p>The specific implementation depends on the DataAggregator used.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/data_processor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">557</span>
-<span class="normal">558</span>
-<span class="normal">559</span>
-<span class="normal">560</span>
-<span class="normal">561</span>
-<span class="normal">562</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">562</span>
 <span class="normal">563</span>
 <span class="normal">564</span>
 <span class="normal">565</span>
@@ -3633,16 +3653,17 @@ fighters.</p>
 <span class="normal">568</span>
 <span class="normal">569</span>
 <span class="normal">570</span>
-<span class="normal">571</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">aggregate_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">571</span>
+<span class="normal">572</span>
+<span class="normal">573</span>
+<span class="normal">574</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">aggregate_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Aggregate the data by summing the round statistics over the history of the</span>
-<span class="sd">    fighters.</span>
-
-<span class="sd">    The data is copied and then the round statistics are summed over the history</span>
-<span class="sd">    of the fighters. The total time is also summed over the history of the</span>
+<span class="sd">    Aggregate the data by combining the round statistics over the history of the</span>
 <span class="sd">    fighters.</span>
 
 <span class="sd">    The aggregated data is stored in the attribute data_aggregated.</span>
+
+<span class="sd">    The specific implementation depends on the DataAggregator used.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">data_aggregated</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_aggregator</span><span class="o">.</span><span class="n">aggregate_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
@@ -3733,8 +3754,7 @@ fighters.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/data_processor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">390</span>
-<span class="normal">391</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">391</span>
 <span class="normal">392</span>
 <span class="normal">393</span>
 <span class="normal">394</span>
@@ -3766,7 +3786,8 @@ fighters.</p>
 <span class="normal">420</span>
 <span class="normal">421</span>
 <span class="normal">422</span>
-<span class="normal">423</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">423</span>
+<span class="normal">424</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span> <span class="nf">apply_filters</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Apply filters to the dataframe.</span>
@@ -3879,8 +3900,7 @@ fighters.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/data_processor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">282</span>
-<span class="normal">283</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">283</span>
 <span class="normal">284</span>
 <span class="normal">285</span>
 <span class="normal">286</span>
@@ -3897,7 +3917,8 @@ fighters.</p>
 <span class="normal">297</span>
 <span class="normal">298</span>
 <span class="normal">299</span>
-<span class="normal">300</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">300</span>
+<span class="normal">301</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span> <span class="nf">convert_odds_to_decimal</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert odds from American format to decimal format.</span>
@@ -4000,8 +4021,7 @@ or catch weight (agreed weight outside a weight class).</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/data_processor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">302</span>
-<span class="normal">303</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">303</span>
 <span class="normal">304</span>
 <span class="normal">305</span>
 <span class="normal">306</span>
@@ -4029,7 +4049,8 @@ or catch weight (agreed weight outside a weight class).</p>
 <span class="normal">328</span>
 <span class="normal">329</span>
 <span class="normal">330</span>
-<span class="normal">331</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">331</span>
+<span class="normal">332</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span> <span class="nf">fill_weight</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Fill the weight column using the weight_class column and the weight_dict.</span>
@@ -4142,8 +4163,7 @@ event date and fighter date of birth to datetime objects.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/data_processor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">252</span>
-<span class="normal">253</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">253</span>
 <span class="normal">254</span>
 <span class="normal">255</span>
 <span class="normal">256</span>
@@ -4170,7 +4190,8 @@ event date and fighter date of birth to datetime objects.</p>
 <span class="normal">277</span>
 <span class="normal">278</span>
 <span class="normal">279</span>
-<span class="normal">280</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">280</span>
+<span class="normal">281</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span> <span class="nf">fix_date_and_time_fields</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Fix date and time fields in the dataframe.</span>
@@ -4276,8 +4297,7 @@ If multiple matches are found, the first one is returned.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/data_processor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">124</span>
-<span class="normal">125</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">125</span>
 <span class="normal">126</span>
 <span class="normal">127</span>
 <span class="normal">128</span>
@@ -4294,7 +4314,8 @@ If multiple matches are found, the first one is returned.</p>
 <span class="normal">139</span>
 <span class="normal">140</span>
 <span class="normal">141</span>
-<span class="normal">142</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_fighter_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="normal">142</span>
+<span class="normal">143</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_fighter_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Returns the id of the fighter with the given name.</span>
 <span class="sd">    Search is performed using fuzzywuzzy.</span>
@@ -4359,8 +4380,7 @@ If multiple matches are found, the first one is returned.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/data_processor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">112</span>
-<span class="normal">113</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">113</span>
 <span class="normal">114</span>
 <span class="normal">115</span>
 <span class="normal">116</span>
@@ -4369,7 +4389,8 @@ If multiple matches are found, the first one is returned.</p>
 <span class="normal">119</span>
 <span class="normal">120</span>
 <span class="normal">121</span>
-<span class="normal">122</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_fighter_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">id_</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="normal">122</span>
+<span class="normal">123</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_fighter_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">id_</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Returns the name of the fighter with the given id.</span>
 
@@ -4458,12 +4479,7 @@ in the data that are in the round statistics and not in ["round"].</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/data_processor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">524</span>
-<span class="normal">525</span>
-<span class="normal">526</span>
-<span class="normal">527</span>
-<span class="normal">528</span>
-<span class="normal">529</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">529</span>
 <span class="normal">530</span>
 <span class="normal">531</span>
 <span class="normal">532</span>
@@ -4489,7 +4505,12 @@ in the data that are in the round statistics and not in ["round"].</p>
 <span class="normal">552</span>
 <span class="normal">553</span>
 <span class="normal">554</span>
-<span class="normal">555</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">group_round_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="normal">555</span>
+<span class="normal">556</span>
+<span class="normal">557</span>
+<span class="normal">558</span>
+<span class="normal">559</span>
+<span class="normal">560</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">group_round_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Group the round data by the fixed fields and sum the round statistics.</span>
 
@@ -4569,8 +4590,7 @@ previous table. Finally, it adds the date of the event to the dataframe.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/data_processor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">144</span>
-<span class="normal">145</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">145</span>
 <span class="normal">146</span>
 <span class="normal">147</span>
 <span class="normal">148</span>
@@ -4675,7 +4695,8 @@ previous table. Finally, it adds the date of the event to the dataframe.</p>
 <span class="normal">247</span>
 <span class="normal">248</span>
 <span class="normal">249</span>
-<span class="normal">250</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">join_dataframes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="normal">250</span>
+<span class="normal">251</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">join_dataframes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Joins all the relevant dataframes (fight, fighter, event, and odds).</span>
 
@@ -4810,8 +4831,7 @@ to the data attribute.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/data_processor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 82</span>
-<span class="normal"> 83</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 83</span>
 <span class="normal"> 84</span>
 <span class="normal"> 85</span>
 <span class="normal"> 86</span>
@@ -4838,7 +4858,8 @@ to the data attribute.</p>
 <span class="normal">107</span>
 <span class="normal">108</span>
 <span class="normal">109</span>
-<span class="normal">110</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">110</span>
+<span class="normal">111</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Loads and processes all the data.</span>
 
@@ -4913,10 +4934,7 @@ The fields normalized are the ones in normalized_fields.</p>
 
             <details class="quote">
               <summary>Source code in <code>ufcpredictor/data_processor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">607</span>
-<span class="normal">608</span>
-<span class="normal">609</span>
-<span class="normal">610</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">610</span>
 <span class="normal">611</span>
 <span class="normal">612</span>
 <span class="normal">613</span>
@@ -4934,7 +4952,10 @@ The fields normalized are the ones in normalized_fields.</p>
 <span class="normal">625</span>
 <span class="normal">626</span>
 <span class="normal">627</span>
-<span class="normal">628</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">normalize_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">628</span>
+<span class="normal">629</span>
+<span class="normal">630</span>
+<span class="normal">631</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">normalize_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Normalize the aggregated data by dividing each column by its mean.</span>
 

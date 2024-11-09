@@ -28,7 +28,7 @@ class DataAggregator(ABC):
     mlflow_params: List[str] = []
 
     @abstractmethod
-    def aggregate_data(self, data_processor: DataProcessor) -> pd.DataFrame:
+    def aggregate_data(self, data_processor: DataProcessor) -> pd.DataFrame: # pragma: no cover
         """
         Aggregate the data by combining the round statistics over the history of the
         fighters.

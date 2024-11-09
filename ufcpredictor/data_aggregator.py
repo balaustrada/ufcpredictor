@@ -1,3 +1,9 @@
+"""
+Data Aggregation Module for UFC fight data.
+
+Provides the classes to appropriately aggregate fight data over the history
+of the fighters.
+"""
 from __future__ import annotations
 
 import logging
@@ -16,17 +22,46 @@ logger = logging.getLogger(__name__)
 
 
 class DataAggregator(ABC):
+    """
+    This class will aggregate the data over the history of the fighters.
+    """
     mlflow_params: List[str] = []
 
     @abstractmethod
     def aggregate_data(self, data_processor: DataProcessor) -> pd.DataFrame:
+        """
+        Aggregate the data by combining the round statistics over the history of the
+        fighters.
+
+        The aggregated data is returned stored in the attribute data_aggregated of the
+        DataProcessor object.
+
+        The specific implementation is provided by subclasses.
+        """
         pass
 
 
 class DefaultDataAggregator(DataAggregator):
+    """
+    Default implementation of DataAggregator.
+
+    Data is summed over the history of the fighters, considering all the previous
+    fights in the history.
+    """
     mlflow_params: List[str] = []
 
     def aggregate_data(self, data_processor: DataProcessor) -> pd.DataFrame:
+        """
+        The data is copied and then the round statistics are summed over the history
+        of the fighters. The total time is also summed over the history of the
+        fighters.
+
+        Args:
+            data_processor: The DataProcessor object.
+
+        Returns:
+            The aggregated data.
+        """
         logger.info(f"Fields to be aggregated: {data_processor.aggregated_fields}")
 
         data_aggregated = data_processor.data.copy()
@@ -57,14 +92,44 @@ class DefaultDataAggregator(DataAggregator):
 
 
 class WeightedDataAggregator(DataAggregator):
+    """
+    Weighted implementation of DataAggregator.
+
+    Data is summed over the history of the fighters, considering all the previous
+    fights in the history. The weight decay is exponential with time following the
+    alpha parameter.
+
+    This is, the weight of a given fight in the history of the fighter is:
+
+        w = exp(alpha * (today - event_date_prev))
+
+    where alpha is the weight decay parameter.
+    """
     mlflow_params: List[str] = [
         "alpha",
     ]
 
     def __init__(self, alpha: float = -0.0004) -> None:
+        """
+        Constructor for WeightedDataAggregator.
+
+        Args:
+            alpha: The weight decay parameter.
+        """
         self.alpha = alpha
 
     def aggregate_data(self, data_processor: DataProcessor) -> pd.DataFrame:
+        """
+        The data is copied and then the round statistics are summed over the history
+        of the fighters using a weight decay (exponential decay with time following
+        the alpha parameter).
+
+        Args:
+            data_processor: The DataProcessor object.
+
+        Returns:
+            The aggregated data.
+        """
         logger.info(f"Fields to be aggregated: {data_processor.aggregated_fields}")
 
         data = data_processor.data[

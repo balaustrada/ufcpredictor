@@ -60,6 +60,7 @@ class DataProcessor:
             ufc_scraper: The scraper to use for ufc data.
             bfo_scraper: The scraper to use for best fight odds data.
             data_aggregator: The data aggregator to use for aggregating data.
+            data_enhancers: The list of data enhancers to apply to the data.
 
         Raises:
             ValueError: If data_folder is None and both ufc_scraper and
@@ -473,6 +474,7 @@ class DataProcessor:
 
         This property returns all the statistic names, including the ones
         with "_opponent" appended to represent the opponent's statistics.
+        It also returns the aggregated fields added by the data enhancers.
 
         Returns:
             A list of strings, the names of the aggregated fields.
@@ -498,10 +500,13 @@ class DataProcessor:
         - "age"
         - "time_since_last_fight"
         - "fighter_height_cm"
+        - "weight",
         - All the aggregated fields (see :meth:`aggregated_fields`),
           and the same fields with "_per_minute" and "_per_fight" appended,
           which represent the aggregated fields per minute and per fight,
           respectively.
+        
+        It also returns the normalized fields added by the data enhancers.
 
         Returns:
             A list of strings, the names of the normalized fields.
@@ -510,7 +515,7 @@ class DataProcessor:
             "age",
             "time_since_last_fight",
             "fighter_height_cm",
-            "weight",  # @uncomment
+            "weight",
         ]
 
         for field in self.aggregated_fields:
@@ -556,14 +561,12 @@ class DataProcessor:
 
     def aggregate_data(self) -> None:
         """
-        Aggregate the data by summing the round statistics over the history of the
-        fighters.
-
-        The data is copied and then the round statistics are summed over the history
-        of the fighters. The total time is also summed over the history of the
+        Aggregate the data by combining the round statistics over the history of the
         fighters.
 
         The aggregated data is stored in the attribute data_aggregated.
+
+        The specific implementation depends on the DataAggregator used.
         """
         self.data_aggregated = self.data_aggregator.aggregate_data(self)
 

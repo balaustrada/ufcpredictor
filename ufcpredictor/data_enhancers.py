@@ -1,3 +1,9 @@
+"""
+Data Enhancer Module for UFC fight data.
+
+Provides classes to add derived features to the UFC fight data,
+such as an ELO rating for each fighter based on opponent history.
+"""
 from __future__ import annotations
 
 import logging
@@ -16,27 +22,81 @@ logger = logging.getLogger(__name__)
 
 
 class DataEnhancer:
+    """
+    This class provides a base class for adding derived features to the UFC fight data.
+
+    It is called by the DataProcessor class to add derived features to the data, after
+    the data has been processed and after it has been aggregated.
+    """
     mlflow_params: List[str] = []
 
     @property
     def aggregated_fields(self) -> List[str]:
+        """
+        The fields added by the data enhancer that need to be aggregated 
+        by the DataProcessor DataAggregator instance.
+
+        Returns:
+            A list of strings, the names of the aggregated fields.
+        """
         return []
 
     @property
     def normalized_fields(self) -> List[str]:
+        """
+        The fields added by the data enhancer that need to be normalized 
+        by the DataProcessor instance.
+
+        Returns:
+            A list of strings, the names of the normalized fields.
+        """
         return []
 
     def add_data_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
+        """
+        This method can be overridden by subclasses to add derived features to the data.
+
+        Args:
+            data_processor: The DataProcessor object.
+
+        Returns:
+            The data with the derived features added.
+        """
         return data_processor.data
 
     def add_aggregated_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
+        """
+        This method can be overridden by subclasses to add derived features to the 
+        aggregated data.
+
+        Args:
+            data_processor: The DataProcessor object.
+
+        Returns:
+            The aggregated data with the derived features added.
+        """
         return data_processor.data_aggregated
 
 
 class RankedFields(DataEnhancer):
+    """
+    This class adds ranked fields to the data.
+
+    The ranked fields are used to rank the fighters based on their statistics.
+
+    Rank is calculated using the rank function from pandas as follows:
+        data[field] = (data[field].rank(pct=True)*100)**exponent
+    """
     mlflow_params: List[str] = ["fields", "exponents"]
 
     def __init__(self, fields: List[str], exponents: List[float] | float):
+        """
+        Initializes the RankedFields instance.
+
+        Args:
+            fields: The fields to rank.
+            exponents: The exponents to use for the ranking.
+        """
         if isinstance(exponents, float):  # pragma: no cover
             exponents = [exponents] * len(fields)
 
@@ -44,6 +104,15 @@ class RankedFields(DataEnhancer):
         self.exponents = exponents
 
     def add_data_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
+        """
+        Convert fields into ranked fields.
+
+        Args:
+            data_processor: The DataProcessor object.
+
+        Returns:
+            The data with the ranked fields added.
+        """
         data = data_processor.data
 
         for field, exponent in zip(self.fields, self.exponents):
@@ -75,6 +144,12 @@ class OSR(DataEnhancer):
 
         The OSR is calculated iteratively until the difference between the new and
         old values is less than 0.1.
+
+        Args:
+            data_processor: The DataProcessor object.
+
+        Returns:
+            The aggregated data with OSR added.
         """
         data_aggregated = data_processor.data_aggregated
         # Adding OSR information
@@ -153,9 +228,31 @@ class WOSR(OSR):
     ]
 
     def __init__(self, weights: List[float] = [0.3, 0.3, 0.3]):
+        """
+        Initializes the WOSR instance.
+
+        Args:
+            weights: The weights to use for the OSR estimation.
+        """
         self.skills_weight, self.past_OSR_weight, self.opponent_OSR_weight = weights
 
     def add_aggregated_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
+        """
+        Aggregate data by computing the fighters' statistics and OSR.
+
+        This method aggregates the data by computing the fighters' statistics and
+        OSR (Opponent Strength Rating). The OSR is computed as the average of the
+        opponent's OSR and the fighter's win rate.
+
+        The OSR is calculated iteratively until the difference between the new and
+        old values is less than 0.1.
+
+        Args:
+            data_processor: The DataProcessor object.
+
+        Returns:
+            The aggregated data with OSR added.
+        """
         data_aggregated = data_processor.data_aggregated
         # Adding OSR information
         df = data_aggregated[
@@ -230,6 +327,10 @@ class WOSR(OSR):
 
 
 class ELO(DataEnhancer):
+    """
+    This class adds a traditional ELO ratings to the data based
+    on the results of the fights.
+    """
     mlflow_params: List[str] = ["initial_rating", "K_factor"]
 
     def __init__(self, initial_rating: float = 1000, K_factor: float = 32):
@@ -247,6 +348,13 @@ class ELO(DataEnhancer):
 
     @property
     def normalized_fields(self) -> List[str]:
+        """
+        The fields added by the data enhancer that need to be normalized 
+        by the DataProcessor instance.
+
+        Returns:
+            A list of strings, the names of the normalized fields.
+        """
         return [
             "ELO",
         ]
@@ -339,6 +447,17 @@ class ELO(DataEnhancer):
 
 
 class FlexibleELO(ELO):
+    """
+    This class adds a flexible ELO ratings to the data based on the results
+    of the fights.
+
+    The strength of the win is calculated based on different statistics, and
+    the possible boosts are controlled by the boost_values and n_boost_bins
+    parameters.
+
+    The rating of the fighter is transformed as:
+        new_rating_fighter = rating_fighter + K_factor * (S_fighter - E_fighter) * boost
+    """
     mlflow_params: List[str] = ["n_boost_bins", "boost_values"]
 
     def __init__(
@@ -349,11 +468,24 @@ class FlexibleELO(ELO):
         **kwargs: Any,
     ):
         """
-        Initializes the ELO instance.
+        Initializes the flexible ELO instance, which adds a flexible ELO based
+        on the results of the fights.
+
+        The strength of the win is calculated based on different statistics, and
+        the possible boosts are controlled by the boost_values and n_boost_bins
+        parameters.
+
+        The n_boost_bins parameters controls the number of bins to consider, and the
+        boost_values controls de boost for each bin. E.g. if n_boost_bins = 3 and
+        boost_values = [1, 1.2, 1.4], then close fights will get a boost of 1, fights
+        with a clear win will get a boost of 1.2, and fights with a very clear win
+        will get a boost of 1.4.
 
         Args:
             initial_rating: The initial rating of the fighters.
             K_factor: The K-factor of the Elo rating system.
+            n_boost_bins: The number of bins to use for the boost values.
+            boost_values: The values to use for the boost values.
         """
         super().__init__(*args, **kwargs)
 
@@ -369,6 +501,16 @@ class FlexibleELO(ELO):
         self.boost_factors = [1 / x for x in boost_values][::-1] + boost_values[1:]
 
     def get_scores(self, series: pd.Series) -> pd.Series:
+        """
+        Calculate the rank of a series of values and apply a boost based on the
+        class attribute boost_factors.
+
+        Args:
+            series: The series of values to calculate the rank for.
+
+        Returns:
+            The rank of the values in the series, with the boost applied.
+        """
         z_score = (series - series.mean()) / series.std()
         percentile = z_score.rank(pct=True) * 100
 
@@ -380,6 +522,16 @@ class FlexibleELO(ELO):
         ).astype(float)
 
     def add_scores(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        This method adds a score to a fight based on different statistics
+        to provide the strength of the win.
+
+        Args:
+            data: The data to add the scores to.   
+
+        Returns:
+            The data with the scores added.
+        """
         strikes_score = self.get_scores(
             data["strikes_succ"] - data["strikes_succ_opponent"]
         )
@@ -526,17 +678,54 @@ class FlexibleELO(ELO):
 
 
 class SumFlexibleELO(ELO):
+    """
+    This class adds a flexible ELO ratings to the data based on the results
+    of the fights.
+
+    The strength of the win is calculated based on different statistics and is
+    stored in the "match_score" column.
+
+    The rating of the fighter is transformed as:
+        new_rating_fighter = rating_fighter + K_factor * (
+            S_fighter - E_fighter * scaling_factor * (match_score -50) / 100)
+        )
+    """
     mlflow_params: List[str] = ["scaling_factor"]
 
     def __init__(self, *args: Any, scaling_factor: float = 0.5, **kwargs: Any):
         """
         Initializes the SumFlexibleELO instance.
+
+        The strength of the win is calculated based on different statistics, and
+        the possible boosts are controlled by the boost_values and n_boost_bins
+        parameters.
+
+        The rating of the fighter is transformed as:
+            new_rating_fighter = rating_fighter + K_factor * (
+                S_fighter - E_fighter * scaling_factor * (match_score -50) / 100)
+            )
+
+        Args:
+            initial_rating: The initial rating of the fighters.
+            K_factor: The learning rate.
+            scaling_factor: The scaling factor that modulates the relevance of the
+                match score.
         """
         super().__init__(*args, **kwargs)
 
         self.scaling_factor = scaling_factor
 
     def get_scores(self, series: pd.Series) -> pd.Series:
+        """
+        Calculates the strength of a statistic based on the mean and standard
+        deviation of the statistic.
+
+        Args:
+            series: The statistic to be transformed.
+
+        Returns:
+            The transformed statistic as a rank percentile.
+        """
         z_score = (series - series.mean()) / series.std()
         return z_score.rank(pct=True)
 

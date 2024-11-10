@@ -45,6 +45,7 @@ def get_model_parameters(
 
     model = SymmetricFightNet(
         input_size=len(X_set),
+        input_size_f=0,
         dropout_prob=0.35,
     )
     optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=2e-5)

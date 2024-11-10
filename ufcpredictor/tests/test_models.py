@@ -42,7 +42,9 @@ class TestSymmetricFightNet(unittest.TestCase):
         self.input_size = 10  # Example input size
         self.dropout_prob = 0.5
         self.model = SymmetricFightNet(
-            input_size=self.input_size, dropout_prob=self.dropout_prob
+            input_size=self.input_size, 
+            input_size_f=0,
+            dropout_prob=self.dropout_prob,
         )
 
     def test_forward_pass(self):
@@ -50,11 +52,12 @@ class TestSymmetricFightNet(unittest.TestCase):
         batch_size = 32
         X1 = torch.randn(batch_size, self.input_size)
         X2 = torch.randn(batch_size, self.input_size)
+        X3 = torch.empty(batch_size, 0)
         odds1 = torch.randn(batch_size, 1)
         odds2 = torch.randn(batch_size, 1)
 
         # Run a forward pass
-        output = self.model(X1, X2, odds1, odds2)
+        output = self.model(X1, X2, X3, odds1, odds2)
 
         # Check the output shape (since it's binary classification, output should be (batch_size, 1))
         self.assertEqual(output.shape, (batch_size, 1))
@@ -71,14 +74,15 @@ class TestSymmetricFightNet(unittest.TestCase):
         batch_size = 32
         X1 = torch.randn(batch_size, self.input_size)
         X2 = torch.randn(batch_size, self.input_size)
+        X3 = torch.empty(batch_size, 0)
         odds1 = torch.randn(batch_size, 1)
         odds2 = torch.randn(batch_size, 1)
 
         # Run two forward passes with flipped inputs
         self.model.eval()
         with torch.no_grad():
-            output1 = self.model(X1, X2, odds1, odds2)
-            output2 = self.model(X2, X1, odds2, odds1)
+            output1 = self.model(X1, X2, X3, odds1, odds2)
+            output2 = self.model(X2, X1, X3, odds2, odds1)
 
         # Since the model should be symmetric, the two outputs should be very similar
         self.assertTrue(torch.allclose(output1, output2, atol=1e-2))

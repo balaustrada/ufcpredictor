@@ -9,7 +9,7 @@ from ufcpredictor.datasets import BasicDataset, ForecastDataset
 
 
 def mock_call_return_args(*args, **kwargs):
-    return torch.Tensor(np.array(([arg for arg in args])))
+    return torch.Tensor(np.array(([arg for arg in args if arg.numel() != 0])))
 
 
 class TestBasicDataset(unittest.TestCase):
@@ -43,7 +43,7 @@ class TestBasicDataset(unittest.TestCase):
         dataset = BasicDataset(
             data_processor=mock_processor, fight_ids=fight_ids, X_set=self.X_set
         )
-        assert len(dataset.data) == 5  # We expect 5 tensors in dataset.data
+        assert len(dataset.data) == 6  # We expect 5 tensors in dataset.data
         assert isinstance(dataset.data[0], torch.FloatTensor)  # Check tensor type
         assert len(dataset) == 2  # 2 fights in fight_ids
 
@@ -112,11 +112,13 @@ class TestBasicDataset(unittest.TestCase):
         dataset = BasicDataset(
             data_processor=mock_processor, fight_ids=fight_ids, X_set=self.X_set
         )
-
+    
         # Retrieve an item
-        X, Y, winner, odds_1, odds_2 = dataset[0]
+        X1, X2, X3, winner, odds_1, odds_2 = dataset[0]
 
-        assert isinstance(X, torch.FloatTensor)  # Check that the data is in tensor form
+        assert isinstance(
+            X1, torch.FloatTensor
+        )  # Check that the data is in tensor form
         assert winner.shape == torch.Size([1])  # Check the shape of the winner tensor
         assert odds_1.shape == torch.Size([1])  # Check odds shapes
 
@@ -157,7 +159,7 @@ class TestBasicDataset(unittest.TestCase):
             original[0], swapped[0]
         )  # X should be different after swap
         assert not torch.equal(original[1], swapped[1])  # Y should be swapped as well
-        assert not torch.equal(original[2], swapped[2])  # Winner should be swapped
+        assert not torch.equal(original[3], swapped[3])  # Winner should be swapped
 
     def test_get_fight_data_from_ids(self):
         # Mock data
@@ -189,7 +191,7 @@ class TestBasicDataset(unittest.TestCase):
         )
 
         # Test retrieving specific fight data
-        X1, X2, Y, odds1, odds2, fighter_names, opponent_names = (
+        X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names = (
             dataset.get_fight_data_from_ids(fight_ids=["fight1"])
         )
 
@@ -226,7 +228,7 @@ class TestBasicDataset(unittest.TestCase):
         )
 
         # Test retrieving specific fight data
-        X1, X2, Y, odds1, odds2, fighter_names, opponent_names = (
+        X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names = (
             dataset.get_fight_data_from_ids(fight_ids=None)
         )
 

@@ -99,7 +99,7 @@ class SymmetricFightNet(nn.Module):
         "dropout_prob",
     ]
 
-    def __init__(self, input_size: int, dropout_prob: float = 0.0) -> None:
+    def __init__(self, input_size: int, input_size_f: int, dropout_prob: float = 0.0) -> None:
         """
         Initialize the SymmetricFightNet model with the given input size and dropout
         probability.
@@ -109,9 +109,12 @@ class SymmetricFightNet(nn.Module):
             dropout_prob: The probability of dropout.
         """
         super(SymmetricFightNet, self).__init__()
-        self.fighter_net = FighterNet(input_size=input_size, dropout_prob=dropout_prob)
+        self.fighter_net = FighterNet(
+            input_size=input_size, 
+            dropout_prob=dropout_prob,
+        )
 
-        self.fc1 = nn.Linear(256, 512)
+        self.fc1 = nn.Linear(256+input_size_f, 512)
         # self.fc2 = nn.Linear(512, 256)
         self.fc3 = nn.Linear(512, 128)
         self.fc4 = nn.Linear(128, 64)
@@ -131,6 +134,7 @@ class SymmetricFightNet(nn.Module):
         self,
         X1: torch.Tensor,
         X2: torch.Tensor,
+        X3: torch.Tensor,
         odds1: torch.Tensor,
         odds2: torch.Tensor,
     ) -> torch.Tensor:
@@ -140,6 +144,7 @@ class SymmetricFightNet(nn.Module):
         Args:
             X1: The input tensor for the first fighter.
             X2: The input tensor for the second fighter.
+            X3: The input tensor for the fight features.
             odds1: The odds tensor for the first fighter.
             odds2: The odds tensor for the second fighter.
 
@@ -152,7 +157,7 @@ class SymmetricFightNet(nn.Module):
         out1 = torch.cat((out1, odds1), dim=1)
         out2 = torch.cat((out2, odds2), dim=1)
 
-        x = torch.cat((out1 - out2, out2 - out1), dim=1)
+        x = torch.cat((out1 - out2, out2 - out1, X3), dim=1)
 
         x = self.relu(self.fc1(x))
         x = self.dropout1(x)  # Apply dropout after the first ReLU

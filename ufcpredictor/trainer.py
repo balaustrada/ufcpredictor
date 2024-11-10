@@ -154,17 +154,18 @@ class Trainer:
             self.model.train()
             train_loss = []
 
-            for X1, X2, Y, odds1, odds2 in tqdm(iter(train_loader), disable=silent):
-                X1, X2, Y, odds1, odds2 = (
+            for X1, X2, X3, Y, odds1, odds2 in tqdm(iter(train_loader), disable=silent):
+                X1, X2, X3, Y, odds1, odds2 = (
                     X1.to(self.device),
                     X2.to(self.device),
+                    X3.to(self.device),
                     Y.to(self.device),
                     odds1.to(self.device),
                     odds2.to(self.device),
                 )
 
                 self.optimizer.zero_grad()
-                target_logit = self.model(X1, X2, odds1, odds2)
+                target_logit = self.model(X1, X2, X3, odds1, odds2)
                 loss = self.loss_fn(target_logit, Y, odds1, odds2)
 
                 loss.backward()
@@ -234,15 +235,16 @@ class Trainer:
         target_labels = []
 
         with torch.no_grad():
-            for X1, X2, Y, odds1, odds2 in tqdm(iter(test_loader)):
-                X1, X2, Y, odds1, odds2 = (
+            for X1, X2, X3, Y, odds1, odds2 in tqdm(iter(test_loader)):
+                X1, X2, X3, Y, odds1, odds2 = (
                     X1.to(self.device),
                     X2.to(self.device),
+                    X3.to(self.device),
                     Y.to(self.device),
                     odds1.to(self.device),
                     odds2.to(self.device),
                 )
-                target_logit = self.model(X1, X2, odds1, odds2)
+                target_logit = self.model(X1, X2, X3, odds1, odds2)
                 loss = self.loss_fn(target_logit, Y, odds1, odds2)
                 val_loss.append(loss.item())
 

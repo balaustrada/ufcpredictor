@@ -18,18 +18,33 @@ import pandas as pd
 pd.set_option("display.max_columns", None)
 
 # %%
-from ufcpredictor.data_processor import SumFlexibleELODataProcessor as DataProcessor
+
+from ufcpredictor.data_processor import DataProcessor
+from ufcpredictor.data_enhancers import SumFlexibleELOExtraField
+from ufcpredictor.data_aggregator import WeightedDataAggregator
 from ufcpredictor.datasets import BasicDataset
 from ufcpredictor.trainer import Trainer
 import torch
 import numpy as np
 
 # %%
+# DataProcessor = ELODataProcessor
+# data_processor_kwargs = {
+#     "data_folder": "/home/cramirpe/UFC/UFCfightdata",
+#     # "scaling_factor": 0.5,
+#     # "boost_values": [1, 2, 3],
+#     # "K_factor": 30,
+# }
+
 data_processor_kwargs = {
     "data_folder": "/home/cramirpe/UFC/UFCfightdata",
-    "scaling_factor": 0.5,
-    # "boost_values": [1, 2, 3],
-    "K_factor": 40,
+    "data_aggregator": WeightedDataAggregator(),
+    "extra_fields": [
+        SumFlexibleELOExtraField(
+            scaling_factor=0.5,
+            K_factor = 30,
+        )
+    ],
 }
 
 # %%

@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 def get_model_parameters(
     X_set: List[str],
+    Xf_set: List[str],
 ) -> tuple[
     torch.nn.Module, torch.optim.Optimizer, torch.optim.lr_scheduler.ReduceLROnPlateau
 ]:
@@ -45,8 +46,10 @@ def get_model_parameters(
 
     model = SymmetricFightNet(
         input_size=len(X_set),
-        input_size_f=0,
+        input_size_f=len(Xf_set),
         dropout_prob=0.35,
+        # fighter_network_shape=[256, 512, 1024, 512],
+        # network_shape=[2048, 1024, 512, 128, 64, 1],
     )
     optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=2e-5)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -68,6 +71,9 @@ def get_data_parameters() -> Tuple[List[str], Dict[str, Any], int, int, int]:
     days_to_early_split = 1825
     min_num_fights = 4
     batch_size = 128
+
+    # Xf_set = ["num_rounds", "weight"]
+    Xf_set = []
 
     X_set = [
         "age",
@@ -133,6 +139,7 @@ def get_data_parameters() -> Tuple[List[str], Dict[str, Any], int, int, int]:
 
     return (
         X_set,
+        Xf_set,
         data_processor_kwargs,
         days_to_early_split,
         batch_size,
@@ -166,7 +173,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
             local_dir=args.data_folder,
         )
 
-    (X_set, data_processor_kwargs, days_to_early_split, batch_size, min_num_fights) = (
+    (X_set, Xf_set, data_processor_kwargs, days_to_early_split, batch_size, min_num_fights) = (
         get_data_parameters()
     )
 
@@ -186,12 +193,14 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
     dataset = ForecastDataset(
         data_processor=data_processor,
         X_set=X_set,
+        Xf_set=Xf_set,
     )
 
     logger.info("Training model (testing)...")
     model = train_model(
         data_processor=data_processor,
         X_set=X_set,
+        Xf_set=Xf_set,
         days_to_early_split=days_to_early_split,
         batch_size=batch_size,
         min_num_fights=min_num_fights,
@@ -201,6 +210,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
     model = train_model(
         data_processor=data_processor,
         X_set=X_set,
+        Xf_set=Xf_set,
         days_to_early_split=days_to_early_split,
         batch_size=batch_size,
         min_num_fights=min_num_fights,
@@ -217,6 +227,11 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
             include_time=False,
             value=datetime.now().strftime("%Y-%m-%d"),
         )
+
+        fight_features = [
+            gr.Number(label=label, value=0) for label in Xf_set
+        ]
+
         fighter_name = gr.Dropdown(
             label="Fighter Name",
             choices=fighter_names,
@@ -232,7 +247,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         odds1 = gr.Number(label="Fighter odds", value=100)
         odds2 = gr.Number(label="Opponent odds", value=100)
 
-        btn = gr.Button("Predict")
+        btn = gr.Button("Predict")  
 
         output = gr.Plot(label="")
         # output = gr.Text(label="Prediction Output")
@@ -243,6 +258,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
             event_date: float,
             odds1: int,
             odds2: int,
+            *fight_features: float,
         ) -> plt.Figure:
             fig, ax = plt.subplots(figsize=(6.4, 1.7))
 
@@ -251,6 +267,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
                 dataset=dataset,
                 fighter_name=fighter_name,
                 opponent_name=opponent_name,
+                fight_features=list(fight_features),
                 event_date=datetime.fromtimestamp(event_date).strftime("%Y-%m-%d"),
                 odds1=convert_odds_to_decimal(
                     [
@@ -273,7 +290,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
 
         btn.click(
             get_forecast_single_prediction,
-            inputs=[fighter_name, opponent_name, event_date, odds1, odds2],
+            inputs=[fighter_name, opponent_name, event_date, odds1, odds2, *fight_features],
             outputs=output,
         )
 
@@ -283,6 +300,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
 def train_model(
     data_processor: DataProcessor,
     X_set: List[str],
+    Xf_set: List[str],
     days_to_early_split: int,
     batch_size: int,
     min_num_fights: int,
@@ -317,12 +335,14 @@ def train_model(
         data_processor,
         early_train_fights,
         X_set=X_set,
+        Xf_set=Xf_set,
     )
 
     train_dataset = BasicDataset(
         data_processor,
         train_fights,
         X_set=X_set,
+        Xf_set=Xf_set,
     )
 
     if test:
@@ -330,6 +350,7 @@ def train_model(
             data_processor,
             test_fights,
             X_set=X_set,
+            Xf_set=Xf_set,
         )
         test_dataloader = torch.utils.data.DataLoader(
             test_dataset, batch_size=batch_size, shuffle=False
@@ -344,7 +365,7 @@ def train_model(
         train_dataset, batch_size=batch_size, shuffle=True
     )
 
-    model, optimizer, scheduler = get_model_parameters(X_set)
+    model, optimizer, scheduler = get_model_parameters(X_set, Xf_set)
 
     trainer = Trainer(
         train_loader=train_dataloader,

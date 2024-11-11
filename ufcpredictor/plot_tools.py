@@ -227,6 +227,7 @@ class PredictionPlots:
         dataset: ForecastDataset,
         fighter_name: str,
         opponent_name: str,
+        fight_features: List[float],
         event_date: str | datetime.date,
         odds1: int,
         odds2: int,
@@ -245,7 +246,7 @@ class PredictionPlots:
             odds2 : The odds for the second fighter (decimal).
         """
         p1, p2 = dataset.get_single_forecast_prediction(
-            fighter_name, opponent_name, event_date, odds1, odds2, model
+            fighter_name, opponent_name, event_date, odds1, odds2, model, fight_features
         )
 
         if ax is None:  # pragma: no cover

@@ -203,7 +203,6 @@ class BasicDataset(Dataset):
         if len(self.Xf_set) == 0:
             self.data[2] = torch.empty(len(fight_data["winner_x"]), 0)
 
-
         self.fight_data = fight_data
 
     def __len__(self) -> int:
@@ -313,6 +312,7 @@ class ForecastDataset(Dataset):
         self,
         data_processor: DataProcessor,
         X_set: Optional[List[str]] = None,
+        Xf_set: Optional[List[str]] = None,
     ) -> None:
         """
         Constructor for ForecastDataset.
@@ -330,8 +330,11 @@ class ForecastDataset(Dataset):
         if X_set is not None:
             self.X_set = X_set
 
+        if Xf_set is not None:
+            self.Xf_set = Xf_set
+
         not_found = []
-        for column in self.X_set:
+        for column in self.X_set + self.Xf_set:
             if column not in self.data_processor.data_normalized.columns:
                 not_found.append(column)
 
@@ -346,6 +349,7 @@ class ForecastDataset(Dataset):
         odds1: int,
         odds2: int,
         model: nn.Module,
+        fight_features: Optional[List[float]] = None,
         parse_ids: bool = False,
     ) -> Tuple[float, float]:
         """
@@ -383,6 +387,9 @@ class ForecastDataset(Dataset):
                 odds2,
             ],
             model=model,
+            fight_features=[
+                fight_features,
+            ],
             parse_ids=parse_ids,
         )
 
@@ -396,6 +403,7 @@ class ForecastDataset(Dataset):
         fighter_odds: List[float],
         opponent_odds: List[float],
         model: nn.Module,
+        fight_features: List[List[float]] = [],
         parse_ids: bool = False,
         device: str = "cpu",
     ) -> Tuple[NDArray, NDArray]:
@@ -437,6 +445,9 @@ class ForecastDataset(Dataset):
             }
         )
 
+        for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
+            match_data[feature_name] = np.concatenate((stats, stats))
+
         match_data = match_data.merge(
             self.data_processor.data_normalized,
             left_on="fighter_id",
@@ -469,6 +480,9 @@ class ForecastDataset(Dataset):
             )
         }
 
+        for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
+            match_data[feature_name] = np.concatenate((stats, stats))
+
         if len(self.Xf_set) > 0:
             fight_data_dict = {
                 id_: data
@@ -478,10 +492,7 @@ class ForecastDataset(Dataset):
                 )
             }
         else:
-            fight_data_dict = {
-                id_: []
-                for id_ in match_data["id_"].values
-            }
+            fight_data_dict = {id_: [] for id_ in match_data["id_"].values}
 
         data = [
             torch.FloatTensor(

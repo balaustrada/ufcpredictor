@@ -118,6 +118,9 @@ class Trainer:
                         data_enhancer, param
                     )
 
+            params["X_set"] = sorted(self.train_loader.dataset.X_set)
+            params["Xf_set"] = sorted(self.train_loader.dataset.Xf_set)
+
             mlflow.log_params(dict(sorted(params.items())))
 
     def train(

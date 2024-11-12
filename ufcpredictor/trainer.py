@@ -185,7 +185,7 @@ class Trainer:
                 target_labels
             ).reshape(-1)
 
-            val_loss, val_target_f1, correct, _, _ = self.test(test_loader)
+            val_loss, val_target_f1, correct, _, _ = self.test(test_loader, silent=silent)
 
             if not silent:
                 print(f"Train acc: [{match.sum() / len(match):.5f}]")
@@ -210,7 +210,7 @@ class Trainer:
                 self.scheduler.step(val_loss)
 
     def test(
-        self, test_loader: torch.utils.data.DataLoader | None = None
+        self, test_loader: torch.utils.data.DataLoader | None = None, silent=False,
     ) -> Tuple[float, float, float, List, List]:
         """
         Evaluates the model on the test data and returns the validation loss, target F1
@@ -238,7 +238,7 @@ class Trainer:
         target_labels = []
 
         with torch.no_grad():
-            for X1, X2, X3, Y, odds1, odds2 in tqdm(iter(test_loader)):
+            for X1, X2, X3, Y, odds1, odds2 in tqdm(iter(test_loader), disable=silent):
                 X1, X2, X3, Y, odds1, odds2 = (
                     X1.to(self.device),
                     X2.to(self.device),

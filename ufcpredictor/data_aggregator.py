@@ -4,6 +4,7 @@ Data Aggregation Module for UFC fight data.
 Provides the classes to appropriately aggregate fight data over the history
 of the fighters.
 """
+
 from __future__ import annotations
 
 import logging
@@ -25,10 +26,13 @@ class DataAggregator(ABC):
     """
     This class will aggregate the data over the history of the fighters.
     """
+
     mlflow_params: List[str] = []
 
     @abstractmethod
-    def aggregate_data(self, data_processor: DataProcessor) -> pd.DataFrame: # pragma: no cover
+    def aggregate_data(
+        self, data_processor: DataProcessor
+    ) -> pd.DataFrame:  # pragma: no cover
         """
         Aggregate the data by combining the round statistics over the history of the
         fighters.
@@ -48,6 +52,7 @@ class DefaultDataAggregator(DataAggregator):
     Data is summed over the history of the fighters, considering all the previous
     fights in the history.
     """
+
     mlflow_params: List[str] = []
 
     def aggregate_data(self, data_processor: DataProcessor) -> pd.DataFrame:
@@ -105,6 +110,7 @@ class WeightedDataAggregator(DataAggregator):
 
     where alpha is the weight decay parameter.
     """
+
     mlflow_params: List[str] = [
         "alpha",
     ]
@@ -133,7 +139,7 @@ class WeightedDataAggregator(DataAggregator):
         logger.info(f"Fields to be aggregated: {data_processor.aggregated_fields}")
 
         data = data_processor.data[
-            ["fight_id", "fighter_id", "event_date", "total_time"]
+            ["fight_id", "fighter_id", "event_date", "total_time", "num_fight"]
             + data_processor.aggregated_fields
         ]
 
@@ -143,7 +149,7 @@ class WeightedDataAggregator(DataAggregator):
             data,
             on="fighter_id",
             suffixes=("", "_prev"),
-        )
+        ).drop(columns="num_fight_prev")
 
         # Now only preserve combinations where the previous fight is
         # before the current fight.
@@ -161,7 +167,7 @@ class WeightedDataAggregator(DataAggregator):
             data_merged[column] = data_merged[column].astype(float)
             data_merged[column] = data_merged[column] * data_merged["w"]
 
-        data_merged["num_fight"] = 1  # This will sum up to the total number of fights.
+        # data_merged["num_fight"] = 1  # This will sum up to the total number of fights.
         data_merged["total_time"] = data_merged["total_time"]
         data_merged["weighted_num_fight"] = data_merged["num_fight"] * data_merged["w"]
         data_merged["weighted_total_time"] = (
@@ -185,7 +191,7 @@ class WeightedDataAggregator(DataAggregator):
         data_aggregated = data_processor.data.drop(
             columns=data_processor.aggregated_fields
         ).merge(
-            data_aggregated.drop(columns=["w"]),
+            data_aggregated.drop(columns=["w", "num_fight"]),
             on=["fighter_id", "fight_id"],
         )
 

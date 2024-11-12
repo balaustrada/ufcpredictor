@@ -173,9 +173,14 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
             local_dir=args.data_folder,
         )
 
-    (X_set, Xf_set, data_processor_kwargs, days_to_early_split, batch_size, min_num_fights) = (
-        get_data_parameters()
-    )
+    (
+        X_set,
+        Xf_set,
+        data_processor_kwargs,
+        days_to_early_split,
+        batch_size,
+        min_num_fights,
+    ) = get_data_parameters()
 
     data_processor_kwargs = {
         "data_folder": args.data_folder,
@@ -228,9 +233,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
             value=datetime.now().strftime("%Y-%m-%d"),
         )
 
-        fight_features = [
-            gr.Number(label=label, value=0) for label in Xf_set
-        ]
+        fight_features = [gr.Number(label=label, value=0) for label in Xf_set]
 
         fighter_name = gr.Dropdown(
             label="Fighter Name",
@@ -247,7 +250,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         odds1 = gr.Number(label="Fighter odds", value=100)
         odds2 = gr.Number(label="Opponent odds", value=100)
 
-        btn = gr.Button("Predict")  
+        btn = gr.Button("Predict")
 
         output = gr.Plot(label="")
         # output = gr.Text(label="Prediction Output")
@@ -290,7 +293,14 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
 
         btn.click(
             get_forecast_single_prediction,
-            inputs=[fighter_name, opponent_name, event_date, odds1, odds2, *fight_features],
+            inputs=[
+                fighter_name,
+                opponent_name,
+                event_date,
+                odds1,
+                odds2,
+                *fight_features,
+            ],
             outputs=output,
         )
 

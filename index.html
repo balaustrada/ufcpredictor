@@ -2582,7 +2582,7 @@ ufcpredictor.datasets to provide a seamless data preparation workflow.</p>
         <span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s2">&quot;weight&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;weight_class&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">weight_dict</span><span class="p">)</span>
 
         <span class="c1">##################################################################################</span>
-        <span class="c1"># Remmove null weight classes, or open weight or catch weight (agreed weight outside a weight class)</span>
+        <span class="c1"># Remove null weight classes, or open weight or catch weight (agreed weight outside a weight class)</span>
         <span class="c1">##################################################################################</span>
         <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span>
             <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;weight_class&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;NULL&quot;</span><span class="p">)</span>
@@ -4071,7 +4071,7 @@ or catch weight (agreed weight outside a weight class).</p>
     <span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s2">&quot;weight&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;weight_class&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">weight_dict</span><span class="p">)</span>
 
     <span class="c1">##################################################################################</span>
-    <span class="c1"># Remmove null weight classes, or open weight or catch weight (agreed weight outside a weight class)</span>
+    <span class="c1"># Remove null weight classes, or open weight or catch weight (agreed weight outside a weight class)</span>
     <span class="c1">##################################################################################</span>
     <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span>
         <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;weight_class&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;NULL&quot;</span><span class="p">)</span>

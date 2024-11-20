@@ -321,7 +321,7 @@ class DataProcessor:
         data.loc[:, "weight"] = data["weight_class"].map(weight_dict)
 
         ##################################################################################
-        # Remmove null weight classes, or open weight or catch weight (agreed weight outside a weight class)
+        # Remove null weight classes, or open weight or catch weight (agreed weight outside a weight class)
         ##################################################################################
         data = data[
             (data["weight_class"] != "NULL")

@@ -184,3 +184,84 @@ class SymmetricFightNet(nn.Module):
         x = self.fcs[-1](x)
         x = self.sigmoid(x)
         return x
+
+class SimpleFightNet(nn.Module):
+    """
+    A neural network model designed to predict the outcome of a fight between two
+    fighters.
+
+    The model takes into account the characteristics of both fighters and the odds of
+    the fight. It combines the features of both fighters as an input to the model.
+
+    The model can be used to make predictions on the outcome of a fight and to calculate
+    the benefit of a bet.
+    """
+
+    mlflow_params: List[str] = [
+        "dropout_prob",
+        "network_shape"
+    ]
+
+    def __init__(
+        self,
+        input_size: int,
+        dropout_prob: float = 0.0,
+        network_shape: List[int] = [1024, 512, 256, 128, 64, 1],
+    ):
+        """
+        Initialize the SimpleFightNet model with the given input size and dropout
+        probability.
+
+        Args:
+            dropout_prob: The probability of dropout.
+            network_shape: Shape of the network layers (except input layer).
+        """
+        super().__init__()
+
+        self.network_shape = [input_size,] + network_shape
+
+        self.fcs = nn.ModuleList(
+            [
+                nn.Linear(input_, output)
+                for input_, output in zip(
+                    self.network_shape[:-1], self.network_shape[1:]
+                )
+            ]
+        )
+        self.dropouts = nn.ModuleList(
+            [nn.Dropout(p=dropout_prob) for _ in range(len(self.network_shape) - 1)]
+        )
+        self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
+        self.dropout_prob = dropout_prob
+
+    def forward(
+            self,
+            X1: torch.Tensor,
+            X2: torch.Tensor,
+            X3: torch.Tensor,
+            odds1: torch.Tensor,
+            odds2: torch.Tensor,
+    ) -> torch.Tensor:
+        """
+        Compute the output of the SimpleFightNet model.
+
+        Args:
+            X1: The input tensor for the first fighter.
+            X2: The input tensor for the second fighter.
+            X3: The input tensor for the fight features.
+            odds1: The odds tensor for the first fighter.
+            odds2: The odds tensor for the second fighter.
+
+        Returns:
+            The output of the SimpleFightNet model.
+        """
+        x = torch.cat((X1, X2, X3, odds1, odds2), dim=1)
+
+        for fc, dropout in zip(self.fcs[:-1], self.dropouts):
+            x = self.relu(fc(x))
+            x = dropout(x)
+
+        x = self.fcs[-1](x)
+        x = self.sigmoid(x)
+        return x

@@ -58,7 +58,7 @@ def get_model_parameters(
     return model, optimizer, scheduler
 
 
-def get_data_parameters() -> Tuple[List[str], Dict[str, Any], int, int, int]:
+def get_data_parameters() -> Tuple[List[str], List[str], Dict[str, Any], int, int, int]:
     data_processor_kwargs = {
         "data_aggregator": WeightedDataAggregator(),
         "data_enhancers": [
@@ -73,7 +73,7 @@ def get_data_parameters() -> Tuple[List[str], Dict[str, Any], int, int, int]:
     batch_size = 128
 
     # Xf_set = ["num_rounds", "weight"]
-    Xf_set = []
+    Xf_set: List[str] = []
 
     X_set = [
         "age",

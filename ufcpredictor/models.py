@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from torch import nn
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import List, Optional
+    from typing import Any, Dict, List, Optional
 
 
 class FighterNet(nn.Module):
@@ -116,7 +116,7 @@ class SymmetricFightNet(nn.Module):
         """
         super(SymmetricFightNet, self).__init__()
 
-        fighter_network_args = {
+        fighter_network_args: Dict[str, Any] = {
             "input_size": input_size,
             "dropout_prob": dropout_prob,
         }

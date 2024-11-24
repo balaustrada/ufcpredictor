@@ -100,7 +100,7 @@ class BasicDataset(Dataset):
         "win_per_fight",
     ]
 
-    Xf_set = []
+    Xf_set: List[str] = []
 
     def __init__(
         self,
@@ -183,7 +183,7 @@ class BasicDataset(Dataset):
         # Now we load the data into torch tensors
         # This is a list of FloatTensors each having a size equal to the number
         # of fights.
-        self.data = [
+        self.data: List[torch.Tensor] = [
             torch.FloatTensor(
                 np.asarray([fight_data[x + "_x"].values for x in self.X_set]).T
             ),
@@ -215,7 +215,7 @@ class BasicDataset(Dataset):
 
     def __getitem__(
         self, idx: int
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Returns a tuple of (X, Y, winner, odds_1, odds_2) for the given index.
 
@@ -241,6 +241,7 @@ class BasicDataset(Dataset):
         return X1, X2, X3, winner.reshape(-1), odds_1.reshape(-1), odds_2.reshape(-1)
 
     def get_fight_data_from_ids(self, fight_ids: Optional[List[str]] = None) -> Tuple[
+        torch.FloatTensor,
         torch.FloatTensor,
         torch.FloatTensor,
         torch.FloatTensor,
@@ -349,7 +350,7 @@ class ForecastDataset(Dataset):
         odds1: int,
         odds2: int,
         model: nn.Module,
-        fight_features: Optional[List[float]] = None,
+        fight_features: List[float] = [],
         parse_ids: bool = False,
     ) -> Tuple[float, float]:
         """

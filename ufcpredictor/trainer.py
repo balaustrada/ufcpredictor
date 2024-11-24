@@ -118,9 +118,12 @@ class Trainer:
                         data_enhancer, param
                     )
 
-            params["X_set"] = sorted(self.train_loader.dataset.X_set)
-            params["Xf_set"] = sorted(self.train_loader.dataset.Xf_set)
-
+            for set_ in "X_set", "Xf_set":
+                if hasattr(self.train_loader.dataset, set_):
+                    params[set_] = sorted(
+                        getattr(self.train_loader.dataset, set_)
+                    )
+                    
             mlflow.log_params(dict(sorted(params.items())))
 
     def train(
@@ -210,7 +213,7 @@ class Trainer:
                 self.scheduler.step(val_loss)
 
     def test(
-        self, test_loader: torch.utils.data.DataLoader | None = None, silent=False,
+        self, test_loader: torch.utils.data.DataLoader | None = None, silent: bool =False,
     ) -> Tuple[float, float, float, List, List]:
         """
         Evaluates the model on the test data and returns the validation loss, target F1
@@ -219,6 +222,7 @@ class Trainer:
         Args:
             test_loader: The DataLoader for the test data. Defaults to the DataLoader
                 passed to the Trainer constructor.
+            silent: Whether to not print training progress. Defaults to False.
 
         Returns:
             A tuple containing the validation loss, target F1 score, proportion of correct

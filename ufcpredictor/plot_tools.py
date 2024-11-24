@@ -44,6 +44,7 @@ class PredictionPlots:
             torch.Tensor,
             torch.Tensor,
             torch.Tensor,
+            torch.Tensor,
             NDArray[np.str_],
             NDArray[np.str_],
         ],

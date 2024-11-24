@@ -25,7 +25,7 @@ import torch
 # mlflow.pytorch.autolog()
 
 mlflow.set_tracking_uri("http://127.0.0.1:5000") 
-mlflow.set_experiment('TEST')
+mlflow.set_experiment('custom_weight_train')
 
 # %%
 import pandas as pd
@@ -171,7 +171,7 @@ invalid_fights = set(data_processor.data[data_processor.data["num_fight"] < 4]["
 
 # %%
 early_split_date = "2017-01-01" #"2017-01-01"
-split_date = "2023-08-01"#"2023-08-01"
+split_date = "2023-06-01"#"2023-08-01"
 max_date = "2024-11-11" 
 
 early_train_fights = data_processor.data["fight_id"][data_processor.data["event_date"] < split_date]
@@ -227,13 +227,24 @@ from ufcpredictor.loss_functions import BettingLoss
 model = SymmetricFightNet(
         input_size=len(train_dataset.X_set),
         input_size_f=len(Xf_set),
-        dropout_prob=0.25, # 0.35
+        dropout_prob=0.05, # 0.25
         fighter_network_shape=[256, 512, 1024, 512],
-        network_shape=[2048, 1024, 512, 128, 64, 1],
+        # network_shape=[2048, 1024, 512, 128, 64, 1],
+        # network_shape=[122, 1024, 2048, 1024, 512, 256, 128, 64, 1],
+        network_shape=[122, 1024, 512, 256, 128, 64, 1],  # This was the best one so far
+        # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
+        
 )
+# optimizer = torch.optim.Adam(params=model.parameters(), lr=2e-3, weight_decay=2e-5)
+# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+#         optimizer, mode="min", factor=0.9, patience=4
+# )
+mlflow.end_run()
+mlflow.start_run()
+
 optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=2e-5)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.7, patience=2
+        optimizer, mode="min", factor=0.7, patience=6
 )
 
 trainer = Trainer(
@@ -261,7 +272,7 @@ trainers = dict()
 for weight_class in weight_classes:
     print(weight_class)
 
-    seed = 30 # 42
+    seed = 2 # 42
     torch.manual_seed(seed)
     import random
     random.seed(seed)
@@ -298,17 +309,26 @@ for weight_class in weight_classes:
     wc_early_dataloader = torch.utils.data.DataLoader(wc_early_dataset, batch_size=2048, shuffle=True)
     wc_dataloader = torch.utils.data.DataLoader(wc_dataset, batch_size=2048, shuffle=True)
     wc_test_dataloader = torch.utils.data.DataLoader(wc_test_dataset, batch_size=2048, shuffle=False)
-
+    
     model = SymmetricFightNet(
-        input_size=len(train_dataset.X_set),
-        input_size_f=len(Xf_set),
-        dropout_prob=0.25, # 0.35
-        fighter_network_shape=[256, 512, 1024, 512],
-        network_shape=[2048, 1024, 512, 128, 64, 1],
+            input_size=len(train_dataset.X_set),
+            input_size_f=len(Xf_set),
+            dropout_prob=0.05, # 0.25
+            fighter_network_shape=[256, 512, 1024, 512],
+            # network_shape=[2048, 1024, 512, 128, 64, 1],
+            # network_shape=[122, 1024, 2048, 1024, 512, 256, 128, 64, 1],
+            network_shape=[122, 1024, 512, 256, 128, 64, 1],  # This was the best one so far
+            # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
+            
     )
-    optimizer = torch.optim.Adam(params=model.parameters(), lr=1.4e-3, weight_decay=2e-5)
+    # optimizer = torch.optim.Adam(params=model.parameters(), lr=2e-3, weight_decay=2e-5)
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    #         optimizer, mode="min", factor=0.9, patience=4
+    # )
+    
+    optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=2e-5)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.7, patience=2
+            optimizer, mode="min", factor=0.7, patience=6
     )
 
     trainer = Trainer(
@@ -320,7 +340,7 @@ for weight_class in weight_classes:
         loss_fn =BettingLoss(),
         mlflow_tracking=False,
     )   
-    trainer.train(epochs=5, train_loader=early_train_dataloader,silent=True)
+    trainer.train(epochs=15, train_loader=early_train_dataloader,silent=True)
     trainer.train(epochs=10, silent=True)
 
 

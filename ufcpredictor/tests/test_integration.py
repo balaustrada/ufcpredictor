@@ -201,5 +201,5 @@ class TestSimpleModel(unittest.TestCase):
         self.assertAlmostEqual(p2, 0.73271847, places=3)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": # pragma: no cover
     unittest.main()

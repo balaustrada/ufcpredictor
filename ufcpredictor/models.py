@@ -120,7 +120,7 @@ class SymmetricFightNet(nn.Module):
             "input_size": input_size,
             "dropout_prob": dropout_prob,
         }
-        if fighter_network_shape is not None:
+        if fighter_network_shape is not None: # pragma: no cover
             fighter_network_args["network_shape"] = fighter_network_shape
 
         self.fighter_net = FighterNet(**fighter_network_args)

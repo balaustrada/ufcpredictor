@@ -44,6 +44,7 @@ class PredictionPlots:
             torch.Tensor,
             torch.Tensor,
             torch.Tensor,
+            torch.Tensor,
             NDArray[np.str_],
             NDArray[np.str_],
         ],
@@ -70,10 +71,11 @@ class PredictionPlots:
             ax : The axes to use to show the plot. If None, a new figure will be
                 created.
         """
-        X1, X2, Y, odds1, odds2, fighter_names, opponent_names = data
-        X1, X2, Y, odds1, odds2, model = (
+        X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names = data
+        X1, X2, X3, Y, odds1, odds2, model = (
             X1.to(device),
             X2.to(device),
+            X3.to(device),
             Y.to(device),
             odds1.to(device),
             odds2.to(device),
@@ -83,14 +85,14 @@ class PredictionPlots:
 
         with torch.no_grad():
             predictions_1 = (
-                model(X1, X2, odds1.reshape(-1, 1), odds2.reshape(-1, 1))
+                model(X1, X2, X3, odds1.reshape(-1, 1), odds2.reshape(-1, 1))
                 .detach()
                 .cpu()
                 .numpy()
                 .reshape(-1)
             )
             predictions_2 = 1 - model(
-                X2, X1, odds2.reshape(-1, 1), odds1.reshape(-1, 1)
+                X2, X1, X3, odds2.reshape(-1, 1), odds1.reshape(-1, 1)
             ).detach().cpu().numpy().reshape(-1)
 
             predictions = 0.5 * (predictions_1 + predictions_2)
@@ -200,13 +202,13 @@ class PredictionPlots:
             ax : The axes to use to show the plot. If None, a new figure will be
                 created.
         """
-        X1, X2, Y, odds1, odds2, fighter_names, opponent_names = (
+        X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names = (
             dataset.get_fight_data_from_ids(fight_ids)
         )
 
         stats = PredictionPlots.show_fight_prediction_detail(
             model,
-            (X1, X2, Y, odds1, odds2, fighter_names, opponent_names),
+            (X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names),
             print_info,
             show_plot,
             ax,
@@ -226,6 +228,7 @@ class PredictionPlots:
         dataset: ForecastDataset,
         fighter_name: str,
         opponent_name: str,
+        fight_features: List[float],
         event_date: str | datetime.date,
         odds1: int,
         odds2: int,
@@ -244,7 +247,7 @@ class PredictionPlots:
             odds2 : The odds for the second fighter (decimal).
         """
         p1, p2 = dataset.get_single_forecast_prediction(
-            fighter_name, opponent_name, event_date, odds1, odds2, model
+            fighter_name, opponent_name, event_date, odds1, odds2, model, fight_features
         )
 
         if ax is None:  # pragma: no cover

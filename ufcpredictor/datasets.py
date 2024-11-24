@@ -100,11 +100,14 @@ class BasicDataset(Dataset):
         "win_per_fight",
     ]
 
+    Xf_set: List[str] = []
+
     def __init__(
         self,
         data_processor: DataProcessor,
         fight_ids: List[str],
         X_set: Optional[List[str]] = None,
+        Xf_set: Optional[List[str]] = None,
     ) -> None:
         """
         Constructor for ForecastDataset.
@@ -124,8 +127,11 @@ class BasicDataset(Dataset):
         if X_set is not None:
             self.X_set = X_set
 
+        if Xf_set is not None:
+            self.Xf_set = Xf_set
+
         not_found = []
-        for column in self.X_set:
+        for column in self.X_set + self.Xf_set:
             if column not in self.data_processor.data_normalized.columns:
                 not_found.append(column)
 
@@ -177,7 +183,7 @@ class BasicDataset(Dataset):
         # Now we load the data into torch tensors
         # This is a list of FloatTensors each having a size equal to the number
         # of fights.
-        self.data = [
+        self.data: List[torch.Tensor] = [
             torch.FloatTensor(
                 np.asarray([fight_data[x + "_x"].values for x in self.X_set]).T
             ),
@@ -185,11 +191,17 @@ class BasicDataset(Dataset):
                 np.asarray([fight_data[x + "_y"].values for x in self.X_set]).T
             ),
             torch.FloatTensor(
+                np.asarray([fight_data[xf + "_x"].values for xf in self.Xf_set]).T
+            ),
+            torch.FloatTensor(
                 (fight_data["winner_x"] != fight_data["fighter_id_x"]).values
             ),
             torch.FloatTensor(fight_data["opening_x"].values),
             torch.FloatTensor(fight_data["opening_y"].values),
         ]
+
+        if len(self.Xf_set) == 0:
+            self.data[2] = torch.empty(len(fight_data["winner_x"]), 0)
 
         self.fight_data = fight_data
 
@@ -203,7 +215,7 @@ class BasicDataset(Dataset):
 
     def __getitem__(
         self, idx: int
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Returns a tuple of (X, Y, winner, odds_1, odds_2) for the given index.
 
@@ -219,16 +231,17 @@ class BasicDataset(Dataset):
             indicating which fighter won, and odds_1 and odds_2 are the opening
             odds for the two fighters.
         """
-        X, Y, winner, odds_1, odds_2 = [x[idx] for x in self.data]
+        X1, X2, X3, winner, odds_1, odds_2 = [x[idx] for x in self.data]
 
         if np.random.random() >= 0.5:
-            X, Y = Y, X
+            X1, X2 = X2, X1
             winner = 1 - winner
             odds_1, odds_2 = odds_2, odds_1
 
-        return X, Y, winner.reshape(-1), odds_1.reshape(-1), odds_2.reshape(-1)
+        return X1, X2, X3, winner.reshape(-1), odds_1.reshape(-1), odds_2.reshape(-1)
 
     def get_fight_data_from_ids(self, fight_ids: Optional[List[str]] = None) -> Tuple[
+        torch.FloatTensor,
         torch.FloatTensor,
         torch.FloatTensor,
         torch.FloatTensor,
@@ -267,6 +280,9 @@ class BasicDataset(Dataset):
                 np.asarray([fight_data[x + "_y"].values for x in self.X_set]).T
             ),
             torch.FloatTensor(
+                np.asarray([fight_data[x + "_x"].values for x in self.Xf_set]).T
+            ),
+            torch.FloatTensor(
                 (fight_data["winner_x"] != fight_data["fighter_id_x"]).values
             ),
             torch.FloatTensor(fight_data["opening_x"].values),
@@ -276,9 +292,9 @@ class BasicDataset(Dataset):
         fighter_names = np.array(fight_data["fighter_name_x"].values)
         opponent_names = np.array(fight_data["fighter_name_y"].values)
 
-        X1, X2, Y, odds1, odds2 = data
+        X1, X2, X3, Y, odds1, odds2 = data
 
-        return X1, X2, Y, odds1, odds2, fighter_names, opponent_names
+        return X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names
 
 
 class ForecastDataset(Dataset):
@@ -291,11 +307,13 @@ class ForecastDataset(Dataset):
     """
 
     X_set = BasicDataset.X_set
+    Xf_set = BasicDataset.Xf_set
 
     def __init__(
         self,
         data_processor: DataProcessor,
         X_set: Optional[List[str]] = None,
+        Xf_set: Optional[List[str]] = None,
     ) -> None:
         """
         Constructor for ForecastDataset.
@@ -313,8 +331,11 @@ class ForecastDataset(Dataset):
         if X_set is not None:
             self.X_set = X_set
 
+        if Xf_set is not None:
+            self.Xf_set = Xf_set
+
         not_found = []
-        for column in self.X_set:
+        for column in self.X_set + self.Xf_set:
             if column not in self.data_processor.data_normalized.columns:
                 not_found.append(column)
 
@@ -329,6 +350,7 @@ class ForecastDataset(Dataset):
         odds1: int,
         odds2: int,
         model: nn.Module,
+        fight_features: List[float] = [],
         parse_ids: bool = False,
     ) -> Tuple[float, float]:
         """
@@ -366,6 +388,9 @@ class ForecastDataset(Dataset):
                 odds2,
             ],
             model=model,
+            fight_features=[
+                fight_features,
+            ],
             parse_ids=parse_ids,
         )
 
@@ -379,6 +404,7 @@ class ForecastDataset(Dataset):
         fighter_odds: List[float],
         opponent_odds: List[float],
         model: nn.Module,
+        fight_features: List[List[float]] = [],
         parse_ids: bool = False,
         device: str = "cpu",
     ) -> Tuple[NDArray, NDArray]:
@@ -420,6 +446,9 @@ class ForecastDataset(Dataset):
             }
         )
 
+        for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
+            match_data[feature_name] = np.concatenate((stats, stats))
+
         match_data = match_data.merge(
             self.data_processor.data_normalized,
             left_on="fighter_id",
@@ -452,6 +481,20 @@ class ForecastDataset(Dataset):
             )
         }
 
+        for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
+            match_data[feature_name] = np.concatenate((stats, stats))
+
+        if len(self.Xf_set) > 0:
+            fight_data_dict = {
+                id_: data
+                for id_, data in zip(
+                    match_data["id_"].values,
+                    np.asarray([match_data[x] for x in self.Xf_set]).T,
+                )
+            }
+        else:
+            fight_data_dict = {id_: [] for id_ in match_data["id_"].values}
+
         data = [
             torch.FloatTensor(
                 np.asarray(
@@ -469,21 +512,30 @@ class ForecastDataset(Dataset):
                     ]
                 )
             ),  # X2
+            torch.FloatTensor(
+                np.asarray(
+                    [
+                        fight_data_dict[fighter_id + "_" + str(event_date)]
+                        for fighter_id, event_date in zip(fighter_ids, event_dates)
+                    ]
+                )
+            ),  # X3
             torch.FloatTensor(np.asarray(fighter_odds)).reshape(-1, 1),  # Odds1,
             torch.FloatTensor(np.asarray(opponent_odds)).reshape(-1, 1),  # Odds2
         ]
 
-        X1, X2, odds1, odds2 = data
-        X1, X2, odds1, odds2, model = (
+        X1, X2, X3, odds1, odds2 = data
+        X1, X2, X3, odds1, odds2, model = (
             X1.to(device),
             X2.to(device),
+            X3.to(device),
             odds1.to(device),
             odds2.to(device),
             model.to(device),
         )
         model.eval()
         with torch.no_grad():
-            predictions_1 = model(X1, X2, odds1, odds2).detach().cpu().numpy()
-            predictions_2 = 1 - model(X2, X1, odds2, odds1).detach().cpu().numpy()
+            predictions_1 = model(X1, X2, X3, odds1, odds2).detach().cpu().numpy()
+            predictions_2 = 1 - model(X2, X1, X3, odds2, odds1).detach().cpu().numpy()
 
         return predictions_1, predictions_2

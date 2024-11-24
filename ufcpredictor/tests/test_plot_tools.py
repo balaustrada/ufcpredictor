@@ -17,6 +17,7 @@ class TestPredictionPlots(unittest.TestCase):
         # Mock data
         X1 = torch.tensor([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]])
         X2 = torch.tensor([[0.5, 0.6], [0.7, 0.8], [0.4, 0.4]])
+        X3 = torch.empty(2, 0)
         Y = torch.tensor([1.0, 0.0, 0.0])  # True outcomes
         odds1 = torch.tensor([2.0, 3.0, 2.0])
         odds2 = torch.tensor([1.5, 4.0, 1.1])
@@ -36,7 +37,7 @@ class TestPredictionPlots(unittest.TestCase):
         # Call the function with mock data
         PredictionPlots.show_fight_prediction_detail(
             model=mock_model,
-            data=(X1, X2, Y, odds1, odds2, fighter_names, opponent_names),
+            data=(X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names),
             print_info=False,
             show_plot=True,
             ax=mock_ax,  # Use the mocked axis
@@ -90,6 +91,7 @@ class TestPredictionPlots(unittest.TestCase):
         mock_dataset.get_fight_data_from_ids.return_value = (
             torch.tensor([[0.1, 0.2], [0.3, 0.4]]),  # X1
             torch.tensor([[0.5, 0.6], [0.7, 0.8]]),  # X2
+            torch.empty(2, 0), # X3
             torch.tensor([1.0, 0.0]),  # Y
             torch.tensor([2.0, 3.0]),  # odds1
             torch.tensor([1.5, 4.0]),  # odds2

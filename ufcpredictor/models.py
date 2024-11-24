@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from torch import nn
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import List
+    from typing import Any, Dict, List, Optional
 
 
 class FighterNet(nn.Module):
@@ -29,11 +29,14 @@ class FighterNet(nn.Module):
     calculate the benefit of a bet.
     """
 
-    mlflow_params: List[str] = [
-        "dropout_prob",
-    ]
+    mlflow_params: List[str] = ["dropout_prob", "network_shape"]
 
-    def __init__(self, input_size: int, dropout_prob: float = 0.0) -> None:
+    def __init__(
+        self,
+        input_size: int,
+        dropout_prob: float = 0.0,
+        network_shape: List[int] = [128, 256, 512, 256, 127],
+    ) -> None:
         """
         Initialize the FighterNet model with the given input size and dropout
         probability.
@@ -41,21 +44,21 @@ class FighterNet(nn.Module):
         Args:
             input_size: The size of the input to the model.
             dropout_prob: The probability of dropout.
+            network_shape: Shape of the network layers (except input layer).
         """
         super(FighterNet, self).__init__()
-        self.fc1 = nn.Linear(input_size, 128)
-        self.fc2 = nn.Linear(128, 256)
-        self.fc3 = nn.Linear(256, 512)
-        self.fc4 = nn.Linear(512, 256)
-        self.fc5 = nn.Linear(256, 127)
-
-        # Use the global dropout probability
-        self.dropout1 = nn.Dropout(p=dropout_prob)
-        self.dropout2 = nn.Dropout(p=dropout_prob)
-        self.dropout3 = nn.Dropout(p=dropout_prob)
-        self.dropout4 = nn.Dropout(p=dropout_prob)
-        self.dropout5 = nn.Dropout(p=dropout_prob)
-
+        self.network_shape = [input_size] + network_shape
+        self.fcs = nn.ModuleList(
+            [
+                nn.Linear(input_, output)
+                for input_, output in zip(
+                    self.network_shape[:-1], self.network_shape[1:]
+                )
+            ]
+        )
+        self.dropouts = nn.ModuleList(
+            [nn.Dropout(p=dropout_prob) for _ in range(len(self.network_shape) - 1)]
+        )
         self.dropout_prob = dropout_prob
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -68,16 +71,9 @@ class FighterNet(nn.Module):
         Returns:
             The output of the model.
         """
-        x = F.relu(self.fc1(x))
-        x = self.dropout1(x)  # Apply dropout after the first ReLU
-        x = F.relu(self.fc2(x))
-        x = self.dropout2(x)  # Apply dropout after the second ReLU
-        x = F.relu(self.fc3(x))
-        x = self.dropout3(x)  # Apply dropout after the third ReLU
-        x = F.relu(self.fc4(x))
-        x = self.dropout4(x)  # Apply dropout after the fourth ReLU
-        x = F.relu(self.fc5(x))
-        x = self.dropout5(x)  # Apply dropout after the fifth ReLU
+        for fc, dropout in zip(self.fcs, self.dropouts):
+            x = F.relu(fc(x))
+            x = dropout(x)
 
         return x
 
@@ -96,10 +92,17 @@ class SymmetricFightNet(nn.Module):
     """
 
     mlflow_params: List[str] = [
-        "dropout_prob",
+        "dropout_prob", "network_shape", "fighter_network_shape"
     ]
 
-    def __init__(self, input_size: int, dropout_prob: float = 0.0) -> None:
+    def __init__(
+        self,
+        input_size: int,
+        input_size_f: int,
+        dropout_prob: float = 0.0,
+        network_shape: List[int] = [512, 128, 64, 1],
+        fighter_network_shape: Optional[List[int]] = None,
+    ) -> None:
         """
         Initialize the SymmetricFightNet model with the given input size and dropout
         probability.
@@ -107,22 +110,40 @@ class SymmetricFightNet(nn.Module):
         Args:
             input_size: The size of the input to the model.
             dropout_prob: The probability of dropout.
+            network_shape: Shape of the network layers (except input layer).
+            fighter_network_shape: Shape of the network layers for the fighter
+                network (except input layer).
         """
         super(SymmetricFightNet, self).__init__()
-        self.fighter_net = FighterNet(input_size=input_size, dropout_prob=dropout_prob)
 
-        self.fc1 = nn.Linear(256, 512)
-        # self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(512, 128)
-        self.fc4 = nn.Linear(128, 64)
-        self.fc5 = nn.Linear(64, 1)
+        fighter_network_args: Dict[str, Any] = {
+            "input_size": input_size,
+            "dropout_prob": dropout_prob,
+        }
+        if fighter_network_shape is not None: # pragma: no cover
+            fighter_network_args["network_shape"] = fighter_network_shape
 
-        # Use the global dropout probability
-        self.dropout1 = nn.Dropout(p=dropout_prob)
-        self.dropout2 = nn.Dropout(p=dropout_prob)
-        self.dropout3 = nn.Dropout(p=dropout_prob)
-        self.dropout4 = nn.Dropout(p=dropout_prob)
+        self.fighter_net = FighterNet(**fighter_network_args)
+        self.fighter_network_shape = self.fighter_net.network_shape
 
+        self.network_shape = [
+            self.fighter_network_shape[-1] * 2 + 2 + input_size_f
+        ] + network_shape
+
+        self.fcs = nn.ModuleList(
+            [
+                nn.Linear(input_, output)
+                for input_, output in zip(
+                    self.network_shape[:-1], self.network_shape[1:]
+                )
+            ]
+        )
+        self.dropouts = nn.ModuleList(
+            [
+                nn.Dropout(p=dropout_prob)
+                for _ in range(len(self.network_shape) - 1)  # This should be -2
+            ]
+        )
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
         self.dropout_prob = dropout_prob
@@ -131,6 +152,7 @@ class SymmetricFightNet(nn.Module):
         self,
         X1: torch.Tensor,
         X2: torch.Tensor,
+        X3: torch.Tensor,
         odds1: torch.Tensor,
         odds2: torch.Tensor,
     ) -> torch.Tensor:
@@ -140,6 +162,7 @@ class SymmetricFightNet(nn.Module):
         Args:
             X1: The input tensor for the first fighter.
             X2: The input tensor for the second fighter.
+            X3: The input tensor for the fight features.
             odds1: The odds tensor for the first fighter.
             odds2: The odds tensor for the second fighter.
 
@@ -152,15 +175,93 @@ class SymmetricFightNet(nn.Module):
         out1 = torch.cat((out1, odds1), dim=1)
         out2 = torch.cat((out2, odds2), dim=1)
 
-        x = torch.cat((out1 - out2, out2 - out1), dim=1)
+        x = torch.cat((out1 - out2, out2 - out1, X3), dim=1)
 
-        x = self.relu(self.fc1(x))
-        x = self.dropout1(x)  # Apply dropout after the first ReLU
-        # x = self.relu(self.fc2(x))
-        # x = self.dropout2(x)  # Apply dropout after the second ReLU
-        x = self.relu(self.fc3(x))
-        x = self.dropout3(x)  # Apply dropout after the third ReLU
-        x = self.relu(self.fc4(x))
-        x = self.dropout4(x)  # Apply dropout after the fourth ReLU
-        x = self.sigmoid(self.fc5(x))
+        for fc, dropout in zip(self.fcs[:-1], self.dropouts):
+            x = self.relu(fc(x))
+            x = dropout(x)
+
+        x = self.fcs[-1](x)
+        x = self.sigmoid(x)
+        return x
+
+class SimpleFightNet(nn.Module):
+    """
+    A neural network model designed to predict the outcome of a fight between two
+    fighters.
+
+    The model takes into account the characteristics of both fighters and the odds of
+    the fight. It combines the features of both fighters as an input to the model.
+
+    The model can be used to make predictions on the outcome of a fight and to calculate
+    the benefit of a bet.
+    """
+
+    mlflow_params: List[str] = [
+        "dropout_prob",
+        "network_shape"
+    ]
+
+    def __init__(
+        self,
+        input_size: int,
+        dropout_prob: float = 0.0,
+        network_shape: List[int] = [1024, 512, 256, 128, 64, 1],
+    ):
+        """
+        Initialize the SimpleFightNet model with the given input size and dropout
+        probability.
+
+        Args:
+            dropout_prob: The probability of dropout.
+            network_shape: Shape of the network layers (except input layer).
+        """
+        super().__init__()
+
+        self.network_shape = [input_size,] + network_shape
+
+        self.fcs = nn.ModuleList(
+            [
+                nn.Linear(input_, output)
+                for input_, output in zip(
+                    self.network_shape[:-1], self.network_shape[1:]
+                )
+            ]
+        )
+        self.dropouts = nn.ModuleList(
+            [nn.Dropout(p=dropout_prob) for _ in range(len(self.network_shape) - 1)]
+        )
+        self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
+        self.dropout_prob = dropout_prob
+
+    def forward(
+            self,
+            X1: torch.Tensor,
+            X2: torch.Tensor,
+            X3: torch.Tensor,
+            odds1: torch.Tensor,
+            odds2: torch.Tensor,
+    ) -> torch.Tensor:
+        """
+        Compute the output of the SimpleFightNet model.
+
+        Args:
+            X1: The input tensor for the first fighter.
+            X2: The input tensor for the second fighter.
+            X3: The input tensor for the fight features.
+            odds1: The odds tensor for the first fighter.
+            odds2: The odds tensor for the second fighter.
+
+        Returns:
+            The output of the SimpleFightNet model.
+        """
+        x = torch.cat((X1, X2, X3, odds1, odds2), dim=1)
+
+        for fc, dropout in zip(self.fcs[:-1], self.dropouts):
+            x = self.relu(fc(x))
+            x = dropout(x)
+
+        x = self.fcs[-1](x)
+        x = self.sigmoid(x)
         return x

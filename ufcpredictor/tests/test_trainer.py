@@ -13,7 +13,7 @@ class SimpleNet(nn.Module):
         super(SimpleNet, self).__init__()
         self.fc1 = nn.Linear(10, 1)
 
-    def forward(self, X1, X2, odds1=None, odds2=None):
+    def forward(self, X1, X2, X3, odds1=None, odds2=None):
 
         return torch.sigmoid(self.fc1(X1) + self.fc1(X2))
 
@@ -23,11 +23,12 @@ class TestTrainer(unittest.TestCase):
         # Create some dummy data
         X1 = torch.rand(100, 10)
         X2 = torch.rand(100, 10)
+        X3 = torch.rand(100, 0)
         Y = torch.randint(0, 2, (100, 1)).float()
         odds1 = torch.rand(100, 1)
         odds2 = torch.rand(100, 1)
 
-        dataset = TensorDataset(X1, X2, Y, odds1, odds2)
+        dataset = TensorDataset(X1, X2, X3, Y, odds1, odds2)
         self.train_loader = DataLoader(dataset, batch_size=10)
         self.test_loader = DataLoader(dataset, batch_size=10)
 
@@ -81,11 +82,12 @@ class TestTrainerWithScheduler(unittest.TestCase):
         # Create some dummy data
         X1 = torch.rand(100, 10)
         X2 = torch.rand(100, 10)
+        X3 = torch.rand(100, 0)
         Y = torch.randint(0, 2, (100, 1)).float()
         odds1 = torch.rand(100, 1)
         odds2 = torch.rand(100, 1)
 
-        dataset = TensorDataset(X1, X2, Y, odds1, odds2)
+        dataset = TensorDataset(X1, X2, X3, Y, odds1, odds2)
         self.train_loader = DataLoader(dataset, batch_size=10)
         self.test_loader = DataLoader(dataset, batch_size=10)
 

@@ -100,6 +100,7 @@ class DataProcessor:
         data = self.add_key_stats(data)
         data = self.apply_filters(data)
         self.data = self.group_round_data(data)
+        self.data["num_fight"] = self.data.groupby("fighter_id").cumcount() + 1
 
         for data_enhancer in self.data_enhancers:
             self.data = data_enhancer.add_data_fields(self)
@@ -505,7 +506,7 @@ class DataProcessor:
           and the same fields with "_per_minute" and "_per_fight" appended,
           which represent the aggregated fields per minute and per fight,
           respectively.
-        
+
         It also returns the normalized fields added by the data enhancers.
 
         Returns:

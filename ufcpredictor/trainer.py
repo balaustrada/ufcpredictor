@@ -118,6 +118,12 @@ class Trainer:
                         data_enhancer, param
                     )
 
+            for set_ in "X_set", "Xf_set":
+                if hasattr(self.train_loader.dataset, set_):
+                    params[set_] = sorted(
+                        getattr(self.train_loader.dataset, set_)
+                    )
+                    
             mlflow.log_params(dict(sorted(params.items())))
 
     def train(
@@ -154,17 +160,18 @@ class Trainer:
             self.model.train()
             train_loss = []
 
-            for X1, X2, Y, odds1, odds2 in tqdm(iter(train_loader), disable=silent):
-                X1, X2, Y, odds1, odds2 = (
+            for X1, X2, X3, Y, odds1, odds2 in tqdm(iter(train_loader), disable=silent):
+                X1, X2, X3, Y, odds1, odds2 = (
                     X1.to(self.device),
                     X2.to(self.device),
+                    X3.to(self.device),
                     Y.to(self.device),
                     odds1.to(self.device),
                     odds2.to(self.device),
                 )
 
                 self.optimizer.zero_grad()
-                target_logit = self.model(X1, X2, odds1, odds2)
+                target_logit = self.model(X1, X2, X3, odds1, odds2)
                 loss = self.loss_fn(target_logit, Y, odds1, odds2)
 
                 loss.backward()
@@ -181,7 +188,7 @@ class Trainer:
                 target_labels
             ).reshape(-1)
 
-            val_loss, val_target_f1, correct, _, _ = self.test(test_loader)
+            val_loss, val_target_f1, correct, _, _ = self.test(test_loader, silent=silent)
 
             if not silent:
                 print(f"Train acc: [{match.sum() / len(match):.5f}]")
@@ -206,7 +213,7 @@ class Trainer:
                 self.scheduler.step(val_loss)
 
     def test(
-        self, test_loader: torch.utils.data.DataLoader | None = None
+        self, test_loader: torch.utils.data.DataLoader | None = None, silent: bool =False,
     ) -> Tuple[float, float, float, List, List]:
         """
         Evaluates the model on the test data and returns the validation loss, target F1
@@ -215,6 +222,7 @@ class Trainer:
         Args:
             test_loader: The DataLoader for the test data. Defaults to the DataLoader
                 passed to the Trainer constructor.
+            silent: Whether to not print training progress. Defaults to False.
 
         Returns:
             A tuple containing the validation loss, target F1 score, proportion of correct
@@ -234,15 +242,16 @@ class Trainer:
         target_labels = []
 
         with torch.no_grad():
-            for X1, X2, Y, odds1, odds2 in tqdm(iter(test_loader)):
-                X1, X2, Y, odds1, odds2 = (
+            for X1, X2, X3, Y, odds1, odds2 in tqdm(iter(test_loader), disable=silent):
+                X1, X2, X3, Y, odds1, odds2 = (
                     X1.to(self.device),
                     X2.to(self.device),
+                    X3.to(self.device),
                     Y.to(self.device),
                     odds1.to(self.device),
                     odds2.to(self.device),
                 )
-                target_logit = self.model(X1, X2, odds1, odds2)
+                target_logit = self.model(X1, X2, X3, odds1, odds2)
                 loss = self.loss_fn(target_logit, Y, odds1, odds2)
                 val_loss.append(loss.item())
 

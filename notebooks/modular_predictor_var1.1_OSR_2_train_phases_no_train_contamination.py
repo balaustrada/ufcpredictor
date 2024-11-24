@@ -25,17 +25,20 @@ import torch
 # mlflow.pytorch.autolog()
 
 mlflow.set_tracking_uri("http://127.0.0.1:5000") 
-mlflow.set_experiment('TEST')
+mlflow.set_experiment('Diferent tries')
 
 # %%
 import pandas as pd
 pd.set_option("display.max_columns", None)
 
 # %%
+from ufcpredictor.utils import convert_odds_to_decimal
+
+# %%
 from ufcpredictor.data_processor import DataProcessor
 from ufcpredictor.data_enhancers import SumFlexibleELO, RankedFields
 from ufcpredictor.data_aggregator import WeightedDataAggregator
-from ufcpredictor.datasets import BasicDataset
+from ufcpredictor.datasets import BasicDataset, ForecastDataset
 from ufcpredictor.trainer import Trainer
 from ufcpredictor.plot_tools import PredictionPlots
 import torch
@@ -178,7 +181,7 @@ if True:
         "leg_strikes_att_per_minute",
         "leg_strikes_succ_opponent_per_minute",
         "leg_strikes_succ_per_minute",
-        "num_fight",
+        # "num_fight",
         "reversals_opponent_per_minute",
         "reversals_per_minute",
         "strikes_att_opponent_per_minute",
@@ -238,7 +241,7 @@ invalid_fights = set(data_processor.data[data_processor.data["num_fight"] < 5]["
 
 # %%
 early_split_date = "2017-01-01"
-split_date = "2023-08-01"#"2023-08-01"
+split_date = "2024-01-01"#"2023-08-01"
 max_date = "2024-11-11" 
 
 early_train_fights = data_processor.data["fight_id"][data_processor.data["event_date"] < split_date]
@@ -256,8 +259,8 @@ early_train_fights = set(early_train_fights) - set(invalid_fights)
 train_fights = set(train_fights) - set(invalid_fights)
 test_fights = set(test_fights) - set(invalid_fights)
 
- # %%
- Xf_set = ["num_rounds","weight"]
+# %%
+Xf_set = ["num_rounds","weight"]
 # Xf_set = []
 early_train_dataset = BasicDataset(
     data_processor,
@@ -280,10 +283,17 @@ test_dataset = BasicDataset(
     Xf_set = Xf_set,
 )
 
+forecast_dataset = ForecastDataset(
+    data_processor=data_processor,
+    X_set=X_set,
+    Xf_set = Xf_set,
+)
+
 # %%
-early_train_dataloader = torch.utils.data.DataLoader(early_train_dataset, batch_size=2048, shuffle=True)
-train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=2048, shuffle=True)
-test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=2048, shuffle=False)
+batch_size = 64 # 2048
+early_train_dataloader = torch.utils.data.DataLoader(early_train_dataset, batch_size=batch_size, shuffle=True)
+train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 # %%
 from ufcpredictor.models import SymmetricFightNet
@@ -291,7 +301,7 @@ from ufcpredictor.loss_functions import BettingLoss
 
 
 # %%
-seed = 42
+seed = 21
 torch.manual_seed(seed)
 import random
 random.seed(seed)
@@ -301,16 +311,25 @@ np.random.seed(seed)
 model = SymmetricFightNet(
         input_size=len(train_dataset.X_set),
         input_size_f=len(Xf_set),
-        dropout_prob=0.25, # 0.35
+        dropout_prob=0.05, # 0.25
         fighter_network_shape=[256, 512, 1024, 512],
-        network_shape=[2048, 1024, 512, 128, 64, 1],
+        # network_shape=[2048, 1024, 512, 128, 64, 1],
+        # network_shape=[122, 1024, 2048, 1024, 512, 256, 128, 64, 1],
+        network_shape=[76, 1024, 512, 256, 128, 64, 1],  # This was the best one so far
+        # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
+        
 )
-optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=2e-5)
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.7, patience=2
-)
+# optimizer = torch.optim.Adam(params=model.parameters(), lr=2e-3, weight_decay=2e-5)
+# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+#         optimizer, mode="min", factor=0.9, patience=4
+# )
 mlflow.end_run()
 mlflow.start_run()
+
+optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=2e-5)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", factor=0.7, patience=6
+)
 
 trainer = Trainer(
     train_loader = train_dataloader,
@@ -325,13 +344,13 @@ trainer = Trainer(
 # %%
 
 trainer.train(
-    epochs=5,
+    epochs=15,
     train_loader=early_train_dataloader,
     test_loader=test_dataloader,
 )
 
 # %%
-trainer.train(epochs=30) # ~8 is a good match if dropout to 0.35 
+trainer.train(epochs=10) # ~8 is a good match if dropout to 0.35 
 
 # %%
 # Save model dict
@@ -374,8 +393,8 @@ df = df.merge(
 
 df["confidence"] = abs((df["Prediction"] - 0.5) *2)
 
+# df = df[df["confidence"] > ]
 
-# %%
 cash0 = 200
 
 df = df.sort_values(by="event_date")
@@ -386,10 +405,26 @@ dates = [None,]
 
 
 for date, group in df.groupby("event_date"):  
-    max_bet = max(cash[-1] * 0.4, 10)
+    # max_bet = max(cash[-1] * 0.5, 10)
     
-    win = (group["confidence"]*group["win"]).sum() * max_bet / 10 / group["confidence"].sum()
-    bet = (group["confidence"]*group["bet"]).sum() * max_bet / 10 / group["confidence"].sum()
+    # win = (group["confidence"]*group["win"]).sum() * max_bet / 10 / group["confidence"].sum()
+    # bet = (group["confidence"]*group["bet"]).sum() * max_bet / 10 / group["confidence"].sum()
+
+    # extra_added = max(bet - cash[-1], 0)
+    # cash_i = cash[-1] + win - min(bet, cash[-1])
+
+    # invest.append(invest[-1] + extra_added)
+    # cash.append(cash_i)
+    # dates.append(date)
+
+    max_bet = max(cash[-1] * 0.2, 10)
+
+    win = (group["confidence"]*group["win"] * max_bet / 10).sum()
+    bet = (group["confidence"]*group["bet"] * max_bet / 10).sum()
+
+    if bet > max_bet:
+        win = win/bet * max_bet
+        bet = max_bet
 
     extra_added = max(bet - cash[-1], 0)
     cash_i = cash[-1] + win - min(bet, cash[-1])
@@ -397,6 +432,8 @@ for date, group in df.groupby("event_date"):
     invest.append(invest[-1] + extra_added)
     cash.append(cash_i)
     dates.append(date)
+
+
     
 
 cash = cash[1:]
@@ -430,10 +467,95 @@ ax.legend()
 ax.grid()
 
 # %%
-mlflow.end_run()
+import logging
+logger = logging.getLogger(__name__)
 
 # %%
-np.cumsum(results["bet"]).shape
+
+# %%
+len(names_f)
+
+# %%
+names_f = ["Maheshate", "Nyamjargal Tumendemberel", "Shi ming", "Kiru Sahota", "Baergeng Jieleyisi","Volkan Oezdemir", "Song Kenan", "Petr Yan"]
+names_o = ["Nikolas Motta", "Carlos Hernandez", "Feng Xiaocan", "DongHun Choi", "SuYoung You", "Carlos Ulberg", "Muslim Salikhov", "Deiveson Figueiredo"]
+odds_bfo_f = [-200, -127, 295, 120, 110, 205, 125, -260]
+odds_bfo_o = [160, 102, -385, -150, -150, -265, -157, 196]
+odds_365_f = [-188, 130, 300, -125, 130, 200, 150, -334]
+odds_365_o = [162, -160, -400, 100, -160, -250, -175, 250]
+
+
+
+assert len(names_f) == len(names_o) == len(odds_bfo_f) == len(odds_bfo_o) == len(odds_365_f) == len(odds_365_o)
+# for i in range(len(names_f)):
+#     print(names_f[i], odds_bfo_f[i], odds_365_f[i])
+#     print(names_o[i], odds_bfo_o[i], odds_365_o[i])
+#     print('--')
+
+for i in range(len(names_f)):
+    fig, axs = plt.subplots(1, 3, figsize=(30, 10))
+    print('noodds')
+    PredictionPlots.plot_single_prediction(
+        model=model,
+        dataset=forecast_dataset,
+        fighter_name=names_f[i],
+        opponent_name=names_o[i],
+        fight_features=[],
+        event_date="2024-11-22",
+        odds1=convert_odds_to_decimal(1),
+        odds2=convert_odds_to_decimal(1),
+        ax=axs[0],
+    )
+    print('bfo')
+    PredictionPlots.plot_single_prediction(
+        model=model,
+        dataset=forecast_dataset,
+        fighter_name=names_f[i],
+        opponent_name=names_o[i],
+        fight_features=[],
+        event_date="2024-11-22",
+        odds1=convert_odds_to_decimal(odds_bfo_f[i]),
+        odds2=convert_odds_to_decimal(odds_bfo_o[i]),
+        ax=axs[1],
+        )
+    print('365')
+    PredictionPlots.plot_single_prediction(
+        model=model,
+        dataset=forecast_dataset,
+        fighter_name=names_f[i],
+        opponent_name=names_o[i],
+        fight_features=[],
+        event_date="2024-11-22",
+        odds1=convert_odds_to_decimal(odds_365_f[i]),
+        odds2=convert_odds_to_decimal(odds_365_o[i]),
+        ax=axs[2],
+        )
+
+# %%
+PredictionPlots.plot_single_prediction(
+    model=model,
+    dataset=forecast_dataset,
+    fighter_name="Ming Shi",
+    opponent_name="Feng Xiaocan",
+    fight_features=[],
+    event_date="2024-11-22",
+    odds1=convert_odds_to_decimal(205),
+    odds2=convert_odds_to_decimal(-265),
+    )
+
+# %%
+PredictionPlots.plot_single_prediction(
+    model=model,
+    dataset=forecast_dataset,
+    fighter_name="Petr Yan",
+    opponent_name="Deiveson Figueiredo",
+    fight_features=[],
+    event_date="2024-11-22",
+    odds1=convert_odds_to_decimal(1),
+    odds2=convert_odds_to_decimal(1),
+    )
+
+# %%
+mlflow.end_run()
 
 # %%
 cash0 = 200
@@ -446,7 +568,7 @@ dates = [None,]
 
 
 for date, group in df_weight.groupby("event_date"):  
-    max_bet = max(cash[-1] * 0.4, 10)
+    max_bet = max(cash[-1] * 0.5, 10)
     
     win = (group["confidence"]*group["win"]).sum() * max_bet / 10 / group["confidence"].sum()
     bet = (group["confidence"]*group["bet"]).sum() * max_bet / 10 / group["confidence"].sum()

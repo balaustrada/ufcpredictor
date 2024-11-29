@@ -102,6 +102,12 @@ class BasicDataset(Dataset):
 
     Xf_set: List[str] = []
 
+    stat_fields: List[str] = [
+        "body_strikes_att_per_minute",
+        "clinch_strikes_att_per_minute",
+        "knockdowns_per_minute",
+    ]
+
     def __init__(
         self,
         data_processor: DataProcessor,
@@ -140,6 +146,45 @@ class BasicDataset(Dataset):
 
         self.load_data()
 
+    def get_trans_stats(self) -> pd.DataFrame:
+        reduced_data = (
+            self.data_processor.data_normalized_nonagg.copy()
+            .sort_values(by=["event_date", "fight_id"])
+            .reset_index()[["fight_id", "fighter_id", "event_date"] + self.stat_fields]
+        )
+
+        # Add opponent row
+        fight_to_indices = reduced_data.groupby("fight_id").apply(
+            lambda x: list(x.index), include_groups=False
+        )
+        reduced_data["opponent_row"] = reduced_data.index.to_series().apply(
+            lambda idx: [
+                i
+                for i in fight_to_indices[reduced_data.loc[idx, "fight_id"]]
+                if i != idx
+            ][0],
+        )
+
+        # Step 2: Add previous_fights and previous_opponents
+        def add_previous_fights(group):
+            group = group.sort_values("event_date")
+            group["previous_fights"] = group.index.to_series().apply(
+                lambda idx: group.index[group.index < idx].tolist()
+            )
+            group["previous_opponents"] = group["previous_fights"].apply(
+                lambda prev_fights: [
+                    reduced_data.loc[i, "opponent_row"] for i in prev_fights
+                ]
+            )
+            return group
+
+        reduced_data = reduced_data.groupby("fighter_id", group_keys=False).apply(
+            lambda group: add_previous_fights(group).assign(fighter_id=group.name),
+            include_groups=False,
+        )
+
+        return reduced_data
+
     def load_data(self) -> None:
         """
         Loads the data into a format that can be used to train a model.
@@ -162,6 +207,30 @@ class BasicDataset(Dataset):
 
         # We remove invalid fights
         reduced_data = reduced_data[reduced_data["fight_id"].isin(self.fight_ids)]
+
+        # We now generate the statistics data per match to create the transformer
+        reduced_data_trans = self.get_trans_stats()
+
+        reduced_data = reduced_data.merge(
+            reduced_data_trans[
+                ["fight_id", "fighter_id", "previous_fights", "previous_opponents"]
+            ],
+        )
+
+        status_array_size = 5
+        self.trans_data = torch.FloatTensor(
+            [reduced_data_trans[x] for x in self.stat_fields]
+        ).T
+
+        self.trans_data = torch.concat(
+            (
+                torch.zeros(
+                    (self.trans_data.size()[0], status_array_size), dtype=torch.float
+                ),
+                self.trans_data,
+            ),
+            dim=1,
+        )
 
         # We now merge stats with itself to get one row per match with the data
         # from the two fighters
@@ -198,6 +267,10 @@ class BasicDataset(Dataset):
             ),
             torch.FloatTensor(fight_data["opening_x"].values),
             torch.FloatTensor(fight_data["opening_y"].values),
+            fight_data["previous_fights_x"].values,
+            fight_data["previous_fights_y"].values,
+            fight_data["previous_opponents_x"].values,
+            fight_data["previous_opponents_y"].values,
         ]
 
         if len(self.Xf_set) == 0:
@@ -213,9 +286,14 @@ class BasicDataset(Dataset):
         """
         return len(self.data[0])
 
-    def __getitem__(
-        self, idx: int
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx: int) -> Tuple[
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+    ]:
         """
         Returns a tuple of (X, Y, winner, odds_1, odds_2) for the given index.
 
@@ -231,14 +309,23 @@ class BasicDataset(Dataset):
             indicating which fighter won, and odds_1 and odds_2 are the opening
             odds for the two fighters.
         """
-        X1, X2, X3, winner, odds_1, odds_2 = [x[idx] for x in self.data]
+        X1, X2, X3, winner, odds_1, odds_2, f_prev_f, o_prev_f, f_prev_o, o_prev_o = [
+            x[idx] for x in self.data
+        ]
 
         if np.random.random() >= 0.5:
             X1, X2 = X2, X1
             winner = 1 - winner
             odds_1, odds_2 = odds_2, odds_1
+            f_prev_f, o_prev_f = o_prev_f, f_prev_f
+            f_prev_o, o_prev_o = o_prev_o, f_prev_o
 
-        return X1, X2, X3, winner.reshape(-1), odds_1.reshape(-1), odds_2.reshape(-1)
+        ff_data = self.trans_data[f_prev_f]
+        of_data = self.trans_data[o_prev_f]
+        fo_data = self.trans_data[f_prev_o]
+        oo_data = self.trans_data[o_prev_o]
+
+        return X1, X2, X3, winner.reshape(-1), odds_1.reshape(-1), odds_2.reshape(-1), ff_data, of_data, fo_data, oo_data
 
     def get_fight_data_from_ids(self, fight_ids: Optional[List[str]] = None) -> Tuple[
         torch.FloatTensor,

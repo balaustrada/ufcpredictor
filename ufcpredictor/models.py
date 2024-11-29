@@ -207,6 +207,7 @@ class SimpleFightNet(nn.Module):
         input_size: int,
         dropout_prob: float = 0.0,
         network_shape: List[int] = [1024, 512, 256, 128, 64, 1],
+        fighter_transformer_kwargs = Dict(),
     ):
         """
         Initialize the SimpleFightNet model with the given input size and dropout
@@ -219,6 +220,8 @@ class SimpleFightNet(nn.Module):
         super().__init__()
 
         self.network_shape = [input_size,] + network_shape
+
+        self.transformer = FighterTransformer(**fighter_transformer_kwargs)
 
         self.fcs = nn.ModuleList(
             [
@@ -242,6 +245,10 @@ class SimpleFightNet(nn.Module):
             X3: torch.Tensor,
             odds1: torch.Tensor,
             odds2: torch.Tensor,
+            ff_data,
+            of_data,
+            fo_data,
+            oo_data,
     ) -> torch.Tensor:
         """
         Compute the output of the SimpleFightNet model.
@@ -256,6 +263,7 @@ class SimpleFightNet(nn.Module):
         Returns:
             The output of the SimpleFightNet model.
         """
+        S1, S2 = self.transformer()
         x = torch.cat((X1, X2, X3, odds1, odds2), dim=1)
 
         for fc, dropout in zip(self.fcs[:-1], self.dropouts):
@@ -265,3 +273,63 @@ class SimpleFightNet(nn.Module):
         x = self.fcs[-1](x)
         x = self.sigmoid(x)
         return x
+    
+class FighterTransformer(nn.Module):
+    def __init__(self, state_dim, stat_dim, match_dim, hidden_dim, num_heads, num_layers, dropout=0.1):
+        """
+        Args:
+            state_dim (int): Dimension of the fighter states (X1, X2).
+            stat_dim (int): Dimension of the fighter stats (s1, s2).
+            match_dim (int): Dimension of the match stats (m).
+            hidden_dim (int): Dimension of the transformer hidden embeddings.
+            num_heads (int): Number of attention heads in the transformer.
+            num_layers (int): Number of transformer encoder layers.
+            dropout (float): Dropout probability.
+        """
+        super().__init__()
+        
+        # Input embeddings
+        self.state_embedding = nn.Linear(state_dim, hidden_dim)
+        self.stat_embedding = nn.Linear(stat_dim, hidden_dim)
+        self.match_embedding = nn.Linear(match_dim, hidden_dim)
+        
+        # Transformer encoder
+        encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_dim, nhead=num_heads, dropout=dropout)
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        
+        # Output projection
+        self.output_projection = nn.Linear(hidden_dim, state_dim)
+    
+    def forward(self, X1, X2, s1, s2, m):
+        """
+        Args:
+            X1 (tensor): Fighter 1 state tensor of shape (batch_size, state_dim).
+            X2 (tensor): Fighter 2 state tensor of shape (batch_size, state_dim).
+            s1 (tensor): Fighter 1 stats tensor of shape (batch_size, stat_dim).
+            s2 (tensor): Fighter 2 stats tensor of shape (batch_size, stat_dim).
+            m (tensor): Match stats tensor of shape (batch_size, match_dim).
+        
+        Returns:
+            X1_new (tensor): Fighter 1 new state tensor of shape (batch_size, state_dim).
+            X2_new (tensor): Fighter 2 new state tensor of shape (batch_size, state_dim).
+        """
+        # Embed inputs
+        X1_embed = self.state_embedding(X1)
+        X2_embed = self.state_embedding(X2)
+        s1_embed = self.stat_embedding(s1)
+        s2_embed = self.stat_embedding(s2)
+        m_embed = self.match_embedding(m)
+        
+        # Concatenate embeddings for the transformer input
+        # Shape: (batch_size, sequence_length, hidden_dim)
+        transformer_input = torch.stack([X1_embed, X2_embed, s1_embed, s2_embed, m_embed], dim=1)
+        
+        # Pass through the transformer
+        # Shape: (batch_size, sequence_length, hidden_dim)
+        transformer_output = self.transformer(transformer_input)
+        
+        # Extract new states for X1 and X2
+        X1_new = self.output_projection(transformer_output[:, 0, :])  # First token corresponds to X1
+        X2_new = self.output_projection(transformer_output[:, 1, :])  # Second token corresponds to X2
+        
+        return X1_new, X2_new

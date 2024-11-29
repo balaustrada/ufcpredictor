@@ -293,6 +293,12 @@ forecast_dataset = ForecastDataset(
 dataset=  early_train_dataset
 
 # %%
+dataset.trans_data[dataset.data[-1][0]]
+
+# %%
+dataset.data[-1]
+
+# %%
 for x in dataset.data_processor.data, dataset.data_processor.data_normalized:
     print(len(x) - len(x["fight_id"].unique()) * 2)
 
@@ -386,21 +392,52 @@ def add_previous_fights(group):
 
 # %%
 x = x.groupby("fighter_id", group_keys=False).apply(
-              add_previous_fights,
+              lambda group: add_previous_fights(group).assign(fighter_id=group.name),
               include_groups=False
              )
 
 # %%
 stipe_fights = x[x["fighter_name"].str.contains('Topuria')]["previous_fights"].iloc[-1]
 stipe_opponents = x[x["fighter_name"].str.contains("Topuria")]["previous_opponents"].iloc[-1]
-x.loc[stipe_opponents]
-
-
-# %%
+x.loc[stipe_fights]
 
 # %%
+fight_id = "bec3154a11df3299" # Volkanovski topuria"
+fighter_id = "54f64b5e283b0ce7" # Ilia
 
 # %%
+row = x[(x["fight_id"] == fight_id) & (x["fighter_id"] == fighter_id)]
+row
+
+# %%
+data = [
+    x["fight_id"].values,
+    x["fighter_id"].values,
+    torch.FloatTensor([
+        x["body_strikes_att_per_minute"],
+        x["clinch_strikes_att_per_minute"],
+        x["knockdowns_per_minute"],
+    ]),
+    x["previous_fights"].values,
+    x["previous_opponents"].values,
+]
+        
+    
+    
+
+# %%
+pfights = np.asarray(row["previous_fights"].values[0])
+pfightso = np.asarray(row["previous_opponents"].values[0])
+
+# %%
+np.asarray(pfights[0])
+
+# %%
+data[2].T[pfights]
+
+# %%
+data
+
 
 # %%
 

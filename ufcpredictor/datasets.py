@@ -150,7 +150,7 @@ class BasicDataset(Dataset):
         reduced_data = (
             self.data_processor.data_normalized_nonagg.copy()
             .sort_values(by=["event_date", "fight_id"])
-            .reset_index()[["fight_id", "fighter_id", "event_date"] + self.stat_fields]
+            .reset_index(drop=True)[["fight_id", "fighter_id", "event_date", "num_fight"] + self.stat_fields]
         )
 
         # Add opponent row
@@ -180,6 +180,21 @@ class BasicDataset(Dataset):
 
         reduced_data = reduced_data.groupby("fighter_id", group_keys=False).apply(
             lambda group: add_previous_fights(group).assign(fighter_id=group.name),
+            include_groups=False,
+        )
+
+        # Add the immediate next fight index
+        def add_next_fight(group):
+            group = group.sort_values("event_date")
+            group["next_fight"] = group.index.to_series().apply(
+                lambda idx: group.index[group.index > idx].min() if (group.index > idx).any() else -1
+            )
+            return group
+
+        reduced_data = reduced_data.groupby("fighter_id", group_keys=False).apply(
+            lambda group: add_next_fight(group)
+            .assign(fighter_id=group.name)  # Ensure fighter_id persists
+            .pipe(add_next_fight),  # Add next_fight column
             include_groups=False,
         )
 

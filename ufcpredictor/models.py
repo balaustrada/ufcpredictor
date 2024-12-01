@@ -207,7 +207,7 @@ class SimpleFightNet(nn.Module):
         input_size: int,
         dropout_prob: float = 0.0,
         network_shape: List[int] = [1024, 512, 256, 128, 64, 1],
-        fighter_transformer_kwargs = Dict(),
+        fighter_transformer_kwargs = dict(),
     ):
         """
         Initialize the SimpleFightNet model with the given input size and dropout

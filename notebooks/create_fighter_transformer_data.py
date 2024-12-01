@@ -40,6 +40,7 @@ from ufcpredictor.data_enhancers import SumFlexibleELO, RankedFields
 from ufcpredictor.data_aggregator import WeightedDataAggregator
 from ufcpredictor.datasets import BasicDataset, ForecastDataset
 from ufcpredictor.trainer import Trainer
+from ufcpredictor.models import FighterTransformer
 from ufcpredictor.plot_tools import PredictionPlots
 import torch
 import numpy as np
@@ -297,6 +298,29 @@ dataset=  early_train_dataset
 reduced_data = dataset.get_trans_stats()
 
 # %%
+
+# %%
+fighter_transformer = FighterTransformer(
+    state_dim=5, 
+    stat_dim=3, 
+    match_dim=1,
+    hidden_dim=64,
+    num_heads=2,
+    num_layers=2,
+    dropout=0.1,
+)
+
+# %%
+dataset.update_data_trans(fighter_transformer)
+
+# %%
+
+# %%
+
+# %%
+dataset.compute_position_data(
+
+# %%
 x = reduced_data
 x[x["fighter_id"] == "484acc7b0f856ce9"]
 
@@ -316,10 +340,10 @@ fight_data_nonag = fight_data_nonag[
 fight_data_nonag = fight_data_nonag.drop_duplicates(subset=["fight_id"], keep="first")
 
 # %%
-assert len(fight_data_nonag) == len(reduced_data)/2 # Check that we haven't lost any record.
+fight_data_nonag["max_num_fight"] = fight_data_nonag[["num_fight_x", "num_fight_y"]].max(axis=1)
 
 # %%
-fight_data_nonag["max_num_fight"] = fight_data_nonag[["num_fight_x", "num_fight_y"]].max(axis=1)
+assert len(fight_data_nonag) == len(reduced_data)/2 # Check that we haven't lost any record.
 
 # %%
 fight_data_nonag
@@ -367,17 +391,46 @@ for max_fight in sorted(X["max_num_fight"].unique()):
     next_f1_positions.append(filtered_rows["next_fight_x"].values)
     next_f2_positions.append(filtered_rows["next_fight_y"].values)
 
+# %% [markdown]
+# Now I need to learn how to update this values:, but I am still missing the tarnsformer(?)
+
 # %%
 f1_position = f1_positions[0]
 f2_position = f2_positions[0]
-next_f1_position = f1_positions[1]
-next_f2_position = f2_positions[1]
+next_f1_position = next_f1_positions[0]
+next_f2_position = next_f2_positions[0]
 
 # %%
-dataset.trans_data[f1_position]
+fighter_transformer = FighterTransformer(
+    state_dim=3, 
+    stat_dim=3, 
+    match_dim=1,
+    hidden_dim=32,
+    num_heads=2,
+    num_layers=2,
+    dropout=0.1,
+)
 
 # %%
-f1_position
+for i, (f1_position, f2_position, next_f1_position, next_f2_position) in enumerate(
+  zip(f1_positions, f2_positions, next_f1_positions, next_f2_positions)
+):
+    X1 = dataset.trans_data[f1_position][:, :3]
+    X2 = dataset.trans_data[f2_position][:, :3]
+    s1 = dataset.trans_data[f1_position][:, 5:]
+    s2 = dataset.trans_data[f2_position][:, 5:]
+    m = dataset.trans_data[f1_position][:, 0].reshape(-1, 1)
+
+    X1, X2 = fighter_transformer(X1, X2, s1, s2, m)
+
+
+    msk = next_f1_position > 0
+    dataset.trans_data[next_f1_position[msk],:3] = X1[msk]
+    
+    msk = next_f2_position > 0
+    dataset.trans_data[next_f2_position[msk], :3] = X2[msk]
+
+# %%
 
 # %%
 

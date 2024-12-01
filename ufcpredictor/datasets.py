@@ -108,6 +108,8 @@ class BasicDataset(Dataset):
         "knockdowns_per_minute",
     ]
 
+    status_array_size = 5
+
     def __init__(
         self,
         data_processor: DataProcessor,
@@ -200,6 +202,78 @@ class BasicDataset(Dataset):
 
         return reduced_data
 
+    def compute_position_data(self, reduced_data_trans: pd.DataFrame):
+        reduced_data_trans = reduced_data_trans.copy()
+
+        preserved_fields = ["fight_id", "fighter_id", "num_fight", "next_fight"]
+        fight_data_nonag = reduced_data_trans[preserved_fields].merge(
+            reduced_data_trans[preserved_fields],
+            left_on="fight_id",
+            right_on="fight_id",
+            how="inner",
+            suffixes=("_x", "_y"),
+        )
+
+        fight_data_nonag = fight_data_nonag[
+            fight_data_nonag["fighter_id_x"] != fight_data_nonag["fighter_id_y"]
+        ]
+        fight_data_nonag = fight_data_nonag.drop_duplicates(subset=["fight_id"], keep="first")
+        fight_data_nonag["max_num_fight"] = fight_data_nonag[["num_fight_x", "num_fight_y"]].max(axis=1)
+
+        reduced_data_trans = reduced_data_trans.reset_index(drop=True)
+        reduced_data_trans['Index'] = reduced_data_trans.index
+
+        X = fight_data_nonag.merge(
+            reduced_data_trans[["fight_id", "fighter_id", "Index"]],
+            left_on=["fight_id", "fighter_id_x"],
+            right_on=["fight_id", "fighter_id"],
+        ).rename(columns={"Index": "Index_x"}).drop(columns="fighter_id").merge(
+            reduced_data_trans[["fight_id", "fighter_id", "Index"]],
+            left_on=["fight_id", "fighter_id_y"],
+            right_on=["fight_id", "fighter_id"],
+        ).rename(columns={"Index": "Index_y"}).drop(columns="fighter_id")   
+
+        f1_positions = []
+        f2_positions = []
+        next_f1_positions = []
+        next_f2_positions = []
+
+        for max_fight in sorted(X["max_num_fight"].unique()):
+            # Filter rows for the current max_fight value
+            filtered_rows = X[X["max_num_fight"] == max_fight]
+
+            f1_positions.append(filtered_rows["Index_x"].values)
+            f2_positions.append(filtered_rows["Index_y"].values)
+            next_f1_positions.append(filtered_rows["next_fight_x"].values)
+            next_f2_positions.append(filtered_rows["next_fight_y"].values)
+
+        self.f1_positions = f1_positions
+        self.f2_positions = f2_positions
+        self.next_f1_positions = next_f1_positions
+        self.next_f2_positions = next_f2_positions
+
+    def update_data_trans(self, transformer):
+        for i, (f1_position, f2_position, next_f1_position, next_f2_position) in enumerate(
+        zip(self.f1_positions, self.f2_positions, self.next_f1_positions, self.next_f2_positions)
+        ):
+            X1 = self.trans_data[f1_position][:, :self.status_array_size]
+            X2 = self.trans_data[f2_position][:, :self.status_array_size]
+            s1 = self.trans_data[f1_position][:, self.status_array_size:]
+            s2 = self.trans_data[f2_position][:, self.status_array_size:]
+
+            # Create torch with zeros of size of the first axis in self.trans_data
+            m = torch.zeros(X1.shape[0], 1).reshape(-1, 1)
+
+            X1, X2 = transformer(X1, X2, s1, s2, m)
+
+
+            msk = next_f1_position > 0
+            self.trans_data[next_f1_position[msk],:self.status_array_size] = X1[msk]
+            
+            msk = next_f2_position > 0
+            self.trans_data[next_f2_position[msk], :self.status_array_size] = X2[msk]        
+
+
     def load_data(self) -> None:
         """
         Loads the data into a format that can be used to train a model.
@@ -225,6 +299,8 @@ class BasicDataset(Dataset):
 
         # We now generate the statistics data per match to create the transformer
         reduced_data_trans = self.get_trans_stats()
+
+        self.compute_position_data(reduced_data_trans)
 
         reduced_data = reduced_data.merge(
             reduced_data_trans[

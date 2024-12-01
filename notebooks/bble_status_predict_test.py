@@ -40,7 +40,6 @@ from ufcpredictor.data_enhancers import SumFlexibleELO, RankedFields
 from ufcpredictor.data_aggregator import WeightedDataAggregator
 from ufcpredictor.datasets import BasicDataset, ForecastDataset
 from ufcpredictor.trainer import Trainer
-from ufcpredictor.models import FighterTransformer
 from ufcpredictor.plot_tools import PredictionPlots
 import torch
 import numpy as np
@@ -57,8 +56,8 @@ import matplotlib.pyplot as plt
 # }
 
 data_processor_kwargs = {
-    #"data_folder": "/home/cramirpe/UFC/UFCfightdata",
     "data_folder": "/home/cramirez/kaggle/ufc_scraper/UFCfightdata",
+    # "data_folder": "/home/cramirpe/UFC/UFCfightdata",
     "data_aggregator": WeightedDataAggregator(alpha=-0.0001),
     "data_enhancers": [
         SumFlexibleELO(
@@ -262,8 +261,9 @@ train_fights = set(train_fights) - set(invalid_fights)
 test_fights = set(test_fights) - set(invalid_fights)
 
 # %%
-Xf_set = ["num_rounds","weight"]
-# Xf_set = []
+
+# Xf_set = ["num_rounds","weight"]
+Xf_set = []
 early_train_dataset = BasicDataset(
     data_processor,
     early_train_fights,
@@ -292,436 +292,13 @@ forecast_dataset = ForecastDataset(
 )
 
 # %%
-dataset=  early_train_dataset
-
-# %%
-
-# %%
-
-# %%
-reduced_data = dataset.get_trans_stats()
-
-# %%
-
-# %%
-fighter_transformer = FighterTransformer(
-    state_dim=5, 
-    stat_dim=3, 
-    match_dim=1,
-    hidden_dim=64,
-    num_heads=2,
-    num_layers=2,
-    dropout=0.1,
-)
-
-# %%
-dataset.update_data_trans(fighter_transformer)
-
-# %%
-dataset[4][-1].shape
-
-# %%
-dataset[4][-2].shape
-
-# %%
-dataset[4][-3].shape
-
-# %%
-dataset[4][-4].shape
-
-# %%
-
-import torch.nn.functional as F
-
-def pad_or_truncate(tensor, desired_size):
-    """
-    Pads or truncates the first axis of a tensor to match the desired size.
-
-    Args:
-        tensor (torch.Tensor): The input tensor.
-        desired_size (int): The desired size for the first axis.
-
-    Returns:
-        torch.Tensor: Tensor with the first axis adjusted to the desired size.
-    """
-    current_size = tensor.size(0)
-
-    if current_size < desired_size:
-        # Calculate padding (add zeros to the left)
-        padding = desired_size - current_size
-        padded_tensor = F.pad(tensor, (0, 0, padding, 0), mode='constant', value=0)
-        return padded_tensor
-    elif current_size > desired_size:
-        # Truncate the tensor to the desired size
-        truncated_tensor = tensor[-desired_size:]  # Keep the last `desired_size` rows
-        return truncated_tensor
-    else:
-        # No adjustment needed
-        return tensor
-
-
-
-# %%
-pad_or_truncate(dataset[5][-1], 3)
-
-# %%
-dataset[5][-1]
-
-# %%
-dataset.trans_data
-
-# %%
-
-# %%
-
-# %%
-dataset.compute_position_data(
-
-# %%
-x = reduced_data
-x[x["fighter_id"] == "484acc7b0f856ce9"]
-
-# %%
-preserved_fields = ["fight_id", "fighter_id", "num_fight", "next_fight"]
-fight_data_nonag = reduced_data[preserved_fields].merge(
-    reduced_data[preserved_fields],
-    left_on="fight_id",
-    right_on="fight_id",
-    how="inner",
-    suffixes=("_x", "_y"),
-)
-
-fight_data_nonag = fight_data_nonag[
-    fight_data_nonag["fighter_id_x"] != fight_data_nonag["fighter_id_y"]
-]
-fight_data_nonag = fight_data_nonag.drop_duplicates(subset=["fight_id"], keep="first")
-
-# %%
-fight_data_nonag["max_num_fight"] = fight_data_nonag[["num_fight_x", "num_fight_y"]].max(axis=1)
-
-# %%
-assert len(fight_data_nonag) == len(reduced_data)/2 # Check that we haven't lost any record.
-
-# %%
-fight_data_nonag
-
-# %%
-reduced_data = reduced_data.reset_index(drop=True)
-reduced_data['Index'] = reduced_data.index
-reduced_data
-
-# %%
-fight_data_nonag
-
-# %%
-reduced_data
-
-# %%
-X = fight_data_nonag.merge(
-    reduced_data[["fight_id", "fighter_id", "Index"]],
-    left_on=["fight_id", "fighter_id_x"],
-    right_on=["fight_id", "fighter_id"],
-).rename(columns={"Index": "Index_x"}).drop(columns="fighter_id").merge(
-    reduced_data[["fight_id", "fighter_id", "Index"]],
-    left_on=["fight_id", "fighter_id_y"],
-    right_on=["fight_id", "fighter_id"],
-).rename(columns={"Index": "Index_y"}).drop(columns="fighter_id")   
-
-
-
-
-# %%
-X
-
-# %%
-f1_positions = []
-f2_positions = []
-next_f1_positions = []
-next_f2_positions = []
-
-for max_fight in sorted(X["max_num_fight"].unique()):
-    # Filter rows for the current max_fight value
-    filtered_rows = X[X["max_num_fight"] == max_fight]
-
-    f1_positions.append(filtered_rows["Index_x"].values)
-    f2_positions.append(filtered_rows["Index_y"].values)
-    next_f1_positions.append(filtered_rows["next_fight_x"].values)
-    next_f2_positions.append(filtered_rows["next_fight_y"].values)
-
-# %% [markdown]
-# Now I need to learn how to update this values:, but I am still missing the tarnsformer(?)
-
-# %%
-f1_position = f1_positions[0]
-f2_position = f2_positions[0]
-next_f1_position = next_f1_positions[0]
-next_f2_position = next_f2_positions[0]
-
-# %%
-fighter_transformer = FighterTransformer(
-    state_dim=3, 
-    stat_dim=3, 
-    match_dim=1,
-    hidden_dim=32,
-    num_heads=2,
-    num_layers=2,
-    dropout=0.1,
-)
-
-# %%
-for i, (f1_position, f2_position, next_f1_position, next_f2_position) in enumerate(
-  zip(f1_positions, f2_positions, next_f1_positions, next_f2_positions)
-):
-    X1 = dataset.trans_data[f1_position][:, :3]
-    X2 = dataset.trans_data[f2_position][:, :3]
-    s1 = dataset.trans_data[f1_position][:, 5:]
-    s2 = dataset.trans_data[f2_position][:, 5:]
-    m = dataset.trans_data[f1_position][:, 0].reshape(-1, 1)
-
-    X1, X2 = fighter_transformer(X1, X2, s1, s2, m)
-
-
-    msk = next_f1_position > 0
-    dataset.trans_data[next_f1_position[msk],:3] = X1[msk]
-    
-    msk = next_f2_position > 0
-    dataset.trans_data[next_f2_position[msk], :3] = X2[msk]
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-dataset.trans_data[dataset.data[-1][0]]
-
-# %%
-dataset.data[-1]
-
-# %%
-for x in dataset.data_processor.data, dataset.data_processor.data_normalized:
-    print(len(x) - len(x["fight_id"].unique()) * 2)
-
-# %%
-self = dataset
-
-        # %%
-        reduced_data = self.data_processor.data_normalized.copy()
-
-        # We shift stats because the input for the model should be the
-        # stats prior to the fight
-        for x in self.X_set:
-            if x not in ["age", "num_fight", "time_since_last_fight"]:
-                reduced_data[x] = reduced_data.groupby("fighter_id")[x].shift(1)
-
-        # We remove invalid fights
-        reduced_data = reduced_data[reduced_data["fight_id"].isin(self.fight_ids)]
-
-        # We now merge stats with itself to get one row per match with the data
-        # from the two fighters
-        fight_data = reduced_data.merge(
-            reduced_data,
-            left_on="fight_id",
-            right_on="fight_id",
-            how="inner",
-            suffixes=("_x", "_y"),
-        )
-
-
-        # Remove matchings of the fighter with itself and also only keep
-        # one row per match (fighter1 vs fighter2 is the same as fighter 2 vs fighter 1)
-        fight_data = fight_data[
-            fight_data["fighter_id_x"] != fight_data["fighter_id_y"]
-        ]
-        fight_data = fight_data.drop_duplicates(subset=["fight_id"], keep="first")
-
-# %%
-stat_fields = [
-    "body_strikes_att_per_minute",
-    "clinch_strikes_att_per_minute",
-    "knockdowns_per_minute",
-]
-
-        # %%
-        reduced_data_nonag = self.data_processor.data_normalized_nonagg.copy()
-
-        reduced_data_nonag = reduced_data_nonag[["fight_id", "fighter_id", "event_date", "fighter_name"] + stat_fields]
-
-        fight_counts = reduced_data_nonag.groupby('fight_id')['fighter_id'].nunique()
-
-        invalid_fights = fight_counts[fight_counts != 2]
-
-        assert invalid_fights.empty
-
-# %%
-reduced_data_nonag = reduced_data_nonag.sort_values(by=["event_date","fight_id"]).reset_index()
-x = reduced_data_nonag
-x
-
-
-# %%
-# Step 1: Add opponent_row
-def add_opponent_row(df):
-    # Create a mapping of fight_id to indices
-    fight_to_indices = df.groupby('fight_id').apply(lambda x: list(x.index), include_groups=False)
-    
-    # Map opponent rows for each row
-    df['opponent_row'] = df.index.to_series().apply(
-        lambda idx: [i for i in fight_to_indices[df.loc[idx, 'fight_id']] if i != idx][0],
-    )
-    return df
-
-
-
-# %%
-x = add_opponent_row(x)
-
-
-# %%
-# Step 2: Add previous_fights and previous_opponents
-def add_previous_fights(group):
-    group = group.sort_values('event_date')
-    group['previous_fights'] = group.index.to_series().apply(
-        lambda idx: group.index[group.index < idx].tolist()
-    )
-    group['previous_opponents'] = group['previous_fights'].apply(
-        lambda prev_fights: [x.loc[i, 'opponent_row'] for i in prev_fights]
-    )
-    return group
-
-
-# %%
-x = x.groupby("fighter_id", group_keys=False).apply(
-              lambda group: add_previous_fights(group).assign(fighter_id=group.name),
-              include_groups=False
-             )
-
-# %%
-stipe_fights = x[x["fighter_name"].str.contains('Topuria')]["previous_fights"].iloc[-1]
-stipe_opponents = x[x["fighter_name"].str.contains("Topuria")]["previous_opponents"].iloc[-1]
-x.loc[stipe_fights]
-
-# %%
-fight_id = "bec3154a11df3299" # Volkanovski topuria"
-fighter_id = "54f64b5e283b0ce7" # Ilia
-
-# %%
-row = x[(x["fight_id"] == fight_id) & (x["fighter_id"] == fighter_id)]
-row
-
-# %%
-data = [
-    x["fight_id"].values,
-    x["fighter_id"].values,
-    torch.FloatTensor([
-        x["body_strikes_att_per_minute"],
-        x["clinch_strikes_att_per_minute"],
-        x["knockdowns_per_minute"],
-    ]),
-    x["previous_fights"].values,
-    x["previous_opponents"].values,
-]
-        
-    
-    
-
-# %%
-pfights = np.asarray(row["previous_fights"].values[0])
-pfightso = np.asarray(row["previous_opponents"].values[0])
-
-# %%
-np.asarray(pfights[0])
-
-# %%
-data[2].T[pfights]
-
-# %%
-data
-
-
-# %%
-
-# %%
-
-# %%
-def get_previous_fights(group):
-    # Sort the group by event_date
-    group = group.sort_values('event_date')
-    # Generate a list of indices of previous fights for each row
-    group['previous_fights'] = group.index.to_series().apply(
-        lambda idx: group.index[group.index < idx].tolist()
-    )
-    return group
-
-
-
-# %%
-reduced_data_nonag = reduced_data_nonag.groupby(
-    "fighter_id", 
-    group_keys=False,
-).apply(
-    get_previous_fights,
-    include_groups=False,
-)
-
-# %%
-x = reduced_data_nonag 
-stipe_fights = x[x["fighter_name"].str.contains('Stipe')]["previous_fights"].iloc[-1]
-
-# %%
-x.loc[stipe_fights]
-
-# %%
-x = reduced_data_nonag
-
-# %%
-fight_to_indices = x.groupby("fight_id").apply(
-    lambda x: list(x.index),
-    include_groups=False,
-)
-
-x["previous_opponents"] = x.index.to_series().apply(
-    lambda idx: [i for i in fight_to_indices[x.loc[idx, 'fight_id']] if i != idx]
-)
-
-# %%
-x.loc[11748]
-
-# %%
-stipe_fights = x[x["fighter_name"].str.contains('Stipe')]["previous_fights"].iloc[-1]
-x.loc[stipe_fights]
-
-# %%
-x.loc[8808]
-
-# %%
-
-# %%
-x = reduced_data_nonag
-len_ = len(x)
-print(len(x) - len(x["fight_id"].unique()) * 2)
-
-# %%
-len(fight_data["fight_id"].unique())
-
-
-# %%
-
-# %%
-
-# %%
-
-# %%
 batch_size = 64 # 2048
 early_train_dataloader = torch.utils.data.DataLoader(early_train_dataset, batch_size=batch_size, shuffle=True)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 # %%
-from ufcpredictor.models import SymmetricFightNet
+from ufcpredictor.models import SimpleFightNet
 from ufcpredictor.loss_functions import BettingLoss
 
 
@@ -733,15 +310,27 @@ random.seed(seed)
 np.random.seed(seed)
 
 # %%
-model = SymmetricFightNet(
+
+# %%
+model = SimpleFightNet(
         input_size=len(train_dataset.X_set),
-        input_size_f=len(Xf_set),
+        # input_size_f=len(Xf_set),
         dropout_prob=0.05, # 0.25
-        fighter_network_shape=[256, 512, 1024, 512],
+        # fighter_network_shape=[256, 512, 1024, 512],
         # network_shape=[2048, 1024, 512, 128, 64, 1],
         # network_shape=[122, 1024, 2048, 1024, 512, 256, 128, 64, 1],
         network_shape=[76, 1024, 512, 256, 128, 64, 1],  # This was the best one so far
         # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
+        fighter_transformer_kwargs=dict(
+            state_dim=5, 
+            stat_dim=3, 
+            match_dim=1,
+            hidden_dim=64,
+            num_heads=2,
+            num_layers=2,
+            dropout=0.1,
+    )
+            
         
 )
 # optimizer = torch.optim.Adam(params=model.parameters(), lr=2e-3, weight_decay=2e-5)
@@ -769,7 +358,7 @@ trainer = Trainer(
 # %%
 
 trainer.train(
-    epochs=15,
+    epochs=1,
     train_loader=early_train_dataloader,
     test_loader=test_dataloader,
 )

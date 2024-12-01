@@ -102,3 +102,33 @@ def convert_odds_to_moneyline(
     odds[~msk] = 100 / (1 - odds[~msk])
 
     return np.round(odds).astype(int)
+
+
+
+import torch.nn.functional as F
+
+def pad_or_truncate(tensor, desired_size):
+    """
+    Pads or truncates the first axis of a tensor to match the desired size.
+
+    Args:
+        tensor (torch.Tensor): The input tensor.
+        desired_size (int): The desired size for the first axis.
+
+    Returns:
+        torch.Tensor: Tensor with the first axis adjusted to the desired size.
+    """
+    current_size = tensor.size(0)
+
+    if current_size < desired_size:
+        # Calculate padding (add zeros to the left)
+        padding = desired_size - current_size
+        padded_tensor = F.pad(tensor, (0, 0, padding, 0), mode='constant', value=0)
+        return padded_tensor
+    elif current_size > desired_size:
+        # Truncate the tensor to the desired size
+        truncated_tensor = tensor[-desired_size:]  # Keep the last `desired_size` rows
+        return truncated_tensor
+    else:
+        # No adjustment needed
+        return tensor

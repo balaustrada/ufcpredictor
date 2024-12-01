@@ -202,6 +202,8 @@ class SimpleFightNet(nn.Module):
         "network_shape"
     ]
 
+    status_array_size = 5
+
     def __init__(
         self,
         input_size: int,
@@ -263,7 +265,23 @@ class SimpleFightNet(nn.Module):
         Returns:
             The output of the SimpleFightNet model.
         """
-        S1, S2 = self.transformer()
+        for ff_data_i, fo_data_i, of_data_i, oo_data_i in zip(ff_data, of_data, fo_data, oo_data):
+            X1, _ = self.transformer(
+                X1,
+                fo_data_i[:self.status_array_size:],
+                ff_data_i[self.status_array_size:],
+                fo_data_i[self.status_array_size:],
+                torch.zeros(X1.shape[0], 1).reshape(-1, 1),
+            )
+
+            X2, _ = self.transformer(
+                X2,
+                oo_data_i[:self.status_array_size:],
+                of_data_i[self.status_array_size:],
+                oo_data_i[self.status_array_size:],
+                torch.zeros(X2.shape[0], 1).reshape(-1, 1),
+            )
+
         x = torch.cat((X1, X2, X3, odds1, odds2), dim=1)
 
         for fc, dropout in zip(self.fcs[:-1], self.dropouts):

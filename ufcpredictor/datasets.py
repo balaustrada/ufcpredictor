@@ -18,6 +18,7 @@ import torch
 from torch.utils.data import Dataset
 
 from ufcpredictor.data_processor import DataProcessor
+from ufcpredictor.utils import pad_or_truncate
 
 if TYPE_CHECKING:  # pragma: no cover
     import datetime
@@ -105,6 +106,8 @@ class BasicDataset(Dataset):
     stat_fields: List[str] = [
         "body_strikes_att_per_minute",
         "clinch_strikes_att_per_minute",
+        "knockdowns_per_minute",
+        "ELO",
         "knockdowns_per_minute",
     ]
 
@@ -299,6 +302,7 @@ class BasicDataset(Dataset):
 
         # We now generate the statistics data per match to create the transformer
         reduced_data_trans = self.get_trans_stats()
+        reduced_data_trans = reduced_data_trans.loc[:,~reduced_data_trans.columns.duplicated()].copy()
 
         self.compute_position_data(reduced_data_trans)
 
@@ -416,7 +420,7 @@ class BasicDataset(Dataset):
         fo_data = self.trans_data[f_prev_o]
         oo_data = self.trans_data[o_prev_o]
 
-        return X1, X2, X3, winner.reshape(-1), odds_1.reshape(-1), odds_2.reshape(-1), ff_data, of_data, fo_data, oo_data
+        return X1, X2, X3, winner.reshape(-1), odds_1.reshape(-1), odds_2.reshape(-1), pad_or_truncate(ff_data, 10), pad_or_truncate(of_data, 10), pad_or_truncate(fo_data, 10), pad_or_truncate(oo_data, 10)
 
     def get_fight_data_from_ids(self, fight_ids: Optional[List[str]] = None) -> Tuple[
         torch.FloatTensor,

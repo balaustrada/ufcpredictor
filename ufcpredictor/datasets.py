@@ -469,19 +469,15 @@ class BasicDataset(Dataset):
             ),
             torch.FloatTensor(fight_data["opening_x"].values),
             torch.FloatTensor(fight_data["opening_y"].values),
-            fight_data["previous_fights_x"].values,
-            fight_data["previous_fights_y"].values,
-            fight_data["previous_opponents_x"].values,
-            fight_data["previous_opponents_y"].values,
         ]
 
         fighter_names = np.array(fight_data["fighter_name_x"].values)
         opponent_names = np.array(fight_data["fighter_name_y"].values)
 
-        ff = torch.FloatTensor([self.trans_data[prev] for prev in fight_data["previous_fights_x"].values])
-        of = torch.FloatTensor([self.trans_data[prev] for prev in fight_data["previous_fights_y"].values])
-        fo = torch.FloatTensor([self.trans_data[prev] for prev in fight_data["previous_opponents_x"].values])
-        oo = torch.FloatTensor([self.trans_data[prev] for prev in fight_data["previous_opponents_y"].values])
+        ff = torch.stack([pad_or_truncate(self.trans_data[prev], 11) for prev in fight_data["previous_fights_x"].values])
+        of = torch.stack([pad_or_truncate(self.trans_data[prev],11) for prev in fight_data["previous_fights_y"].values])
+        fo = torch.stack([pad_or_truncate(self.trans_data[prev],11) for prev in fight_data["previous_opponents_x"].values])
+        oo = torch.stack([pad_or_truncate(self.trans_data[prev], 11) for prev in fight_data["previous_opponents_y"].values])
 
         X1, X2, X3, Y, odds1, odds2 = data
 

@@ -72,7 +72,7 @@ class PredictionPlots:
                 created.
         """
         X1, X2, X3, Y, odds1, odds2, ff, of, fo, oo, fighter_names, opponent_names = data
-        X1, X2, X3, Y, odds1, odds2, model = (
+        X1, X2, X3, Y, odds1, odds2, model, ff, of, fo, oo = (
             X1.to(device),
             X2.to(device),
             X3.to(device),

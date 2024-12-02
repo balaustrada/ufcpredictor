@@ -298,12 +298,14 @@ train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_s
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 # %%
+
+# %%
 from ufcpredictor.models import SimpleFightNet
 from ufcpredictor.loss_functions import BettingLoss
 
 
 # %%
-seed = 21
+seed = 3
 torch.manual_seed(seed)
 import random
 random.seed(seed)
@@ -325,7 +327,7 @@ model = SimpleFightNet(
             state_dim=5, 
             stat_dim=5, 
             match_dim=1,
-            hidden_dim=64,
+            hidden_dim=32,
             num_heads=2,
             num_layers=2,
             dropout=0.1,
@@ -357,7 +359,7 @@ trainer = Trainer(
 
 # %%
 trainer.train(
-    epochs=3,
+    epochs=6,
     train_loader=early_train_dataloader,
     test_loader=test_dataloader,
 )
@@ -365,7 +367,7 @@ trainer.train(
 # %%
 
 # %%
-trainer.train(epochs=2) # ~8 is a good match if dropout to 0.35 
+trainer.train(epochs=5) # ~8 is a good match if dropout to 0.35 
 
 # %%
 # Save model dict
@@ -432,7 +434,7 @@ for date, group in df.groupby("event_date"):
     # cash.append(cash_i)
     # dates.append(date)
 
-    max_bet = max(cash[-1] * 0.2, 10)
+    max_bet = max(cash[-1] * 0.1, 10)
 
     win = (group["confidence"]*group["win"] * max_bet / 10).sum()
     bet = (group["confidence"]*group["bet"] * max_bet / 10).sum()
@@ -455,6 +457,8 @@ cash = cash[1:]
 invest = invest[1:]
 dates = dates[1:]
 
+
+# %%
 
 # %%
 fig, ax = plt.subplots()

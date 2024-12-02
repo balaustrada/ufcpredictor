@@ -292,7 +292,7 @@ forecast_dataset = ForecastDataset(
 )
 
 # %%
-batch_size = 64 # 2048
+batch_size = 256 # 2048
 early_train_dataloader = torch.utils.data.DataLoader(early_train_dataset, batch_size=batch_size, shuffle=True)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
@@ -313,7 +313,7 @@ np.random.seed(seed)
 
 # %%
 model = SimpleFightNet(
-        input_size=len(train_dataset.X_set),
+        input_size=128,
         # input_size_f=len(Xf_set),
         dropout_prob=0.05, # 0.25
         # fighter_network_shape=[256, 512, 1024, 512],
@@ -323,7 +323,7 @@ model = SimpleFightNet(
         # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
         fighter_transformer_kwargs=dict(
             state_dim=5, 
-            stat_dim=3, 
+            stat_dim=5, 
             match_dim=1,
             hidden_dim=64,
             num_heads=2,
@@ -356,15 +356,16 @@ trainer = Trainer(
 )   
 
 # %%
-
 trainer.train(
-    epochs=1,
+    epochs=3,
     train_loader=early_train_dataloader,
     test_loader=test_dataloader,
 )
 
 # %%
-trainer.train(epochs=10) # ~8 is a good match if dropout to 0.35 
+
+# %%
+trainer.train(epochs=2) # ~8 is a good match if dropout to 0.35 
 
 # %%
 # Save model dict

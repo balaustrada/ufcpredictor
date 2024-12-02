@@ -420,7 +420,7 @@ class BasicDataset(Dataset):
         fo_data = self.trans_data[f_prev_o]
         oo_data = self.trans_data[o_prev_o]
 
-        return X1, X2, X3, winner.reshape(-1), odds_1.reshape(-1), odds_2.reshape(-1), pad_or_truncate(ff_data, 10), pad_or_truncate(of_data, 10), pad_or_truncate(fo_data, 10), pad_or_truncate(oo_data, 10)
+        return X1, X2, X3, winner.reshape(-1), odds_1.reshape(-1), odds_2.reshape(-1), pad_or_truncate(ff_data, 11), pad_or_truncate(of_data, 11), pad_or_truncate(fo_data, 11), pad_or_truncate(oo_data, 11)
 
     def get_fight_data_from_ids(self, fight_ids: Optional[List[str]] = None) -> Tuple[
         torch.FloatTensor,
@@ -469,14 +469,23 @@ class BasicDataset(Dataset):
             ),
             torch.FloatTensor(fight_data["opening_x"].values),
             torch.FloatTensor(fight_data["opening_y"].values),
+            fight_data["previous_fights_x"].values,
+            fight_data["previous_fights_y"].values,
+            fight_data["previous_opponents_x"].values,
+            fight_data["previous_opponents_y"].values,
         ]
 
         fighter_names = np.array(fight_data["fighter_name_x"].values)
         opponent_names = np.array(fight_data["fighter_name_y"].values)
 
+        ff = torch.FloatTensor([self.trans_data[prev] for prev in fight_data["previous_fights_x"].values])
+        of = torch.FloatTensor([self.trans_data[prev] for prev in fight_data["previous_fights_y"].values])
+        fo = torch.FloatTensor([self.trans_data[prev] for prev in fight_data["previous_opponents_x"].values])
+        oo = torch.FloatTensor([self.trans_data[prev] for prev in fight_data["previous_opponents_y"].values])
+
         X1, X2, X3, Y, odds1, odds2 = data
 
-        return X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names
+        return X1, X2, X3, Y, odds1, odds2, ff, of, fo, oo, fighter_names, opponent_names
 
 
 class ForecastDataset(Dataset):

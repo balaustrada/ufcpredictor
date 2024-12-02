@@ -71,7 +71,7 @@ class PredictionPlots:
             ax : The axes to use to show the plot. If None, a new figure will be
                 created.
         """
-        X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names = data
+        X1, X2, X3, Y, odds1, odds2, ff, of, fo, oo, fighter_names, opponent_names = data
         X1, X2, X3, Y, odds1, odds2, model = (
             X1.to(device),
             X2.to(device),
@@ -80,19 +80,23 @@ class PredictionPlots:
             odds1.to(device),
             odds2.to(device),
             model.to(device),
+            ff.to(device),
+            of.to(device),
+            fo.to(device),
+            oo.to(device),
         )
         stats = []
 
         with torch.no_grad():
             predictions_1 = (
-                model(X1, X2, X3, odds1.reshape(-1, 1), odds2.reshape(-1, 1))
+                model(X1, X2, X3, odds1.reshape(-1, 1), odds2.reshape(-1, 1), ff, of, fo, oo)
                 .detach()
                 .cpu()
                 .numpy()
                 .reshape(-1)
             )
             predictions_2 = 1 - model(
-                X2, X1, X3, odds2.reshape(-1, 1), odds1.reshape(-1, 1)
+                X2, X1, X3, odds2.reshape(-1, 1), odds1.reshape(-1, 1), of, ff, oo, fo
             ).detach().cpu().numpy().reshape(-1)
 
             predictions = 0.5 * (predictions_1 + predictions_2)
@@ -202,13 +206,13 @@ class PredictionPlots:
             ax : The axes to use to show the plot. If None, a new figure will be
                 created.
         """
-        X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names = (
+        X1, X2, X3, Y, odds1, odds2, ff, of, fo, oo, fighter_names, opponent_names = (
             dataset.get_fight_data_from_ids(fight_ids)
         )
 
         stats = PredictionPlots.show_fight_prediction_detail(
             model,
-            (X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names),
+            (X1, X2, X3, Y, odds1, odds2, ff, of, fo, oo, fighter_names, opponent_names),
             print_info,
             show_plot,
             ax,

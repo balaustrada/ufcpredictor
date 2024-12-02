@@ -188,13 +188,13 @@ class Trainer:
                 )
                 target_labels += Y.detach().cpu().numpy().tolist()
 
-                train_loader.dataset.update_data_trans(self.model)
+                with torch.no_grad():
+                    train_loader.dataset.update_data_trans(self.model.transformer)
 
             match = np.asarray(target_preds).reshape(-1) == np.asarray(
                 target_labels
             ).reshape(-1)
 
-            test_loader.dataset.update_data_trans(self.model)
             val_loss, val_target_f1, correct, _, _ = self.test(test_loader, silent=silent)
 
             if not silent:
@@ -249,6 +249,7 @@ class Trainer:
         target_labels = []
 
         with torch.no_grad():
+            test_loader.dataset.update_data_trans(self.model.transformer)
             for X1, X2, X3, Y, odds1, odds2, ff, of, fo, oo in tqdm(iter(test_loader), disable=silent):
                 X1, X2, X3, Y, odds1, odds2, ff, of, fo, oo = (
                     X1.to(self.device),

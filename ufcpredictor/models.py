@@ -265,24 +265,33 @@ class SimpleFightNet(nn.Module):
         Returns:
             The output of the SimpleFightNet model.
         """
-        for ff_data_i, fo_data_i, of_data_i, oo_data_i in zip(ff_data, of_data, fo_data, oo_data):
-            X1, _ = self.transformer(
-                X1,
-                fo_data_i[:self.status_array_size:],
-                ff_data_i[self.status_array_size:],
-                fo_data_i[self.status_array_size:],
-                torch.zeros(X1.shape[0], 1).reshape(-1, 1),
+        # zeros torch tensor
+        S1 = torch.zeros(X1.shape[0], self.status_array_size)
+        S2 = torch.zeros(X2.shape[0], self.status_array_size)
+
+        for i in range(11):
+            ff_data_i = ff_data[:, i, :]
+            of_data_i = of_data[:, i, :]
+            fo_data_i = fo_data[:, i, :]
+            oo_data_i = oo_data[:, i, :]
+            
+            S1, _ = self.transformer(
+                S1,
+                fo_data_i[:, :self.status_array_size],
+                ff_data_i[:, self.status_array_size:],
+                fo_data_i[:, self.status_array_size:],
+                torch.zeros(S1.shape[0], 1).reshape(-1, 1),
             )
 
-            X2, _ = self.transformer(
-                X2,
-                oo_data_i[:self.status_array_size:],
-                of_data_i[self.status_array_size:],
-                oo_data_i[self.status_array_size:],
-                torch.zeros(X2.shape[0], 1).reshape(-1, 1),
+            S2, _ = self.transformer(
+                S2,
+                oo_data_i[:, :self.status_array_size],
+                of_data_i[:, self.status_array_size:],
+                oo_data_i[:, self.status_array_size:],
+                torch.zeros(S2.shape[0], 1).reshape(-1, 1),
             )
 
-        x = torch.cat((X1, X2, X3, odds1, odds2), dim=1)
+        x = torch.cat((X1, X2, X3, odds1, odds2, S1, S2), dim=1)
 
         for fc, dropout in zip(self.fcs[:-1], self.dropouts):
             x = self.relu(fc(x))

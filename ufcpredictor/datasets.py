@@ -119,6 +119,7 @@ class BasicDataset(Dataset):
         fight_ids: List[str],
         X_set: Optional[List[str]] = None,
         Xf_set: Optional[List[str]] = None,
+        stat_fields: Optional[List[str]] = None,
     ) -> None:
         """
         Constructor for ForecastDataset.
@@ -140,6 +141,9 @@ class BasicDataset(Dataset):
 
         if Xf_set is not None:
             self.Xf_set = Xf_set
+        
+        if stat_fields is not None:
+            self.stat_fields = stat_fields
 
         not_found = []
         for column in self.X_set + self.Xf_set:
@@ -501,6 +505,7 @@ class ForecastDataset(Dataset):
         data_processor: DataProcessor,
         X_set: Optional[List[str]] = None,
         Xf_set: Optional[List[str]] = None,
+        stat_fields: Optional[List[str]] = None,
     ) -> None:
         """
         Constructor for ForecastDataset.
@@ -520,6 +525,9 @@ class ForecastDataset(Dataset):
 
         if Xf_set is not None:
             self.Xf_set = Xf_set
+
+        if stat_fields is not None:
+            self.stat_fields = stat_fields
 
         not_found = []
         for column in self.X_set + self.Xf_set:

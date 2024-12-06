@@ -16,6 +16,7 @@
 # %%
 import os
 
+
 # %%
 import mlflow
 import mlflow.pytorch
@@ -145,10 +146,72 @@ else:
         "ELO",
     ]
 
+stat_fields = [
+        # "age",
+        # "body_strikes_att_opponent_per_minute",
+        # "body_strikes_att_per_minute",
+        "body_strikes_succ_opponent_per_minute",
+        "body_strikes_succ_per_minute",
+        # "clinch_strikes_att_opponent_per_minute",
+        # "clinch_strikes_att_per_minute",
+        "clinch_strikes_succ_opponent_per_minute",
+        "clinch_strikes_succ_per_minute",
+        "ctrl_time_opponent_per_minute",
+        "ctrl_time_per_minute",
+        # "distance_strikes_att_opponent_per_minute",
+        # "distance_strikes_att_per_minute",
+        "distance_strikes_succ_opponent_per_minute",
+        "distance_strikes_succ_per_minute",
+        # "fighter_height_cm",
+        # "ground_strikes_att_opponent_per_minute",
+        # "ground_strikes_att_per_minute",
+        "ground_strikes_succ_opponent_per_minute",
+        "ground_strikes_succ_per_minute",
+        # "head_strikes_att_opponent_per_minute",
+        # "head_strikes_att_per_minute",
+        "head_strikes_succ_opponent_per_minute",
+        "head_strikes_succ_per_minute",
+        "knockdowns_opponent_per_minute",
+        "knockdowns_per_minute",
+        # "KO_opponent_per_fight",
+        "KO_opponent_per_minute",
+        # "KO_per_fight",
+        "KO_per_minute",
+        # "leg_strikes_att_opponent_per_minute",
+        # "leg_strikes_att_per_minute",
+        "leg_strikes_succ_opponent_per_minute",
+        "leg_strikes_succ_per_minute",
+        # "num_fight",
+        # "reversals_opponent_per_minute",
+        # "reversals_per_minute",
+        # "strikes_att_opponent_per_minute",
+        # "strikes_att_per_minute",
+        "strikes_succ_opponent_per_minute",
+        "strikes_succ_per_minute",
+        # "Sub_opponent_per_fight",
+        "Sub_opponent_per_minute",
+        # "Sub_per_fight",
+        "Sub_per_minute",
+        "submission_att_opponent_per_minute",
+        "submission_att_per_minute",
+        # "takedown_att_opponent_per_minute",
+        # "takedown_att_per_minute",
+        "takedown_succ_opponent_per_minute",
+        "takedown_succ_per_minute",
+        # "time_since_last_fight",
+        # "total_strikes_att_opponent_per_minute",
+        # "total_strikes_att_per_minute",
+        "total_strikes_succ_opponent_per_minute",
+        "total_strikes_succ_per_minute",
+        # "win_opponent_per_fight",
+        # "win_per_fight",
+        "ELO",
+]
+
 # %%
 if True:
     X_set = [
-        "age",
+        # "age",
         "body_strikes_att_opponent_per_minute",
         "body_strikes_att_per_minute",
         "body_strikes_succ_opponent_per_minute",
@@ -269,6 +332,7 @@ early_train_dataset = BasicDataset(
     early_train_fights,
     X_set=X_set,
     Xf_set = Xf_set,
+    stat_fields= stat_fields,
 )
 
 train_dataset = BasicDataset(
@@ -276,6 +340,7 @@ train_dataset = BasicDataset(
     train_fights,
     X_set=X_set,
     Xf_set = Xf_set,
+    stat_fields= stat_fields,
 )
 
 test_dataset = BasicDataset(
@@ -283,16 +348,18 @@ test_dataset = BasicDataset(
     test_fights,
     X_set=X_set,
     Xf_set = Xf_set,
+    stat_fields= stat_fields,
 )
 
 forecast_dataset = ForecastDataset(
     data_processor=data_processor,
     X_set=X_set,
     Xf_set = Xf_set,
+    stat_fields= stat_fields,
 )
 
 # %%
-batch_size = 256 # 2048
+batch_size = 128 # 2048
 early_train_dataloader = torch.utils.data.DataLoader(early_train_dataset, batch_size=batch_size, shuffle=True)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
@@ -315,21 +382,19 @@ np.random.seed(seed)
 
 # %%
 model = SimpleFightNet(
-        input_size=128,
+        input_size=84,
         # input_size_f=len(Xf_set),
         dropout_prob=0.05, # 0.25
         # fighter_network_shape=[256, 512, 1024, 512],
         # network_shape=[2048, 1024, 512, 128, 64, 1],
         # network_shape=[122, 1024, 2048, 1024, 512, 256, 128, 64, 1],
-        network_shape=[76, 1024, 512, 256, 128, 64, 1],  # This was the best one so far
+        network_shape=[512,1024, 512, 256, 128, 64, 1],  # This was the best one so far
         # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
         fighter_transformer_kwargs=dict(
             state_dim=5, 
-            stat_dim=5, 
+            stat_dim=29, 
             match_dim=1,
-            hidden_dim=32,
-            num_heads=2,
-            num_layers=2,
+            layer_sizes=[128, 512, 1024, 512, 128, 64, 10],
             dropout=0.1,
     )
             
@@ -359,7 +424,7 @@ trainer = Trainer(
 
 # %%
 trainer.train(
-    epochs=6,
+    epochs=4,
     train_loader=early_train_dataloader,
     test_loader=test_dataloader,
 )
@@ -367,7 +432,7 @@ trainer.train(
 # %%
 
 # %%
-trainer.train(epochs=5) # ~8 is a good match if dropout to 0.35 
+trainer.train(epochs=30) # ~8 is a good match if dropout to 0.35 
 
 # %%
 # Save model dict
@@ -435,7 +500,6 @@ for date, group in df.groupby("event_date"):
     # dates.append(date)
 
     max_bet = max(cash[-1] * 0.1, 10)
-
     win = (group["confidence"]*group["win"] * max_bet / 10).sum()
     bet = (group["confidence"]*group["bet"] * max_bet / 10).sum()
 
@@ -457,8 +521,6 @@ cash = cash[1:]
 invest = invest[1:]
 dates = dates[1:]
 
-
-# %%
 
 # %%
 fig, ax = plt.subplots()

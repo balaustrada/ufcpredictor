@@ -5,6 +5,7 @@ import logging
 import os
 import random
 import sys
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -17,9 +18,9 @@ import torch
 from huggingface_hub import snapshot_download
 
 from ufcpredictor.data_aggregator import WeightedDataAggregator
+from ufcpredictor.data_enhancers import SumFlexibleELO
 from ufcpredictor.data_processor import DataProcessor
 from ufcpredictor.datasets import BasicDataset, ForecastDataset
-from ufcpredictor.data_enhancers import SumFlexibleELO
 from ufcpredictor.loss_functions import BettingLoss
 from ufcpredictor.models import SymmetricFightNet
 from ufcpredictor.plot_tools import PredictionPlots
@@ -222,9 +223,11 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         test=False,
     )
 
-    fighter_names = sorted(
-        list(data_processor.scraper.fighter_scraper.data["fighter_name"].values)
-    )
+    fighter_counts = Counter(data_processor.data["fighter_name"].values)
+    filtered_fighter_names = [
+        name for name, count in fighter_counts.items() if count >= 4
+    ]
+    fighter_names = sorted(filtered_fighter_names)
 
     with gr.Blocks() as demo:
         event_date = gr.DateTime(

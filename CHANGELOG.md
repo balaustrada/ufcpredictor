@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.2.0 (2024-12-10)
+
+### Features
+
+- **app**: Added robustness to name selection.
+  ([`5a42227`](https://github.com/balaustrada/ufcpredictor/commit/5a42227a5f3faece4fc5285d44fb52b1db5ecf62))
+
+
 ## v0.1.0 (2024-11-24)
 
 ### Features

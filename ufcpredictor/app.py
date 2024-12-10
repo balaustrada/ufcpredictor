@@ -223,11 +223,36 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         test=False,
     )
 
-    fighter_counts = Counter(data_processor.data["fighter_name"].values)
-    filtered_fighter_names = [
-        name for name, count in fighter_counts.items() if count >= 4
-    ]
-    fighter_names = sorted(filtered_fighter_names)
+    ##############################
+    ## This block here is used to determine the fighters that can enter the app
+    ##############################
+    fighter_name_id = (
+        data_processor.data["fighter_name"]
+        + " ("
+        + data_processor.data["fighter_id"].astype(str)
+        + ")"
+    )
+    fighter_counts = fighter_name_id.value_counts()
+    filtered_fighters = fighter_counts[fighter_counts >= 4].index
+    fighter_name_id = sorted(filtered_fighters)
+
+    # Retrieve the id by doing strip and getting things between parenthesis
+    fighter_ids = [nameid.split("(")[1].split(")")[0] for nameid in fighter_name_id]
+
+    # Retrieve names by doing something similar, also remove trailing spaces
+    names = [nameid.split("(")[0].strip() for nameid in fighter_name_id]
+    name_counts = Counter(names)
+
+    show_names = []
+    for name, id_ in zip(names, fighter_ids):
+        if name_counts[name] > 1:
+            show_names.append(f"{name} ({id_})")
+        else:
+            show_names.append(name)
+
+    ##############################
+    ## This block here is used to create the app
+    ##############################
 
     with gr.Blocks() as demo:
         event_date = gr.DateTime(
@@ -240,13 +265,13 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
 
         fighter_name = gr.Dropdown(
             label="Fighter Name",
-            choices=fighter_names,
+            choices=show_names,
             value="Ilia Topuria",
             interactive=True,
         )
         opponent_name = gr.Dropdown(
             label="Opponent Name",
-            choices=fighter_names,
+            choices=show_names,
             value="Max Holloway",
             interactive=True,
         )
@@ -271,8 +296,8 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
             PredictionPlots.plot_single_prediction(
                 model=model,
                 dataset=dataset,
-                fighter_name=fighter_name,
-                opponent_name=opponent_name,
+                fighter_name=fighter_ids[show_names.index(fighter_name)],
+                opponent_name=fighter_ids[show_names.index(opponent_name)],
                 fight_features=list(fight_features),
                 event_date=datetime.fromtimestamp(event_date).strftime("%Y-%m-%d"),
                 odds1=convert_odds_to_decimal(
@@ -286,6 +311,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
                     ]
                 )[0],
                 ax=ax,
+                parse_id=True,
             )
 
             fig.subplots_adjust(top=0.75, bottom=0.2)  # Adjust margins as needed

@@ -81,8 +81,8 @@ class TestApp(unittest.TestCase):
 
             def click_side_effect(function, inputs, outputs):
                 result = function(
-                    "c38479d31855",
-                    "c61affbad5e4",
+                    "d64dd9027fff 472ddc3ed02e",
+                    "8bc056786ba3 fa6d7f3ba5e4",
                     datetime(2024, 10, 1).timestamp(),
                     -188,
                     188,
@@ -99,7 +99,7 @@ class TestApp(unittest.TestCase):
             patch_ = result_container[0].axes[0].patches[0]
 
             self.assertAlmostEqual(0, patch_.get_x())
-            self.assertAlmostEqual(-4.04, patch_.get_width(), places=1)
+            self.assertAlmostEqual(-4.428, patch_.get_width(), places=1)
             self.assertAlmostEqual(-0.35, patch_.get_y())
             self.assertAlmostEqual(0.7, patch_.get_height())
 

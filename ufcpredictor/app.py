@@ -226,13 +226,12 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
     ##############################
     ## This block here is used to determine the fighters that can enter the app
     ##############################
-    fighter_name_id = (
+    fighter_counts = (
         data_processor.data["fighter_name"]
         + " ("
         + data_processor.data["fighter_id"].astype(str)
         + ")"
-    )
-    fighter_counts = fighter_name_id.value_counts()
+    ).value_counts()
     filtered_fighters = fighter_counts[fighter_counts >= 4].index
     fighter_name_id = sorted(filtered_fighters)
 

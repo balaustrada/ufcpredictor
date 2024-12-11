@@ -6,7 +6,7 @@ description = "A simple predictor for UFC fights"
 authors = ["César Ramírez-Pérez"]
 
 [tool.poetry.dependencies]
-python = ">=3.12,<4"
+python = ">=3.10,<4"
 fuzzywuzzy = "^0.18.0"
 huggingface-hub = "^0.26.2"
 gradio = "^5.6.0"

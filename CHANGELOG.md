@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v0.2.1 (2024-12-11)
+
+### Bug Fixes
+
+- **docker**: Pip install through pip
+  ([`cd3c7f9`](https://github.com/balaustrada/ufcpredictor/commit/cd3c7f9c77e91fa0dc6144a4384021cc91235d34))
+
+- **project**: Loosen python requirements
+  ([`3d5c00d`](https://github.com/balaustrada/ufcpredictor/commit/3d5c00dad17cd770a90a6eab4b4354e2d5f54c3a))
+
+
 ## v0.2.0 (2024-12-10)
 
 ### Features

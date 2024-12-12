@@ -189,7 +189,7 @@ class Trainer:
                 target_labels += Y.detach().cpu().numpy().tolist()
 
                 with torch.no_grad():
-                    train_loader.dataset.update_data_trans(self.model.transformer)
+                    train_loader.dataset.update_data_trans(self.model.transformer, self.device)
 
             match = np.asarray(target_preds).reshape(-1) == np.asarray(
                 target_labels
@@ -249,7 +249,7 @@ class Trainer:
         target_labels = []
 
         with torch.no_grad():
-            test_loader.dataset.update_data_trans(self.model.transformer)
+            test_loader.dataset.update_data_trans(self.model.transformer, self.device)
             for X1, X2, X3, Y, odds1, odds2, ff, of, fo, oo in tqdm(iter(test_loader), disable=silent):
                 X1, X2, X3, Y, odds1, odds2, ff, of, fo, oo = (
                     X1.to(self.device),

@@ -120,6 +120,7 @@ class BasicDataset(Dataset):
         X_set: Optional[List[str]] = None,
         Xf_set: Optional[List[str]] = None,
         stat_fields: Optional[List[str]] = None,
+        status_array_size: Optional[int] = None,
     ) -> None:
         """
         Constructor for ForecastDataset.
@@ -144,6 +145,9 @@ class BasicDataset(Dataset):
         
         if stat_fields is not None:
             self.stat_fields = stat_fields
+
+        if status_array_size is not None:
+            self.status_array_size = status_array_size
 
         not_found = []
         for column in self.X_set + self.Xf_set:
@@ -259,17 +263,18 @@ class BasicDataset(Dataset):
         self.next_f1_positions = next_f1_positions
         self.next_f2_positions = next_f2_positions
 
-    def update_data_trans(self, transformer):
+    def update_data_trans(self, transformer, device="cpu"):
         for i, (f1_position, f2_position, next_f1_position, next_f2_position) in enumerate(
         zip(self.f1_positions, self.f2_positions, self.next_f1_positions, self.next_f2_positions)
         ):
+            self.trans_data = self.trans_data.to(device)
             X1 = self.trans_data[f1_position][:, :self.status_array_size]
             X2 = self.trans_data[f2_position][:, :self.status_array_size]
             s1 = self.trans_data[f1_position][:, self.status_array_size:]
             s2 = self.trans_data[f2_position][:, self.status_array_size:]
 
             # Create torch with zeros of size of the first axis in self.trans_data
-            m = torch.zeros(X1.shape[0], 1).reshape(-1, 1)
+            m = torch.zeros(X1.shape[0], 1).reshape(-1, 1).to(device)
 
             X1, X2 = transformer(X1, X2, s1, s2, m)
 
@@ -316,7 +321,6 @@ class BasicDataset(Dataset):
             ],
         )
 
-        status_array_size = 5
         self.trans_data = torch.FloatTensor(
             [reduced_data_trans[x] for x in self.stat_fields]
         ).T
@@ -324,7 +328,7 @@ class BasicDataset(Dataset):
         self.trans_data = torch.concat(
             (
                 torch.zeros(
-                    (self.trans_data.size()[0], status_array_size), dtype=torch.float
+                    (self.trans_data.size()[0], self.status_array_size), dtype=torch.float
                 ),
                 self.trans_data,
             ),
@@ -506,6 +510,7 @@ class ForecastDataset(Dataset):
         X_set: Optional[List[str]] = None,
         Xf_set: Optional[List[str]] = None,
         stat_fields: Optional[List[str]] = None,
+        status_array_size: Optional[int] = None,
     ) -> None:
         """
         Constructor for ForecastDataset.
@@ -528,6 +533,9 @@ class ForecastDataset(Dataset):
 
         if stat_fields is not None:
             self.stat_fields = stat_fields
+        
+        if status_array_size is not None:
+            self.status_array_size = status_array_size
 
         not_found = []
         for column in self.X_set + self.Xf_set:

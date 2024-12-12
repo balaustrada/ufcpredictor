@@ -210,6 +210,7 @@ class SimpleFightNet(nn.Module):
         dropout_prob: float = 0.0,
         network_shape: List[int] = [1024, 512, 256, 128, 64, 1],
         fighter_transformer_kwargs = dict(),
+        status_array_size: Optional[int] = None
     ):
         """
         Initialize the SimpleFightNet model with the given input size and dropout
@@ -220,6 +221,9 @@ class SimpleFightNet(nn.Module):
             network_shape: Shape of the network layers (except input layer).
         """
         super().__init__()
+
+        if status_array_size is not None:
+            self.status_array_size = status_array_size
 
         self.network_shape = [input_size,] + network_shape
 
@@ -266,8 +270,8 @@ class SimpleFightNet(nn.Module):
             The output of the SimpleFightNet model.
         """
         # zeros torch tensor
-        S1 = torch.zeros(X1.shape[0], self.status_array_size)
-        S2 = torch.zeros(X2.shape[0], self.status_array_size)
+        S1 = torch.zeros(X1.shape[0], self.status_array_size).to(X1.device)
+        S2 = torch.zeros(X2.shape[0], self.status_array_size).to(X1.device)
 
         for i in range(11):
             ff_data_i = ff_data[:, i, :]
@@ -280,7 +284,7 @@ class SimpleFightNet(nn.Module):
                 fo_data_i[:, :self.status_array_size],
                 ff_data_i[:, self.status_array_size:],
                 fo_data_i[:, self.status_array_size:],
-                torch.zeros(S1.shape[0], 1).reshape(-1, 1),
+                torch.zeros(S1.shape[0], 1).reshape(-1, 1).to(X1.device),
             )
 
             S2, _ = self.transformer(
@@ -288,7 +292,7 @@ class SimpleFightNet(nn.Module):
                 oo_data_i[:, :self.status_array_size],
                 of_data_i[:, self.status_array_size:],
                 oo_data_i[:, self.status_array_size:],
-                torch.zeros(S2.shape[0], 1).reshape(-1, 1),
+                torch.zeros(S2.shape[0], 1).reshape(-1, 1).to(X1.device),
             )
 
         x = torch.cat((X1, X2, X3, odds1, odds2, S1, S2), dim=1)

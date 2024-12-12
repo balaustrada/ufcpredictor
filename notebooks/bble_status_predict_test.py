@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.3
+#       jupytext_version: 1.16.4
 #   kernelspec:
 #     display_name: ufc
 #     language: python
@@ -27,6 +27,9 @@ import torch
 
 # mlflow.set_tracking_uri("http://127.0.0.1:5000") 
 # mlflow.set_experiment('Diferent tries')
+
+# %%
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # %%
 import pandas as pd
@@ -57,8 +60,8 @@ import matplotlib.pyplot as plt
 # }
 
 data_processor_kwargs = {
-    "data_folder": "/home/cramirez/kaggle/ufc_scraper/UFCfightdata",
-    # "data_folder": "/home/cramirpe/UFC/UFCfightdata",
+    # "data_folder": "/home/cramirez/kaggle/ufc_scraper/UFCfightdata",
+    "data_folder": "/home/cramirpe/UFC/UFCfightdata",
     "data_aggregator": WeightedDataAggregator(alpha=-0.0001),
     "data_enhancers": [
         SumFlexibleELO(
@@ -209,75 +212,6 @@ stat_fields = [
 ]
 
 # %%
-if True:
-    X_set = [
-        # "age",
-        "body_strikes_att_opponent_per_minute",
-        "body_strikes_att_per_minute",
-        "body_strikes_succ_opponent_per_minute",
-        "body_strikes_succ_per_minute",
-        "clinch_strikes_att_opponent_per_minute",
-        "clinch_strikes_att_per_minute",
-        "clinch_strikes_succ_opponent_per_minute",
-        "clinch_strikes_succ_per_minute",
-        "ctrl_time_opponent_per_minute",
-        "ctrl_time_per_minute",
-        "distance_strikes_att_opponent_per_minute",
-        "distance_strikes_att_per_minute",
-        "distance_strikes_succ_opponent_per_minute",
-        "distance_strikes_succ_per_minute",
-        "fighter_height_cm",
-        "ground_strikes_att_opponent_per_minute",
-        "ground_strikes_att_per_minute",
-        "ground_strikes_succ_opponent_per_minute",
-        "ground_strikes_succ_per_minute",
-        "head_strikes_att_opponent_per_minute",
-        "head_strikes_att_per_minute",
-        "head_strikes_succ_opponent_per_minute",
-        "head_strikes_succ_per_minute",
-        "knockdowns_opponent_per_minute",
-        "knockdowns_per_minute",
-        "KO_opponent_per_fight",
-        "KO_opponent_per_minute",
-        "KO_per_fight",
-        "KO_per_minute",
-        "leg_strikes_att_opponent_per_minute",
-        "leg_strikes_att_per_minute",
-        "leg_strikes_succ_opponent_per_minute",
-        "leg_strikes_succ_per_minute",
-        # "num_fight",
-        "reversals_opponent_per_minute",
-        "reversals_per_minute",
-        "strikes_att_opponent_per_minute",
-        "strikes_att_per_minute",
-        "strikes_succ_opponent_per_minute",
-        "strikes_succ_per_minute",
-        "Sub_opponent_per_fight",
-        "Sub_opponent_per_minute",
-        "Sub_per_fight",
-        "Sub_per_minute",
-        "submission_att_opponent_per_minute",
-        "submission_att_per_minute",
-        "takedown_att_opponent_per_minute",
-        "takedown_att_per_minute",
-        "takedown_succ_opponent_per_minute",
-        "takedown_succ_per_minute",
-        "time_since_last_fight",
-        "total_strikes_att_opponent_per_minute",
-        "total_strikes_att_per_minute",
-        "total_strikes_succ_opponent_per_minute",
-        "total_strikes_succ_per_minute",
-        "win_opponent_per_fight",
-        "win_per_fight",
-        "ELO",
-    ]
-else:
-    X_set = None
-    X_set = BasicDataset.X_set + [
-        "ELO",
-    ]
-
-# %%
 len(X_set)
 
 # %%
@@ -305,7 +239,7 @@ invalid_fights = set(data_processor.data[data_processor.data["num_fight"] < 5]["
 
 # %%
 early_split_date = "2017-01-01"
-split_date = "2024-01-01"#"2023-08-01"
+split_date = "2023-08-01"#"2023-08-01"
 max_date = "2024-11-11" 
 
 early_train_fights = data_processor.data["fight_id"][data_processor.data["event_date"] < split_date]
@@ -324,15 +258,21 @@ train_fights = set(train_fights) - set(invalid_fights)
 test_fights = set(test_fights) - set(invalid_fights)
 
 # %%
+from ufcpredictor.models import SimpleFightNet
+from ufcpredictor.loss_functions import BettingLoss
 
-# Xf_set = ["num_rounds","weight"]
-Xf_set = []
+
+# %%
+status_array_size = 10#20
+Xf_set = ["num_rounds","weight"]
+# Xf_set = []
 early_train_dataset = BasicDataset(
     data_processor,
     early_train_fights,
     X_set=X_set,
     Xf_set = Xf_set,
     stat_fields= stat_fields,
+    status_array_size=status_array_size,
 )
 
 train_dataset = BasicDataset(
@@ -341,6 +281,7 @@ train_dataset = BasicDataset(
     X_set=X_set,
     Xf_set = Xf_set,
     stat_fields= stat_fields,
+    status_array_size=status_array_size,
 )
 
 test_dataset = BasicDataset(
@@ -349,27 +290,24 @@ test_dataset = BasicDataset(
     X_set=X_set,
     Xf_set = Xf_set,
     stat_fields= stat_fields,
+    status_array_size=status_array_size,
 )
 
-forecast_dataset = ForecastDataset(
-    data_processor=data_processor,
-    X_set=X_set,
-    Xf_set = Xf_set,
-    stat_fields= stat_fields,
-)
+# forecast_dataset = ForecastDataset(
+#     data_processor=data_processor,
+#     X_set=X_set,
+#     Xf_set = Xf_set,
+#     stat_fields= stat_fields,
+#     status_array_size=status_array_size,
+# )
 
 # %%
-batch_size = 128 # 2048
+batch_size = 128#64 # 2048
 early_train_dataloader = torch.utils.data.DataLoader(early_train_dataset, batch_size=batch_size, shuffle=True)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 # %%
-
-# %%
-from ufcpredictor.models import SimpleFightNet
-from ufcpredictor.loss_functions import BettingLoss
-
 
 # %%
 seed = 3
@@ -379,23 +317,25 @@ random.seed(seed)
 np.random.seed(seed)
 
 # %%
-
-# %%
 model = SimpleFightNet(
-        input_size=84,
+        input_size=96,
         # input_size_f=len(Xf_set),
-        dropout_prob=0.05, # 0.25
+        dropout_prob=0.2,#0.1,#0.05, # 0.25
         # fighter_network_shape=[256, 512, 1024, 512],
         # network_shape=[2048, 1024, 512, 128, 64, 1],
         # network_shape=[122, 1024, 2048, 1024, 512, 256, 128, 64, 1],
-        network_shape=[512,1024, 512, 256, 128, 64, 1],  # This was the best one so far
+        # network_shape=[512,1024, 512, 256, 128, 64, 1], 
+        # network_shape=[256, 512, 256, 128, 64, 1],  # This was the best one so far
+        network_shape=[128, 64, 32, 1],
+        status_array_size=status_array_size,
         # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
         fighter_transformer_kwargs=dict(
-            state_dim=5, 
+            state_dim=10,#20, 
             stat_dim=29, 
             match_dim=1,
-            layer_sizes=[128, 512, 1024, 512, 128, 64, 10],
-            dropout=0.1,
+            layer_sizes=[128, 64, 10],
+            # layer_sizes=[128, 512, 256, 128, 64, 10], # This worked
+            dropout=0.2,#0.1,
     )
             
         
@@ -404,10 +344,10 @@ model = SimpleFightNet(
 # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
 #         optimizer, mode="min", factor=0.9, patience=4
 # )
-mlflow.end_run()
-mlflow.start_run()
+# mlflow.end_run()
+# mlflow.start_run()
 
-optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=2e-5)
+optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3)#, weight_decay=2e-5)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode="min", factor=0.7, patience=6
 )
@@ -419,20 +359,19 @@ trainer = Trainer(
     optimizer = optimizer,
     scheduler= scheduler,
     loss_fn =BettingLoss(),
-    mlflow_tracking=True,
+    mlflow_tracking=False,
+    device=device,
 )   
 
 # %%
 trainer.train(
-    epochs=4,
+    epochs=5,
     train_loader=early_train_dataloader,
     test_loader=test_dataloader,
 )
 
 # %%
-
-# %%
-trainer.train(epochs=30) # ~8 is a good match if dropout to 0.35 
+trainer.train(epochs=5) # ~8 is a good match if dropout to 0.35 
 
 # %%
 # Save model dict
@@ -485,6 +424,9 @@ cash = [cash0,]
 invest = [cash0,]
 dates = [None,]
 
+print("Max confidence: ", df["confidence"].max())
+print("Max bet: ", df["bet"].max())
+
 
 for date, group in df.groupby("event_date"):  
     # max_bet = max(cash[-1] * 0.5, 10)
@@ -499,7 +441,7 @@ for date, group in df.groupby("event_date"):
     # cash.append(cash_i)
     # dates.append(date)
 
-    max_bet = max(cash[-1] * 0.1, 10)
+    max_bet = max(cash[-1] * 0.1, 10) / df["confidence"].max()
     win = (group["confidence"]*group["win"] * max_bet / 10).sum()
     bet = (group["confidence"]*group["bet"] * max_bet / 10).sum()
 
@@ -555,6 +497,20 @@ logger = logging.getLogger(__name__)
 
 # %%
 len(names_f)
+
+# %%
+forecast_dataset = ForecastDataset(
+    data_processor=data_processor,
+    X_set=X_set,
+    Xf_set = Xf_set,
+    stat_fields= stat_fields,
+    status_array_size=status_array_size,
+)
+
+# %%
+len(forecast_dataset.data)
+
+# %%
 
 # %%
 names_f = ["Maheshate", "Nyamjargal Tumendemberel", "Shi ming", "Kiru Sahota", "Baergeng Jieleyisi","Volkan Oezdemir", "Song Kenan", "Petr Yan"]

@@ -160,55 +160,90 @@ class BasicDataset(Dataset):
         self.load_data()
 
     def get_trans_stats(self) -> pd.DataFrame:
+        # We first retrieve the non aggregated data,
+        # only keeping the relevant fields
         reduced_data = (
             self.data_processor.data_normalized_nonagg.copy()
             .sort_values(by=["event_date", "fight_id"])
-            .reset_index(drop=True)[["fight_id", "fighter_id", "event_date", "num_fight"] + self.stat_fields]
+            .reset_index(drop=True)[
+                ["fight_id", "fighter_id", "event_date", "num_fight", "opponent_id"]
+                + self.stat_fields
+            ]
         )
 
-        # Add opponent row
-        fight_to_indices = reduced_data.groupby("fight_id").apply(
-            lambda x: list(x.index), include_groups=False
-        )
-        reduced_data["opponent_row"] = reduced_data.index.to_series().apply(
-            lambda idx: [
-                i
-                for i in fight_to_indices[reduced_data.loc[idx, "fight_id"]]
-                if i != idx
-            ][0],
-        )
+        # We now add the index of the fighter
+        reduced_data["index"] = reduced_data.index
 
-        # Step 2: Add previous_fights and previous_opponents
-        def add_previous_fights(group):
-            group = group.sort_values("event_date")
-            group["previous_fights"] = group.index.to_series().apply(
-                lambda idx: group.index[group.index < idx].tolist()
+        # To find the index of the opponent, we merge the data with itself
+        # but matching fighter_id with opponent_id
+        reduced_data = (
+            reduced_data.merge(
+                reduced_data[["fight_id", "opponent_id", "index"]],
+                left_on=["fight_id", "fighter_id"],
+                right_on=["fight_id", "opponent_id"],
             )
-            group["previous_opponents"] = group["previous_fights"].apply(
-                lambda prev_fights: [
-                    reduced_data.loc[i, "opponent_row"] for i in prev_fights
-                ]
+            .rename(
+                columns={
+                    "opponent_id_x": "opponent_id",
+                    "index_x": "index",
+                    "index_y": "opponent_row",
+                }
             )
-            return group
-
-        reduced_data = reduced_data.groupby("fighter_id", group_keys=False).apply(
-            lambda group: add_previous_fights(group).assign(fighter_id=group.name),
-            include_groups=False,
+            .drop(columns=["opponent_id_y", "opponent_id"])
         )
 
-        # Add the immediate next fight index
-        def add_next_fight(group):
-            group = group.sort_values("event_date")
-            group["next_fight"] = group.index.to_series().apply(
-                lambda idx: group.index[group.index > idx].min() if (group.index > idx).any() else -1
-            )
-            return group
+        # Now we need to see which are the previous fights of each row
+        # And also the next fight of each row, we start by defining a
+        # simplified dataframe
+        indices_df = reduced_data[["fighter_id", "index", "opponent_row"]]
 
-        reduced_data = reduced_data.groupby("fighter_id", group_keys=False).apply(
-            lambda group: add_next_fight(group)
-            .assign(fighter_id=group.name)  # Ensure fighter_id persists
-            .pipe(add_next_fight),  # Add next_fight column
-            include_groups=False,
+        # Then we merge with the original dataframe to match
+        # each fighter's fight to all past and future fights
+        indices_df = indices_df.merge(
+            indices_df,
+            on="fighter_id",
+        )
+
+        # We preselect the previous fights by looking at index_y < index_x
+        # After that, we need to aggregate all of them in a list, this will
+        # define all previous fights of a given fight.
+        # If there are no previous fights, we just insert an empty list
+        previous_indices_df = indices_df[indices_df["index_x"] > indices_df["index_y"]]
+        previous_indices_df = (
+            previous_indices_df.groupby("index_x")
+            .agg(
+                previous_fights=("index_y", list),
+                previous_opponents=("opponent_row_y", list),
+            )
+            .reset_index()
+            .set_index("index_x")
+            .reindex(range(0, len(reduced_data)), fill_value=[])
+        )
+        reduced_data = reduced_data.merge(
+            previous_indices_df,
+            left_on="index",
+            right_on="index_x",
+        )
+
+        # We similarly preselect the future fights by looking at index_y > index_x
+        # After that, we group by fight/fighter (index_x) and only will keep
+        # the inmediately next fight.
+        # If there are no future fights, we just set this value to -1.
+        next_indices_df = indices_df[indices_df["index_x"] < indices_df["index_y"]]
+        next_indices_df = (
+            next_indices_df.sort_values(by=["index_x", "index_y"])
+            .drop_duplicates(
+                subset="index_x",
+                keep="first",
+            )[["index_x", "index_y"]]
+            .set_index("index_x")
+            .reindex(range(0, len(reduced_data)), fill_value=-1)
+            .rename(columns={"index_y": "next_fight"})
+        )
+        reduced_data = reduced_data.merge(
+            next_indices_df,
+            left_on="index",
+            right_on="index_x",
         )
 
         return reduced_data

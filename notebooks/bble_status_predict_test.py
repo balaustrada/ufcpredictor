@@ -310,7 +310,7 @@ test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_siz
 # %%
 
 # %%
-seed = 3
+seed = 40
 torch.manual_seed(seed)
 import random
 random.seed(seed)
@@ -366,13 +366,13 @@ trainer = Trainer(
 
 # %%
 trainer.train(
-    epochs=5,
+    epochs=10,
     train_loader=early_train_dataloader,
     test_loader=test_dataloader,
 )
 
 # %%
-trainer.train(epochs=15) # ~8 is a good match if dropout to 0.35 
+trainer.train(epochs=30) # ~8 is a good match if dropout to 0.35 
 
 # %%
 # Save model dict

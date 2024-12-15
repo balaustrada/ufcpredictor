@@ -263,7 +263,7 @@ from ufcpredictor.loss_functions import BettingLoss
 
 
 # %%
-status_array_size = 10#20
+status_array_size = 20
 Xf_set = ["num_rounds","weight"]
 # Xf_set = []
 early_train_dataset = BasicDataset(
@@ -318,24 +318,25 @@ np.random.seed(seed)
 
 # %%
 model = SimpleFightNet(
-        input_size=96,
+        input_size=116,
         # input_size_f=len(Xf_set),
-        dropout_prob=0.2,#0.1,#0.05, # 0.25
+        dropout_prob=0.25,#0.1,#0.05, # 0.25
         # fighter_network_shape=[256, 512, 1024, 512],
         # network_shape=[2048, 1024, 512, 128, 64, 1],
         # network_shape=[122, 1024, 2048, 1024, 512, 256, 128, 64, 1],
         # network_shape=[512,1024, 512, 256, 128, 64, 1], 
         # network_shape=[256, 512, 256, 128, 64, 1],  # This was the best one so far
-        network_shape=[128, 64, 32, 1],
+        network_shape=[512, 128, 64, 1],
         status_array_size=status_array_size,
         # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
         fighter_transformer_kwargs=dict(
-            state_dim=10,#20, 
+            state_dim=20,#20, 
             stat_dim=29, 
             match_dim=1,
-            layer_sizes=[128, 64, 10],
+            layer_sizes=[512, 128, 64, 10],
+            #layer_sizes=[128, 64, 10], # This better(?)
             # layer_sizes=[128, 512, 256, 128, 64, 10], # This worked
-            dropout=0.2,#0.1,
+            dropout=0.25,#0.1,
     )
             
         
@@ -347,9 +348,9 @@ model = SimpleFightNet(
 # mlflow.end_run()
 # mlflow.start_run()
 
-optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3)#, weight_decay=2e-5)
+optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=2e-5)#, weight_decay=2e-5)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.7, patience=6
+        optimizer, mode="min", factor=0.7, patience=2
 )
 
 trainer = Trainer(
@@ -371,7 +372,7 @@ trainer.train(
 )
 
 # %%
-trainer.train(epochs=5) # ~8 is a good match if dropout to 0.35 
+trainer.train(epochs=15) # ~8 is a good match if dropout to 0.35 
 
 # %%
 # Save model dict

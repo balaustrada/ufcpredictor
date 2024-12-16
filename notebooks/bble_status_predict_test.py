@@ -51,7 +51,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # %%
-# DataProcessor = ELODataProcessor
+# DataProcessor = ELODataProcebssor
 # data_processor_kwargs = {
 #     "data_folder": "/home/cramirpe/UFC/UFCfightdata",
 #     # "scaling_factor": 0.5,
@@ -238,8 +238,8 @@ invalid_fights = set(data_processor.data[data_processor.data["num_fight"] < 5]["
 # invalid_fights |= set(self.data_aggregated[self.data_aggregated["event_date"] < "2013-01-01"]["fight_id"])
 
 # %%
-early_split_date = "2016-01-01"#"2017-01-01"
-split_date = "2022-08-01"#"2023-08-01"
+early_split_date = "2017-01-01"#"2017-01-01"
+split_date = "2023-08-01"#"2023-08-01"
 max_date = "2024-11-11" 
 
 early_train_fights = data_processor.data["fight_id"][data_processor.data["event_date"] < split_date]
@@ -265,6 +265,8 @@ from ufcpredictor.loss_functions import BettingLoss
 # %%
 status_array_size = 20
 Xf_set = ["num_rounds","weight"]
+stat_fields_f = ["num_rounds", "weight", "winner"]
+
 # Xf_set = []
 early_train_dataset = BasicDataset(
     data_processor,
@@ -272,6 +274,7 @@ early_train_dataset = BasicDataset(
     X_set=X_set,
     Xf_set = Xf_set,
     stat_fields= stat_fields,
+    stat_fields_f = stat_fields_f,
     status_array_size=status_array_size,
 )
 
@@ -281,6 +284,7 @@ train_dataset = BasicDataset(
     X_set=X_set,
     Xf_set = Xf_set,
     stat_fields= stat_fields,
+    stat_fields_f = stat_fields_f,
     status_array_size=status_array_size,
 )
 
@@ -290,6 +294,7 @@ test_dataset = BasicDataset(
     X_set=X_set,
     Xf_set = Xf_set,
     stat_fields= stat_fields,
+    stat_fields_f = stat_fields_f,
     status_array_size=status_array_size,
 )
 
@@ -300,6 +305,8 @@ test_dataset = BasicDataset(
 #     stat_fields= stat_fields,
 #     status_array_size=status_array_size,
 # )
+
+# %%
 
 # %%
 batch_size = 64#64 # 2048
@@ -317,7 +324,7 @@ random.seed(seed)
 np.random.seed(seed)
 
 # %%
-dropout=0.5 # 0.35 seemed to work good, but also 0.45
+dropout=0.5 # 0.35 seemed to work good, but also 0.45 or even 0.5
 model = SimpleFightNet(
         input_size=116,
         # input_size_f=len(Xf_set),
@@ -333,7 +340,7 @@ model = SimpleFightNet(
         fighter_transformer_kwargs=dict(
             state_dim=20,#20,
             stat_dim=29,
-            match_dim=1,
+            match_dim=len(stat_fields_f),
             layer_sizes=[512, 128, 64, 10],
             #layer_sizes=[128, 64, 10], # This better(?)
             # layer_sizes=[128, 512, 256, 128, 64, 10], # This worked
@@ -367,13 +374,13 @@ trainer = Trainer(
 
 # %%
 trainer.train(
-    epochs=10,
+    epochs=15,
     train_loader=early_train_dataloader,
     test_loader=test_dataloader,
 )
 
 # %%
-trainer.train(epochs=30) # ~8 is a good match if dropout to 0.35 
+trainer.train(epochs=50) # ~8 is a good match if dropout to 0.35 
 
 # %%
 # Save model dict
@@ -488,6 +495,8 @@ ax.plot(
 )
 
 ax.axhline(0, c='k')
+ax.tick_params(axis='x', labelrotation=45)
+
 ax.legend()
 ax.grid()
 

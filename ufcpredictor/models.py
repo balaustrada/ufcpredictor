@@ -283,17 +283,17 @@ class SimpleFightNet(nn.Module):
             S1, _ = self.transformer(
                 S1,
                 fo_data_i[:, :self.status_array_size],
-                ff_data_i[:, self.status_array_size:],
-                fo_data_i[:, self.status_array_size:],
-                torch.zeros(S1.shape[0], 1).reshape(-1, 1).to(X1.device),
+                ff_data_i[:, self.status_array_size:-self.transformer.match_dim],
+                fo_data_i[:, self.status_array_size:-self.transformer.match_dim],
+                ff_data_i[:, -self.transformer.match_dim:],
             )
 
             S2, _ = self.transformer(
                 S2,
                 oo_data_i[:, :self.status_array_size],
-                of_data_i[:, self.status_array_size:],
-                oo_data_i[:, self.status_array_size:],
-                torch.zeros(S2.shape[0], 1).reshape(-1, 1).to(X1.device),
+                of_data_i[:, self.status_array_size:-self.transformer.match_dim],
+                oo_data_i[:, self.status_array_size:-self.transformer.match_dim],
+                oo_data_i[:, -self.transformer.match_dim:],
             )
 
         # x = torch.cat((X1, X2, X3, odds1, odds2, S1-S2, S2-S1), dim=1)
@@ -321,6 +321,10 @@ class FighterTransformer(nn.Module):
         
         # Calculate the input dimension
         input_dim = 2 * state_dim + 2 * stat_dim + match_dim
+
+        self.state_dim = state_dim
+        self.stat_dim = stat_dim
+        self.match_dim = match_dim
         
         # Create the layers of the feedforward network
         layers = []

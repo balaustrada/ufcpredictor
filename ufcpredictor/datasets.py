@@ -113,6 +113,10 @@ class BasicDataset(Dataset):
         "knockdowns_per_minute",
     ]
 
+    stat_fields_f: List[str] = [
+        "winner",
+    ]
+
     status_array_size = 5
 
     def __init__(
@@ -122,6 +126,7 @@ class BasicDataset(Dataset):
         X_set: Optional[List[str]] = None,
         Xf_set: Optional[List[str]] = None,
         stat_fields: Optional[List[str]] = None,
+        stat_fields_f: Optional[List[str]] = None,
         status_array_size: Optional[int] = None,
     ) -> None:
         """
@@ -148,6 +153,9 @@ class BasicDataset(Dataset):
         if stat_fields is not None:
             self.stat_fields = stat_fields
 
+        if stat_fields_f is not None:
+            self.stat_fields_f = stat_fields_f
+
         if status_array_size is not None:
             self.status_array_size = status_array_size
 
@@ -169,12 +177,13 @@ class BasicDataset(Dataset):
             .sort_values(by=["event_date", "fight_id"])
             .reset_index(drop=True)[
                 ["fight_id", "fighter_id", "event_date", "num_fight", "opponent_id"]
-                + self.stat_fields
+                + self.stat_fields + self.stat_fields_f
             ]
         )
 
         # We now add the index of the fighter
         reduced_data["index"] = reduced_data.index
+        reduced_data["winner"] = (reduced_data["winner"] == reduced_data["fighter_id"]).astype(int)
 
         # To find the index of the opponent, we merge the data with itself
         # but matching fighter_id with opponent_id
@@ -307,11 +316,10 @@ class BasicDataset(Dataset):
             self.trans_data = self.trans_data.to(device)
             X1 = self.trans_data[f1_position][:, :self.status_array_size]
             X2 = self.trans_data[f2_position][:, :self.status_array_size]
-            s1 = self.trans_data[f1_position][:, self.status_array_size:]
-            s2 = self.trans_data[f2_position][:, self.status_array_size:]
+            s1 = self.trans_data[f1_position][:, self.status_array_size:-len(self.stat_fields_f)]
+            s2 = self.trans_data[f2_position][:, self.status_array_size:-len(self.stat_fields_f)]
 
-            # Create torch with zeros of size of the first axis in self.trans_data
-            m = torch.zeros(X1.shape[0], 1).reshape(-1, 1).to(device)
+            m = self.trans_data[f1_position][:, -len(self.stat_fields_f):] 
 
             X1, X2 = transformer(X1, X2, s1, s2, m)
 
@@ -368,6 +376,9 @@ class BasicDataset(Dataset):
                     (self.trans_data.size()[0], self.status_array_size), dtype=torch.float
                 ),
                 self.trans_data,
+                torch.FloatTensor(
+                    [reduced_data_trans[x] for x in self.stat_fields_f]   
+                ).T,
             ),
             dim=1,
         )
@@ -547,6 +558,7 @@ class ForecastDataset(Dataset):
         X_set: Optional[List[str]] = None,
         Xf_set: Optional[List[str]] = None,
         stat_fields: Optional[List[str]] = None,
+        stat_fields_f: Optional[List[str]] = None,
         status_array_size: Optional[int] = None,
     ) -> None:
         """
@@ -570,6 +582,9 @@ class ForecastDataset(Dataset):
 
         if stat_fields is not None:
             self.stat_fields = stat_fields
+
+        if stat_fields_f is not None:
+            self.stat_fields_f = stat_fields_f
         
         if status_array_size is not None:
             self.status_array_size = status_array_size

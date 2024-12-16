@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ufcpredictor.datasets import padding
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -273,7 +274,7 @@ class SimpleFightNet(nn.Module):
         S1 = torch.zeros(X1.shape[0], self.status_array_size).to(X1.device)
         S2 = torch.zeros(X2.shape[0], self.status_array_size).to(X1.device)
 
-        for i in range(11):
+        for i in range(padding):
             ff_data_i = ff_data[:, i, :]
             of_data_i = of_data[:, i, :]
             fo_data_i = fo_data[:, i, :]
@@ -295,7 +296,8 @@ class SimpleFightNet(nn.Module):
                 torch.zeros(S2.shape[0], 1).reshape(-1, 1).to(X1.device),
             )
 
-        x = torch.cat((X1, X2, X3, odds1, odds2, S1, S2), dim=1)
+        # x = torch.cat((X1, X2, X3, odds1, odds2, S1-S2, S2-S1), dim=1)
+        x = torch.cat((X1, X2, X3, odds1, odds2, S1-S2, S2-S1), dim=1)
 
         for fc, dropout in zip(self.fcs[:-1], self.dropouts):
             x = self.relu(fc(x))

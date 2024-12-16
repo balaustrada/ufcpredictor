@@ -6,8 +6,10 @@ The dataset classes provide a structured way to store and retrieve data for figh
 characteristics, fight outcomes, and odds. They are designed to work with the 
 DataProcessor class to prepare and normalize the data.
 """
-
 from __future__ import annotations
+
+
+padding = 20
 
 import logging
 from typing import TYPE_CHECKING
@@ -463,7 +465,7 @@ class BasicDataset(Dataset):
         fo_data = self.trans_data[f_prev_o]
         oo_data = self.trans_data[o_prev_o]
 
-        return X1, X2, X3, winner.reshape(-1), odds_1.reshape(-1), odds_2.reshape(-1), pad_or_truncate(ff_data, 11), pad_or_truncate(of_data, 11), pad_or_truncate(fo_data, 11), pad_or_truncate(oo_data, 11)
+        return X1, X2, X3, winner.reshape(-1), odds_1.reshape(-1), odds_2.reshape(-1), pad_or_truncate(ff_data, padding), pad_or_truncate(of_data, padding), pad_or_truncate(fo_data, padding), pad_or_truncate(oo_data, padding)
 
     def get_fight_data_from_ids(self, fight_ids: Optional[List[str]] = None) -> Tuple[
         torch.FloatTensor,
@@ -517,10 +519,10 @@ class BasicDataset(Dataset):
         fighter_names = np.array(fight_data["fighter_name_x"].values)
         opponent_names = np.array(fight_data["fighter_name_y"].values)
 
-        ff = torch.stack([pad_or_truncate(self.trans_data[prev], 11) for prev in fight_data["previous_fights_x"].values])
-        of = torch.stack([pad_or_truncate(self.trans_data[prev],11) for prev in fight_data["previous_fights_y"].values])
-        fo = torch.stack([pad_or_truncate(self.trans_data[prev],11) for prev in fight_data["previous_opponents_x"].values])
-        oo = torch.stack([pad_or_truncate(self.trans_data[prev], 11) for prev in fight_data["previous_opponents_y"].values])
+        ff = torch.stack([pad_or_truncate(self.trans_data[prev], padding) for prev in fight_data["previous_fights_x"].values])
+        of = torch.stack([pad_or_truncate(self.trans_data[prev],padding) for prev in fight_data["previous_fights_y"].values])
+        fo = torch.stack([pad_or_truncate(self.trans_data[prev],padding) for prev in fight_data["previous_opponents_x"].values])
+        oo = torch.stack([pad_or_truncate(self.trans_data[prev], padding) for prev in fight_data["previous_opponents_y"].values])
 
         X1, X2, X3, Y, odds1, odds2 = data
 

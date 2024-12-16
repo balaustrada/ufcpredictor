@@ -238,7 +238,7 @@ invalid_fights = set(data_processor.data[data_processor.data["num_fight"] < 5]["
 # invalid_fights |= set(self.data_aggregated[self.data_aggregated["event_date"] < "2013-01-01"]["fight_id"])
 
 # %%
-early_split_date = "2017-01-01"
+early_split_date = "2017-01-01"#"2017-01-01"
 split_date = "2023-08-01"#"2023-08-01"
 max_date = "2024-11-11" 
 
@@ -317,10 +317,11 @@ random.seed(seed)
 np.random.seed(seed)
 
 # %%
+dropout=0.5 # 0.35 seemed to work good, but also 0.45
 model = SimpleFightNet(
         input_size=116,
         # input_size_f=len(Xf_set),
-        dropout_prob=0.25,#0.1,#0.05, # 0.25
+        dropout_prob=dropout,
         # fighter_network_shape=[256, 512, 1024, 512],
         # network_shape=[2048, 1024, 512, 128, 64, 1],
         # network_shape=[122, 1024, 2048, 1024, 512, 256, 128, 64, 1],
@@ -330,13 +331,13 @@ model = SimpleFightNet(
         status_array_size=status_array_size,
         # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
         fighter_transformer_kwargs=dict(
-            state_dim=20,#20, 
-            stat_dim=29, 
+            state_dim=20,#20,
+            stat_dim=29,
             match_dim=1,
             layer_sizes=[512, 128, 64, 10],
             #layer_sizes=[128, 64, 10], # This better(?)
             # layer_sizes=[128, 512, 256, 128, 64, 10], # This worked
-            dropout=0.25,#0.1,
+            dropout=dropout,
     )
             
         
@@ -372,7 +373,7 @@ trainer.train(
 )
 
 # %%
-trainer.train(epochs=30) # ~8 is a good match if dropout to 0.35 
+trainer.train(epochs=15) # ~8 is a good match if dropout to 0.35 
 
 # %%
 # Save model dict

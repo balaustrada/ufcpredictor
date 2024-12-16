@@ -324,7 +324,7 @@ random.seed(seed)
 np.random.seed(seed)
 
 # %%
-dropout=0.5 # 0.35 seemed to work good, but also 0.45 or even 0.5
+dropout=0.4 # 0.35 seemed to work good, but also 0.45 or even 0.5
 model = SimpleFightNet(
         input_size=116,
         # input_size_f=len(Xf_set),
@@ -380,11 +380,13 @@ trainer.train(
 )
 
 # %%
-trainer.train(epochs=10) # ~8 is a good match if dropout to 0.35 
+trainer.train(epochs=1) # ~8 is a good match if dropout to 0.35 
 
 # %%
 # Save model dict
 #torch.save(model.state_dict(), 'model.pth')
+
+# %%
 
 # %%
 fig, ax = plt.subplots()

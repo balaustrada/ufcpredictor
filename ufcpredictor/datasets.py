@@ -184,6 +184,10 @@ class BasicDataset(Dataset):
         # We now add the index of the fighter
         reduced_data["index"] = reduced_data.index
         reduced_data["winner"] = (reduced_data["winner"] == reduced_data["fighter_id"]).astype(int)
+        if "time_since_last_fight" in reduced_data.columns:
+            reduced_data["time_since_last_fight"] = reduced_data["time_since_last_fight"].fillna(
+                reduced_data["time_since_last_fight"].mean()
+            )
 
         # To find the index of the opponent, we merge the data with itself
         # but matching fighter_id with opponent_id

@@ -150,7 +150,7 @@ else:
     ]
 
 stat_fields = [
-        # "age",
+        "age",
         # "body_strikes_att_opponent_per_minute",
         # "body_strikes_att_per_minute",
         "body_strikes_succ_opponent_per_minute",
@@ -201,7 +201,7 @@ stat_fields = [
         # "takedown_att_per_minute",
         "takedown_succ_opponent_per_minute",
         "takedown_succ_per_minute",
-        # "time_since_last_fight",
+        "time_since_last_fight", # Adding this somehow slowed the convergence and is not as good (why?) maybe because of the default value used(?) it was the mean (~ 7months)
         # "total_strikes_att_opponent_per_minute",
         # "total_strikes_att_per_minute",
         "total_strikes_succ_opponent_per_minute",
@@ -228,6 +228,8 @@ data_processor.normalize_data()
 
 # %% [markdown]
 # ----
+
+# %%
 
 # %%
 fight_ids = data_processor.data["fight_id"].unique()
@@ -307,8 +309,6 @@ test_dataset = BasicDataset(
 # )
 
 # %%
-
-# %%
 batch_size = 64#64 # 2048
 early_train_dataloader = torch.utils.data.DataLoader(early_train_dataset, batch_size=batch_size, shuffle=True)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -339,7 +339,7 @@ model = SimpleFightNet(
         # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
         fighter_transformer_kwargs=dict(
             state_dim=20,#20,
-            stat_dim=29,
+            stat_dim=len(stat_fields),
             match_dim=len(stat_fields_f),
             layer_sizes=[512, 128, 64, 10],
             #layer_sizes=[128, 64, 10], # This better(?)
@@ -380,7 +380,7 @@ trainer.train(
 )
 
 # %%
-trainer.train(epochs=50) # ~8 is a good match if dropout to 0.35 
+trainer.train(epochs=10) # ~8 is a good match if dropout to 0.35 
 
 # %%
 # Save model dict

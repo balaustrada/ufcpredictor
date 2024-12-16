@@ -238,8 +238,8 @@ invalid_fights = set(data_processor.data[data_processor.data["num_fight"] < 5]["
 # invalid_fights |= set(self.data_aggregated[self.data_aggregated["event_date"] < "2013-01-01"]["fight_id"])
 
 # %%
-early_split_date = "2017-01-01"#"2017-01-01"
-split_date = "2023-08-01"#"2023-08-01"
+early_split_date = "2016-01-01"#"2017-01-01"
+split_date = "2022-08-01"#"2023-08-01"
 max_date = "2024-11-11" 
 
 early_train_fights = data_processor.data["fight_id"][data_processor.data["event_date"] < split_date]
@@ -302,7 +302,7 @@ test_dataset = BasicDataset(
 # )
 
 # %%
-batch_size = 128#64 # 2048
+batch_size = 64#64 # 2048
 early_train_dataloader = torch.utils.data.DataLoader(early_train_dataset, batch_size=batch_size, shuffle=True)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
@@ -337,7 +337,7 @@ model = SimpleFightNet(
             layer_sizes=[512, 128, 64, 10],
             #layer_sizes=[128, 64, 10], # This better(?)
             # layer_sizes=[128, 512, 256, 128, 64, 10], # This worked
-            dropout=dropout,
+            dropout=dropout*1,
     )
             
         
@@ -373,7 +373,7 @@ trainer.train(
 )
 
 # %%
-trainer.train(epochs=15) # ~8 is a good match if dropout to 0.35 
+trainer.train(epochs=30) # ~8 is a good match if dropout to 0.35 
 
 # %%
 # Save model dict

@@ -6,6 +6,7 @@ The dataset classes provide a structured way to store and retrieve data for figh
 characteristics, fight outcomes, and odds. They are designed to work with the 
 DataProcessor class to prepare and normalize the data.
 """
+
 from __future__ import annotations
 
 
@@ -149,7 +150,7 @@ class BasicDataset(Dataset):
 
         if Xf_set is not None:
             self.Xf_set = Xf_set
-        
+
         if stat_fields is not None:
             self.stat_fields = stat_fields
 
@@ -177,17 +178,20 @@ class BasicDataset(Dataset):
             .sort_values(by=["event_date", "fight_id"])
             .reset_index(drop=True)[
                 ["fight_id", "fighter_id", "event_date", "num_fight", "opponent_id"]
-                + self.stat_fields + self.stat_fields_f
+                + self.stat_fields
+                + self.stat_fields_f
             ]
         )
 
         # We now add the index of the fighter
         reduced_data["index"] = reduced_data.index
-        reduced_data["winner"] = (reduced_data["winner"] == reduced_data["fighter_id"]).astype(int)
+        reduced_data["winner"] = (
+            reduced_data["winner"] == reduced_data["fighter_id"]
+        ).astype(int)
         if "time_since_last_fight" in reduced_data.columns:
-            reduced_data["time_since_last_fight"] = reduced_data["time_since_last_fight"].fillna(
-                reduced_data["time_since_last_fight"].mean()
-            )
+            reduced_data["time_since_last_fight"] = reduced_data[
+                "time_since_last_fight"
+            ].fillna(reduced_data["time_since_last_fight"].mean())
 
         # To find the index of the opponent, we merge the data with itself
         # but matching fighter_id with opponent_id
@@ -278,21 +282,32 @@ class BasicDataset(Dataset):
         fight_data_nonag = fight_data_nonag[
             fight_data_nonag["fighter_id_x"] != fight_data_nonag["fighter_id_y"]
         ]
-        fight_data_nonag = fight_data_nonag.drop_duplicates(subset=["fight_id"], keep="first")
-        fight_data_nonag["max_num_fight"] = fight_data_nonag[["num_fight_x", "num_fight_y"]].max(axis=1)
+        fight_data_nonag = fight_data_nonag.drop_duplicates(
+            subset=["fight_id"], keep="first"
+        )
+        fight_data_nonag["max_num_fight"] = fight_data_nonag[
+            ["num_fight_x", "num_fight_y"]
+        ].max(axis=1)
 
         reduced_data_trans = reduced_data_trans.reset_index(drop=True)
-        reduced_data_trans['Index'] = reduced_data_trans.index
+        reduced_data_trans["Index"] = reduced_data_trans.index
 
-        X = fight_data_nonag.merge(
-            reduced_data_trans[["fight_id", "fighter_id", "Index"]],
-            left_on=["fight_id", "fighter_id_x"],
-            right_on=["fight_id", "fighter_id"],
-        ).rename(columns={"Index": "Index_x"}).drop(columns="fighter_id").merge(
-            reduced_data_trans[["fight_id", "fighter_id", "Index"]],
-            left_on=["fight_id", "fighter_id_y"],
-            right_on=["fight_id", "fighter_id"],
-        ).rename(columns={"Index": "Index_y"}).drop(columns="fighter_id")   
+        X = (
+            fight_data_nonag.merge(
+                reduced_data_trans[["fight_id", "fighter_id", "Index"]],
+                left_on=["fight_id", "fighter_id_x"],
+                right_on=["fight_id", "fighter_id"],
+            )
+            .rename(columns={"Index": "Index_x"})
+            .drop(columns="fighter_id")
+            .merge(
+                reduced_data_trans[["fight_id", "fighter_id", "Index"]],
+                left_on=["fight_id", "fighter_id_y"],
+                right_on=["fight_id", "fighter_id"],
+            )
+            .rename(columns={"Index": "Index_y"})
+            .drop(columns="fighter_id")
+        )
 
         f1_positions = []
         f2_positions = []
@@ -314,26 +329,38 @@ class BasicDataset(Dataset):
         self.next_f2_positions = next_f2_positions
 
     def update_data_trans(self, transformer, device="cpu"):
-        for i, (f1_position, f2_position, next_f1_position, next_f2_position) in enumerate(
-        zip(self.f1_positions, self.f2_positions, self.next_f1_positions, self.next_f2_positions)
+        for i, (
+            f1_position,
+            f2_position,
+            next_f1_position,
+            next_f2_position,
+        ) in enumerate(
+            zip(
+                self.f1_positions,
+                self.f2_positions,
+                self.next_f1_positions,
+                self.next_f2_positions,
+            )
         ):
             self.trans_data = self.trans_data.to(device)
-            X1 = self.trans_data[f1_position][:, :self.status_array_size]
-            X2 = self.trans_data[f2_position][:, :self.status_array_size]
-            s1 = self.trans_data[f1_position][:, self.status_array_size:-len(self.stat_fields_f)]
-            s2 = self.trans_data[f2_position][:, self.status_array_size:-len(self.stat_fields_f)]
+            X1 = self.trans_data[f1_position][:, : self.status_array_size]
+            X2 = self.trans_data[f2_position][:, : self.status_array_size]
+            s1 = self.trans_data[f1_position][
+                :, self.status_array_size : -len(self.stat_fields_f)
+            ]
+            s2 = self.trans_data[f2_position][
+                :, self.status_array_size : -len(self.stat_fields_f)
+            ]
 
-            m = self.trans_data[f1_position][:, -len(self.stat_fields_f):] 
+            m = self.trans_data[f1_position][:, -len(self.stat_fields_f) :]
 
             X1, X2 = transformer(X1, X2, s1, s2, m)
 
-
             msk = next_f1_position > 0
-            self.trans_data[next_f1_position[msk],:self.status_array_size] = X1[msk]
-            
-            msk = next_f2_position > 0
-            self.trans_data[next_f2_position[msk], :self.status_array_size] = X2[msk]        
+            self.trans_data[next_f1_position[msk], : self.status_array_size] = X1[msk]
 
+            msk = next_f2_position > 0
+            self.trans_data[next_f2_position[msk], : self.status_array_size] = X2[msk]
 
     def load_data(self) -> None:
         """
@@ -360,7 +387,9 @@ class BasicDataset(Dataset):
 
         # We now generate the statistics data per match to create the transformer
         reduced_data_trans = self.get_trans_stats()
-        reduced_data_trans = reduced_data_trans.loc[:,~reduced_data_trans.columns.duplicated()].copy()
+        reduced_data_trans = reduced_data_trans.loc[
+            :, ~reduced_data_trans.columns.duplicated()
+        ].copy()
 
         self.compute_position_data(reduced_data_trans)
 
@@ -377,11 +406,12 @@ class BasicDataset(Dataset):
         self.trans_data = torch.concat(
             (
                 torch.zeros(
-                    (self.trans_data.size()[0], self.status_array_size), dtype=torch.float
+                    (self.trans_data.size()[0], self.status_array_size),
+                    dtype=torch.float,
                 ),
                 self.trans_data,
                 torch.FloatTensor(
-                    [reduced_data_trans[x] for x in self.stat_fields_f]   
+                    [reduced_data_trans[x] for x in self.stat_fields_f]
                 ).T,
             ),
             dim=1,
@@ -480,7 +510,18 @@ class BasicDataset(Dataset):
         fo_data = self.trans_data[f_prev_o]
         oo_data = self.trans_data[o_prev_o]
 
-        return X1, X2, X3, winner.reshape(-1), odds_1.reshape(-1), odds_2.reshape(-1), pad_or_truncate(ff_data, padding), pad_or_truncate(of_data, padding), pad_or_truncate(fo_data, padding), pad_or_truncate(oo_data, padding)
+        return (
+            X1,
+            X2,
+            X3,
+            winner.reshape(-1),
+            odds_1.reshape(-1),
+            odds_2.reshape(-1),
+            pad_or_truncate(ff_data, padding),
+            pad_or_truncate(of_data, padding),
+            pad_or_truncate(fo_data, padding),
+            pad_or_truncate(oo_data, padding),
+        )
 
     def get_fight_data_from_ids(self, fight_ids: Optional[List[str]] = None) -> Tuple[
         torch.FloatTensor,
@@ -534,14 +575,47 @@ class BasicDataset(Dataset):
         fighter_names = np.array(fight_data["fighter_name_x"].values)
         opponent_names = np.array(fight_data["fighter_name_y"].values)
 
-        ff = torch.stack([pad_or_truncate(self.trans_data[prev], padding) for prev in fight_data["previous_fights_x"].values])
-        of = torch.stack([pad_or_truncate(self.trans_data[prev],padding) for prev in fight_data["previous_fights_y"].values])
-        fo = torch.stack([pad_or_truncate(self.trans_data[prev],padding) for prev in fight_data["previous_opponents_x"].values])
-        oo = torch.stack([pad_or_truncate(self.trans_data[prev], padding) for prev in fight_data["previous_opponents_y"].values])
+        ff = torch.stack(
+            [
+                pad_or_truncate(self.trans_data[prev], padding)
+                for prev in fight_data["previous_fights_x"].values
+            ]
+        )
+        of = torch.stack(
+            [
+                pad_or_truncate(self.trans_data[prev], padding)
+                for prev in fight_data["previous_fights_y"].values
+            ]
+        )
+        fo = torch.stack(
+            [
+                pad_or_truncate(self.trans_data[prev], padding)
+                for prev in fight_data["previous_opponents_x"].values
+            ]
+        )
+        oo = torch.stack(
+            [
+                pad_or_truncate(self.trans_data[prev], padding)
+                for prev in fight_data["previous_opponents_y"].values
+            ]
+        )
 
         X1, X2, X3, Y, odds1, odds2 = data
 
-        return X1, X2, X3, Y, odds1, odds2, ff, of, fo, oo, fighter_names, opponent_names
+        return (
+            X1,
+            X2,
+            X3,
+            Y,
+            odds1,
+            odds2,
+            ff,
+            of,
+            fo,
+            oo,
+            fighter_names,
+            opponent_names,
+        )
 
 
 class ForecastDataset(Dataset):
@@ -589,7 +663,7 @@ class ForecastDataset(Dataset):
 
         if stat_fields_f is not None:
             self.stat_fields_f = stat_fields_f
-        
+
         if status_array_size is not None:
             self.status_array_size = status_array_size
 
@@ -730,6 +804,15 @@ class ForecastDataset(Dataset):
             + "_"
             + match_data["event_date_forecast"].astype(str)
         )
+
+        # # Add time_since_last_fight information
+        # match_data["time_since_last_fight"] = (
+        #     pd.to_datetime(match_data["event_date_forecast"]) - match_data["event_date"]
+        # ).dt.days
+        # match_data["time_since_last_fight"] = (
+        #     match_data["time_since_last_fight"]
+        #     / self.data_processor.data_aggregated["time_since_last_fight"].mean()
+        # )
 
         # This data dict is used to facilitate the construction of the tensors
         data_dict = {

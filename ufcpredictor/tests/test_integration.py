@@ -197,8 +197,8 @@ class TestSimpleModel(unittest.TestCase):
             fight_features=[5, 140],
         )
 
-        self.assertAlmostEqual(p1, 0.2665316, places=3)
-        self.assertAlmostEqual(p2, 0.73271847, places=3)
+        self.assertAlmostEqual(p1, 0.2658733, places=3)
+        self.assertAlmostEqual(p2, 0.7346755, places=3)
 
 
 if __name__ == "__main__": # pragma: no cover

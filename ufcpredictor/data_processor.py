@@ -22,7 +22,7 @@ from ufcpredictor.utils import convert_minutes_to_seconds, weight_dict
 
 if TYPE_CHECKING:  # pragma: no cover
     from pathlib import Path
-    from typing import List, Optional
+    from typing import Dict, List, Optional
 
     from ufcpredictor.data_aggregator import DataAggregator
     from ufcpredictor.data_enhancers import DataEnhancer
@@ -43,6 +43,7 @@ class DataProcessor:
     """
 
     mlflow_params: List[str] = []
+    normalization_factors: Dict[float] = {}
 
     def __init__(
         self,
@@ -630,5 +631,7 @@ class DataProcessor:
         for column in self.normalized_fields:
             mean = self.data_aggregated[column].mean()
             data_normalized[column] = data_normalized[column] / mean
+
+            self.normalization_factors[column] = mean
 
         self.data_normalized = data_normalized

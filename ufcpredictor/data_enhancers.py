@@ -117,6 +117,7 @@ class RankedFields(DataEnhancer):
             The data with the ranked fields added.
         """
         for field, exponent in zip(self.fields, self.exponents):
+            data[field + "not_ranked"] = data[field]
             data[field] = (data[field].rank(pct=True) * 100) ** exponent
         return data
 

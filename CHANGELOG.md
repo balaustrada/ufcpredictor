@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.2.2 (2024-12-20)
+
+### Bug Fixes
+
+- **forecast**: Correctly normalize user introduced fields.
+  ([`7166633`](https://github.com/balaustrada/ufcpredictor/commit/7166633a6e563ca6eb2fe5ab90bfd7284cc36db2))
+
+
 ## v0.2.1 (2024-12-11)
 
 ### Bug Fixes

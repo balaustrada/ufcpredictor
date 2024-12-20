@@ -43,7 +43,7 @@ class DataProcessor:
     """
 
     mlflow_params: List[str] = []
-    normalization_factors: Dict[float] = {}
+    normalization_factors: Dict[str, float] = {}
 
     def __init__(
         self,

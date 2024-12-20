@@ -4,6 +4,7 @@ Data Enhancer Module for UFC fight data.
 Provides classes to add derived features to the UFC fight data,
 such as an ELO rating for each fighter based on opponent history.
 """
+
 from __future__ import annotations
 
 import logging
@@ -28,12 +29,13 @@ class DataEnhancer:
     It is called by the DataProcessor class to add derived features to the data, after
     the data has been processed and after it has been aggregated.
     """
+
     mlflow_params: List[str] = []
 
     @property
     def aggregated_fields(self) -> List[str]:
         """
-        The fields added by the data enhancer that need to be aggregated 
+        The fields added by the data enhancer that need to be aggregated
         by the DataProcessor DataAggregator instance.
 
         Returns:
@@ -44,7 +46,7 @@ class DataEnhancer:
     @property
     def normalized_fields(self) -> List[str]:
         """
-        The fields added by the data enhancer that need to be normalized 
+        The fields added by the data enhancer that need to be normalized
         by the DataProcessor instance.
 
         Returns:
@@ -52,30 +54,30 @@ class DataEnhancer:
         """
         return []
 
-    def add_data_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
+    def add_data_fields(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         This method can be overridden by subclasses to add derived features to the data.
 
         Args:
-            data_processor: The DataProcessor object.
+            data: The data to add the derived features to.
 
         Returns:
             The data with the derived features added.
         """
-        return data_processor.data
+        return data
 
-    def add_aggregated_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
+    def add_aggregated_fields(self, data_aggregated: pd.DataFrame) -> pd.DataFrame:
         """
-        This method can be overridden by subclasses to add derived features to the 
+        This method can be overridden by subclasses to add derived features to the
         aggregated data.
 
         Args:
-            data_processor: The DataProcessor object.
+            data_aggregated: The aggregated data to add the derived features to.
 
         Returns:
             The aggregated data with the derived features added.
         """
-        return data_processor.data_aggregated
+        return data_aggregated
 
 
 class RankedFields(DataEnhancer):
@@ -87,6 +89,7 @@ class RankedFields(DataEnhancer):
     Rank is calculated using the rank function from pandas as follows:
         data[field] = (data[field].rank(pct=True)*100)**exponent
     """
+
     mlflow_params: List[str] = ["fields", "exponents"]
 
     def __init__(self, fields: List[str], exponents: List[float] | float):
@@ -103,19 +106,18 @@ class RankedFields(DataEnhancer):
         self.fields = fields
         self.exponents = exponents
 
-    def add_data_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
+    def add_data_fields(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         Convert fields into ranked fields.
 
         Args:
-            data_processor: The DataProcessor object.
+            data: The data to add the ranked fields to.
 
         Returns:
             The data with the ranked fields added.
         """
-        data = data_processor.data
-
         for field, exponent in zip(self.fields, self.exponents):
+            data[field + "not_ranked"] = data[field]
             data[field] = (data[field].rank(pct=True) * 100) ** exponent
         return data
 
@@ -134,7 +136,7 @@ class OSR(DataEnhancer):
 
     mlflow_params: List[str] = []
 
-    def add_aggregated_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
+    def add_aggregated_fields(self, data_aggregated: pd.DataFrame) -> pd.DataFrame:
         """
         Aggregate data by computing the fighters' statistics and OSR.
 
@@ -146,12 +148,11 @@ class OSR(DataEnhancer):
         old values is less than 0.1.
 
         Args:
-            data_processor: The DataProcessor object.
+            data_aggregated: The aggregated data to add the derived features to.
 
         Returns:
             The aggregated data with OSR added.
         """
-        data_aggregated = data_processor.data_aggregated
         # Adding OSR information
         df = data_aggregated[
             ["fighter_id", "fight_id", "opponent_id", "event_date"]
@@ -236,7 +237,7 @@ class WOSR(OSR):
         """
         self.skills_weight, self.past_OSR_weight, self.opponent_OSR_weight = weights
 
-    def add_aggregated_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
+    def add_aggregated_fields(self, data_aggregated: pd.DataFrame) -> pd.DataFrame:
         """
         Aggregate data by computing the fighters' statistics and OSR.
 
@@ -248,12 +249,11 @@ class WOSR(OSR):
         old values is less than 0.1.
 
         Args:
-            data_processor: The DataProcessor object.
+            data_aggregated: The aggregated data to add the derived features to.
 
         Returns:
             The aggregated data with OSR added.
         """
-        data_aggregated = data_processor.data_aggregated
         # Adding OSR information
         df = data_aggregated[
             ["fighter_id", "fight_id", "opponent_id", "event_date"]
@@ -331,6 +331,7 @@ class ELO(DataEnhancer):
     This class adds a traditional ELO ratings to the data based
     on the results of the fights.
     """
+
     mlflow_params: List[str] = ["initial_rating", "K_factor"]
 
     def __init__(self, initial_rating: float = 1000, K_factor: float = 32):
@@ -349,7 +350,7 @@ class ELO(DataEnhancer):
     @property
     def normalized_fields(self) -> List[str]:
         """
-        The fields added by the data enhancer that need to be normalized 
+        The fields added by the data enhancer that need to be normalized
         by the DataProcessor instance.
 
         Returns:
@@ -358,7 +359,7 @@ class ELO(DataEnhancer):
         return [
             "ELO",
         ]
-    
+
     def add_scores(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         This method adds a score to a fight.
@@ -367,7 +368,7 @@ class ELO(DataEnhancer):
         fight score.
 
         Args:
-            data: The data to add the scores to.   
+            data: The data to add the scores to.
 
         Returns:
             The data with the scores added.
@@ -375,7 +376,9 @@ class ELO(DataEnhancer):
         data["match_score"] = 1
         return data
 
-    def compute_new_rating(self, rating: float, S: float, E: float, match_score: float) -> float:
+    def compute_new_rating(
+        self, rating: float, S: float, E: float, match_score: float
+    ) -> float:
         """
         Compute the new rating based on the ELO rating system.
 
@@ -389,14 +392,13 @@ class ELO(DataEnhancer):
             The new rating of the fighter.
         """
         return rating + self.K_factor * (S - E) * match_score
-    
 
-    def add_data_fields(self, data_processor: DataProcessor) -> pd.DataFrame:
+    def add_data_fields(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         Calculate and add ELO ratings to the dataframe.
 
         Args:
-            data_processor: The DataProcessor object.
+            data: The dataframe to add the ELO ratings to.
 
         Returns:
             The dataframe with ELO ratings added.
@@ -404,7 +406,7 @@ class ELO(DataEnhancer):
         ratings: Dict[int, float] = {}
         updated_ratings: List[Dict[str, float | str]] = []
 
-        data = self.add_scores(data_processor.data)
+        data = self.add_scores(data)
         unique_fights = data.drop_duplicates(subset="fight_id")
 
         unique_fights = unique_fights.merge(
@@ -421,7 +423,7 @@ class ELO(DataEnhancer):
             fighter_id = fight["fighter_id"]
             opponent_id = fight["opponent_id"]
             winner_id = fight["winner"]
-            match_score = fight["match_score"] 
+            match_score = fight["match_score"]
             match_score_opponent = fight["match_score_opponent"]
 
             # Get current ratings, or initialize if not present
@@ -468,7 +470,7 @@ class ELO(DataEnhancer):
 
         updated_ratings_df = pd.DataFrame(updated_ratings)
 
-        return data_processor.data.merge(
+        return data.merge(
             updated_ratings_df,
             on=["fight_id", "fighter_id"],
         )
@@ -500,6 +502,7 @@ class FlexibleELO(ELO):
     The rating of the fighter is transformed as:
         new_rating_fighter = rating_fighter + K_factor * (S_fighter - E_fighter) * boost
     """
+
     mlflow_params: List[str] = ["n_boost_bins", "boost_values"]
 
     def __init__(
@@ -569,7 +572,7 @@ class FlexibleELO(ELO):
         to provide the strength of the win.
 
         Args:
-            data: The data to add the scores to.   
+            data: The data to add the scores to.
 
         Returns:
             The data with the scores added.
@@ -645,6 +648,7 @@ class SumFlexibleELO(ELO):
             S_fighter - E_fighter * scaling_factor * (match_score -50) / 100)
         )
     """
+
     mlflow_params: List[str] = ["scaling_factor"]
 
     def __init__(self, *args: Any, scaling_factor: float = 0.5, **kwargs: Any):
@@ -738,8 +742,10 @@ class SumFlexibleELO(ELO):
         ) / 8
 
         return data
-    
-    def compute_new_rating(self, rating: float, S: float, E: float, match_score: float) -> float:
+
+    def compute_new_rating(
+        self, rating: float, S: float, E: float, match_score: float
+    ) -> float:
         """
         Compute the new rating based on the ELO rating system.
 
@@ -752,4 +758,6 @@ class SumFlexibleELO(ELO):
         Returns:
             The new rating of the fighter.
         """
-        return rating + self.K_factor * (S-E + self.scaling_factor * (match_score - 50) / 100)
+        return rating + self.K_factor * (
+            S - E + self.scaling_factor * (match_score - 50) / 100
+        )

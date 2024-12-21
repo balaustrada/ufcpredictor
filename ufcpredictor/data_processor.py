@@ -22,7 +22,7 @@ from ufcpredictor.utils import convert_minutes_to_seconds, weight_dict
 
 if TYPE_CHECKING:  # pragma: no cover
     from pathlib import Path
-    from typing import List, Optional
+    from typing import Dict, List, Optional
 
     from ufcpredictor.data_aggregator import DataAggregator
     from ufcpredictor.data_enhancers import DataEnhancer
@@ -43,6 +43,7 @@ class DataProcessor:
     """
 
     mlflow_params: List[str] = []
+    normalization_factors: Dict[str, float] = {}
 
     def __init__(
         self,
@@ -103,7 +104,7 @@ class DataProcessor:
         self.data["num_fight"] = self.data.groupby("fighter_id").cumcount() + 1
 
         for data_enhancer in self.data_enhancers:
-            self.data = data_enhancer.add_data_fields(self)
+            self.data = data_enhancer.add_data_fields(self.data)
 
         names = self.data["fighter_name"].values
         ids = self.data["fighter_id"].values
@@ -572,7 +573,9 @@ class DataProcessor:
         self.data_aggregated = self.data_aggregator.aggregate_data(self)
 
         for data_enhancer in self.data_enhancers:
-            self.data_aggregated = data_enhancer.add_aggregated_fields(self)
+            self.data_aggregated = data_enhancer.add_aggregated_fields(
+                self.data_aggregated
+            )
 
     def add_per_minute_and_fight_stats(self) -> None:
         """
@@ -640,6 +643,8 @@ class DataProcessor:
         for column in self.normalized_fields:
             mean = self.data_aggregated[column].mean()
             data_normalized[column] = data_normalized[column] / mean
+
+            self.normalization_factors[column] = mean
 
         self.data_normalized = data_normalized
 

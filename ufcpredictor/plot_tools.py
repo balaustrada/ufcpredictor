@@ -237,6 +237,7 @@ class PredictionPlots:
         odds1: int,
         odds2: int,
         ax: Optional[plt.Axes] = None,
+        parse_id: bool = False,
     ) -> None:
         """
         Plots the prediction for a single fight.
@@ -249,11 +250,24 @@ class PredictionPlots:
             event_date : The date of the fight.
             odds1 : The odds for the first fighter (decimal).
             odds2 : The odds for the second fighter (decimal).
+            ax : The axes to use to show the plot. If None, a new figure will be
+                created.
+            parse_id : If True, the id of the fighters is parsed instead of the name.
         """
         p1, p2 = dataset.get_single_forecast_prediction(
-            fighter_name, opponent_name, event_date, odds1, odds2, model, fight_features
+            fighter_name, opponent_name, event_date, odds1, odds2, model, fight_features, parse_id
         )
 
+        if parse_id:
+            names = dataset.data_processor.data["fighter_name"]
+            ids = dataset.data_processor.data["fighter_id"]
+
+            display_fighter_name = names[ids == fighter_name].values[0]
+            display_opponent_name = names[ids == opponent_name].values[0]
+        else:
+            display_fighter_name = fighter_name
+            display_opponent_name = opponent_name
+            
         if ax is None:  # pragma: no cover
             fig, ax = plt.subplots()
 
@@ -283,7 +297,7 @@ class PredictionPlots:
         ax.text(
             ax.get_xlim()[0],
             ax.get_ylim()[1] * 1.3,
-            fighter_name,
+            display_fighter_name,
             color=red,
             ha="left",
             va="center",
@@ -294,7 +308,7 @@ class PredictionPlots:
         ax.text(
             ax.get_xlim()[1],
             ax.get_ylim()[1] * 1.3,
-            opponent_name,
+            display_opponent_name,
             color=blue,
             ha="right",
             va="center",

@@ -263,8 +263,26 @@ class TestForecastDataset(unittest.TestCase):
                     "2023-01-03",
                     "2023-01-03",
                 ],
+                "fighter_dob": [
+                    "1990-01-01",
+                    "1990-01-01",
+                    "1990-01-02",
+                    "1990-01-02",
+                    "1990-01-03",
+                    "1990-01-03",
+                ],
+                "num_fight": [
+                    1,
+                    1,
+                    2,
+                    2,
+                    3,
+                    3,
+                ]
             }
         )
+        mock_data["event_date"] = pd.to_datetime(mock_data["event_date"])
+        mock_data["fighter_dob"] = pd.to_datetime(mock_data["fighter_dob"])
 
         mock_processor = MagicMock()
         mock_processor.data_normalized = mock_data
@@ -331,9 +349,26 @@ class TestForecastDataset(unittest.TestCase):
                     "2023-01-02",
                     "2023-01-03",
                     "2023-01-03",
+                ],                "fighter_dob": [
+                    "1990-01-01",
+                    "1990-01-01",
+                    "1990-01-02",
+                    "1990-01-02",
+                    "1990-01-03",
+                    "1990-01-03",
+                ],
+                "num_fight": [
+                    1,
+                    1,
+                    2,
+                    2,
+                    3,
+                    3,
                 ],
             }
         )
+        mock_data["event_date"] = pd.to_datetime(mock_data["event_date"])
+        mock_data["fighter_dob"] = pd.to_datetime(mock_data["fighter_dob"])
 
         id_dictionary = {
             name: id_

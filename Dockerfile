@@ -14,8 +14,8 @@ RUN useradd -m -u 1000 user
 # Switch to the "user" user
 USER user
 
-RUN pip install git+https://github.com/balaustrada/ufcscraper.git
-RUN pip install git+https://github.com/balaustrada/ufcpredictor.git
+RUN pip install ufcscraper
+RUN pip install ufcpredictor
 
 # Set home to the user's home directory
 ENV HOME=/home/user \

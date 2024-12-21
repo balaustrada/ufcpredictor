@@ -1,6 +1,33 @@
 # CHANGELOG
 
 
+## v0.2.2 (2024-12-20)
+
+### Bug Fixes
+
+- **forecast**: Correctly normalize user introduced fields.
+  ([`7166633`](https://github.com/balaustrada/ufcpredictor/commit/7166633a6e563ca6eb2fe5ab90bfd7284cc36db2))
+
+
+## v0.2.1 (2024-12-11)
+
+### Bug Fixes
+
+- **docker**: Pip install through pip
+  ([`cd3c7f9`](https://github.com/balaustrada/ufcpredictor/commit/cd3c7f9c77e91fa0dc6144a4384021cc91235d34))
+
+- **project**: Loosen python requirements
+  ([`3d5c00d`](https://github.com/balaustrada/ufcpredictor/commit/3d5c00dad17cd770a90a6eab4b4354e2d5f54c3a))
+
+
+## v0.2.0 (2024-12-10)
+
+### Features
+
+- **app**: Added robustness to name selection.
+  ([`5a42227`](https://github.com/balaustrada/ufcpredictor/commit/5a42227a5f3faece4fc5285d44fb52b1db5ecf62))
+
+
 ## v0.1.0 (2024-11-24)
 
 ### Features

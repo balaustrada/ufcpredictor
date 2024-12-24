@@ -384,7 +384,8 @@ class BasicDataset(Dataset):
                 reduced_data[x] = reduced_data.groupby("fighter_id")[x].shift(1)
 
         # We remove invalid fights
-        reduced_data = reduced_data[reduced_data["fight_id"].isin(self.fight_ids)]
+        if self.fight_ids is not None:
+            reduced_data = reduced_data[reduced_data["fight_id"].isin(self.fight_ids)]
 
         # We now generate the statistics data per match to create the transformer
         reduced_data_trans = self.get_trans_stats()
@@ -619,7 +620,7 @@ class BasicDataset(Dataset):
         )
 
 
-class ForecastDataset(Dataset):
+class ForecastDataset(BasicDataset):
     """
     A dataset class designed to handle forecasting data for UFC fight predictions.
 
@@ -630,6 +631,8 @@ class ForecastDataset(Dataset):
 
     X_set = BasicDataset.X_set
     Xf_set = BasicDataset.Xf_set
+    stat_fields = BasicDataset.stat_fields
+    stat_fields_f = BasicDataset.stat_fields_f
 
     def __init__(
         self,
@@ -675,6 +678,106 @@ class ForecastDataset(Dataset):
 
         if len(not_found) > 0:
             raise ValueError(f"Columns not found in normalized data: {not_found}")
+
+        self.fight_ids = None
+        self.load_data()
+
+    def get_trans_stats(self) -> pd.DataFrame:
+        # We first retrieve the non aggregated data,
+        # only keeping the relevant fields
+        reduced_data = (
+            self.data_processor.data_normalized_nonagg.copy()
+            .sort_values(by=["event_date", "fight_id"])
+            .reset_index(drop=True)[
+                ["fight_id", "fighter_id", "event_date", "num_fight", "opponent_id"]
+                + self.stat_fields
+                + self.stat_fields_f
+            ]
+        )
+
+        # We now add the index of the fighter
+        reduced_data["index"] = reduced_data.index
+        reduced_data["winner"] = (
+            reduced_data["winner"] == reduced_data["fighter_id"]
+        ).astype(int)
+        if "time_since_last_fight" in reduced_data.columns:
+            reduced_data["time_since_last_fight"] = reduced_data[
+                "time_since_last_fight"
+            ].fillna(reduced_data["time_since_last_fight"].mean())
+
+        # To find the index of the opponent, we merge the data with itself
+        # but matching fighter_id with opponent_id
+        reduced_data = (
+            reduced_data.merge(
+                reduced_data[["fight_id", "opponent_id", "index"]],
+                left_on=["fight_id", "fighter_id"],
+                right_on=["fight_id", "opponent_id"],
+            )
+            .rename(
+                columns={
+                    "opponent_id_x": "opponent_id",
+                    "index_x": "index",
+                    "index_y": "opponent_row",
+                }
+            )
+            .drop(columns=["opponent_id_y", "opponent_id"])
+        )
+
+        # Now we need to see which are the previous fights of each row
+        # And also the next fight of each row, we start by defining a
+        # simplified dataframe
+        indices_df = reduced_data[["fighter_id", "index", "opponent_row"]]
+
+        # Then we merge with the original dataframe to match
+        # each fighter's fight to all past and future fights
+        indices_df = indices_df.merge(
+            indices_df,
+            on="fighter_id",
+        )
+
+        # We preselect the previous fights (and current) by looking at index_y <= index_x
+        # After that, we need to aggregate all of them in a list, this will
+        # define all previous fights of a given fight.
+        # If there are no previous fights, we just insert an empty list
+        previous_indices_df = indices_df[indices_df["index_x"] >= indices_df["index_y"]]
+        previous_indices_df = (
+            previous_indices_df.groupby("index_x")
+            .agg(
+                previous_fights=("index_y", list),
+                previous_opponents=("opponent_row_y", list),
+            )
+            .reset_index()
+            .set_index("index_x")
+            .reindex(range(0, len(reduced_data)), fill_value=[])
+        )
+        reduced_data = reduced_data.merge(
+            previous_indices_df,
+            left_on="index",
+            right_on="index_x",
+        )
+
+        # We similarly preselect the future fights by looking at index_y > index_x
+        # After that, we group by fight/fighter (index_x) and only will keep
+        # the inmediately next fight.
+        # If there are no future fights, we just set this value to -1.
+        next_indices_df = indices_df[indices_df["index_x"] < indices_df["index_y"]]
+        next_indices_df = (
+            next_indices_df.sort_values(by=["index_x", "index_y"])
+            .drop_duplicates(
+                subset="index_x",
+                keep="first",
+            )[["index_x", "index_y"]]
+            .set_index("index_x")
+            .reindex(range(0, len(reduced_data)), fill_value=-1)
+            .rename(columns={"index_y": "next_fight"})
+        )
+        reduced_data = reduced_data.merge(
+            next_indices_df,
+            left_on="index",
+            right_on="index_x",
+        )
+
+        return reduced_data
 
     def get_single_forecast_prediction(
         self,

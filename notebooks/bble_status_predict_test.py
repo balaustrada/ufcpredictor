@@ -265,8 +265,8 @@ from ufcpredictor.loss_functions import BettingLoss
 
 
 # %%
-status_array_size = 20
-Xf_set = ["num_rounds","weight"]
+status_array_size = 30
+Xf_set = ["num_rounds", "weight"]
 stat_fields_f = ["num_rounds", "weight", "winner"]
 
 # Xf_set = []
@@ -274,9 +274,9 @@ early_train_dataset = BasicDataset(
     data_processor,
     early_train_fights,
     X_set=X_set,
-    Xf_set = Xf_set,
-    stat_fields= stat_fields,
-    stat_fields_f = stat_fields_f,
+    Xf_set=Xf_set,
+    stat_fields=stat_fields,
+    stat_fields_f=stat_fields_f,
     status_array_size=status_array_size,
 )
 
@@ -284,9 +284,9 @@ train_dataset = BasicDataset(
     data_processor,
     train_fights,
     X_set=X_set,
-    Xf_set = Xf_set,
-    stat_fields= stat_fields,
-    stat_fields_f = stat_fields_f,
+    Xf_set=Xf_set,
+    stat_fields=stat_fields,
+    stat_fields_f=stat_fields_f,
     status_array_size=status_array_size,
 )
 
@@ -294,25 +294,34 @@ test_dataset = BasicDataset(
     data_processor,
     test_fights,
     X_set=X_set,
-    Xf_set = Xf_set,
-    stat_fields= stat_fields,
-    stat_fields_f = stat_fields_f,
+    Xf_set=Xf_set,
+    stat_fields=stat_fields,
+    stat_fields_f=stat_fields_f,
     status_array_size=status_array_size,
 )
 
-# forecast_dataset = ForecastDataset(
-#     data_processor=data_processor,
-#     X_set=X_set,
-#     Xf_set = Xf_set,
-#     stat_fields= stat_fields,
-#     status_array_size=status_array_size,
-# )
+forecast_dataset = ForecastDataset(
+    data_processor=data_processor,
+    X_set=X_set,
+    Xf_set=Xf_set,
+    stat_fields=stat_fields,
+    stat_fields_f=stat_fields_f,
+    status_array_size=status_array_size,
+)
 
 # %%
-batch_size = 64#64 # 2048
-early_train_dataloader = torch.utils.data.DataLoader(early_train_dataset, batch_size=batch_size, shuffle=True)
-train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+# %%
+batch_size = 64  # 64 # 2048
+early_train_dataloader = torch.utils.data.DataLoader(
+    early_train_dataset, batch_size=batch_size, shuffle=True
+)
+train_dataloader = torch.utils.data.DataLoader(
+    train_dataset, batch_size=batch_size, shuffle=True
+)
+test_dataloader = torch.utils.data.DataLoader(
+    test_dataset, batch_size=batch_size, shuffle=False
+)
 
 # %%
 
@@ -320,34 +329,33 @@ test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_siz
 seed = 20
 torch.manual_seed(seed)
 import random
+
 random.seed(seed)
 np.random.seed(seed)
 
 # %%
-dropout=0.45 # 0.35 seemed to work good, but also 0.45 or even 0.5
+dropout = 0.45  # 0.35 seemed to work good, but also 0.45 or even 0.5
 model = SimpleFightNet(
-        input_size=116,
-        # input_size_f=len(Xf_set),
-        dropout_prob=dropout,
-        # fighter_network_shape=[256, 512, 1024, 512],
-        # network_shape=[2048, 1024, 512, 128, 64, 1],
-        # network_shape=[122, 1024, 2048, 1024, 512, 256, 128, 64, 1],
-        # network_shape=[512,1024, 512, 256, 128, 64, 1], 
-        # network_shape=[256, 512, 256, 128, 64, 1],  # This was the best one so far
-        network_shape=[512, 128, 64, 1],
-        status_array_size=status_array_size,
-        # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
-        fighter_transformer_kwargs=dict(
-            state_dim=20,#20,
-            stat_dim=len(stat_fields),
-            match_dim=len(stat_fields_f),
-            layer_sizes=[512, 128, 64, 10],
-            #layer_sizes=[128, 64, 10], # This better(?)
-            # layer_sizes=[128, 512, 256, 128, 64, 10], # This worked
-            dropout=dropout*0.9,
-    )
-            
-        
+    input_size=116,
+    # input_size_f=len(Xf_set),
+    dropout_prob=dropout,
+    # fighter_network_shape=[256, 512, 1024, 512],
+    # network_shape=[2048, 1024, 512, 128, 64, 1],
+    # network_shape=[122, 1024, 2048, 1024, 512, 256, 128, 64, 1],
+    # network_shape=[512,1024, 512, 256, 128, 64, 1],
+    # network_shape=[256, 512, 256, 128, 64, 1],  # This was the best one so far
+    network_shape=[512, 128, 64, 1],
+    status_array_size=status_array_size,
+    # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
+    fighter_transformer_kwargs=dict(
+        state_dim=20,  # 20,
+        stat_dim=len(stat_fields),
+        match_dim=len(stat_fields_f),
+        layer_sizes=[512, 128, 64],
+        # layer_sizes=[128, 64, 10], # This better(?)
+        # layer_sizes=[128, 512, 256, 128, 64, 10], # This worked
+        dropout=dropout * 0.9,
+    ),
 )
 # optimizer = torch.optim.Adam(params=model.parameters(), lr=2e-3, weight_decay=2e-5)
 # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -356,35 +364,37 @@ model = SimpleFightNet(
 # mlflow.end_run()
 # mlflow.start_run()
 
-optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=2e-5)#, weight_decay=2e-5)
+optimizer = torch.optim.Adam(
+    params=model.parameters(), lr=1e-3, weight_decay=2e-5
+)  # , weight_decay=2e-5)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.7, patience=2
+    optimizer, mode="min", factor=0.7, patience=2
 )
 
 trainer = Trainer(
-    train_loader = train_dataloader,
-    test_loader = test_dataloader,
-    model = model,
-    optimizer = optimizer,
-    scheduler= scheduler,
-    loss_fn =BettingLoss(),
+    train_loader=train_dataloader,
+    test_loader=test_dataloader,
+    model=model,
+    optimizer=optimizer,
+    scheduler=scheduler,
+    loss_fn=BettingLoss(),
     mlflow_tracking=False,
     device=device,
-)   
+)
 
 # %%
 trainer.train(
-    epochs=15,
+    epochs=10,
     train_loader=early_train_dataloader,
     test_loader=test_dataloader,
 )
 
 # %%
-#trainer.train(epochs=30) # ~8 is a good match if dropout to 0.35 
+trainer.train(epochs=25)  # ~8 is a good match if dropout to 0.35
 
 # %%
 # Save model dict
-#torch.save(model.state_dict(), 'model.pth')
+# torch.save(model.state_dict(), 'model.pth')
 
 # %%
 
@@ -400,7 +410,7 @@ stats = PredictionPlots.show_fight_prediction_detail_from_dataset(
     ax=ax,
 )
 
-ax.set_ylim(-10,30)
+ax.set_ylim(-10, 30)
 ax.grid()
 
 # %%
@@ -414,16 +424,18 @@ df = pd.DataFrame(
         "correct",
         "bet",
         "win",
-        "fight_id"
+        "fight_id",
     ],
 )
 
 df = df.merge(
-    data_processor.data[["fight_id", "fighter_id", "event_date", "event_id", "weight_class"]],
+    data_processor.data[
+        ["fight_id", "fighter_id", "event_date", "event_id", "weight_class"]
+    ],
     on="fight_id",
 )
 
-df["confidence"] = abs((df["Prediction"] - 0.5) *2)
+df["confidence"] = abs((df["Prediction"] - 0.5) * 2)
 
 # df = df[df["confidence"] > ]
 
@@ -431,17 +443,23 @@ cash0 = 200
 
 df = df.sort_values(by="event_date")
 
-cash = [cash0,]
-invest = [cash0,]
-dates = [None,]
+cash = [
+    cash0,
+]
+invest = [
+    cash0,
+]
+dates = [
+    None,
+]
 
 print("Max confidence: ", df["confidence"].max())
 print("Max bet: ", df["bet"].max())
 
 
-for date, group in df.groupby("event_date"):  
+for date, group in df.groupby("event_date"):
     # max_bet = max(cash[-1] * 0.5, 10)
-    
+
     # win = (group["confidence"]*group["win"]).sum() * max_bet / 10 / group["confidence"].sum()
     # bet = (group["confidence"]*group["bet"]).sum() * max_bet / 10 / group["confidence"].sum()
 
@@ -453,11 +471,11 @@ for date, group in df.groupby("event_date"):
     # dates.append(date)
 
     max_bet = max(cash[-1] * 0.1, 10) / df["confidence"].max()
-    win = (group["confidence"]*group["win"] * max_bet / 10).sum()
-    bet = (group["confidence"]*group["bet"] * max_bet / 10).sum()
+    win = (group["confidence"] * group["win"] * max_bet / 10).sum()
+    bet = (group["confidence"] * group["bet"] * max_bet / 10).sum()
 
     if bet > max_bet:
-        win = win/bet * max_bet
+        win = win / bet * max_bet
         bet = max_bet
 
     extra_added = max(bet - cash[-1], 0)
@@ -467,8 +485,6 @@ for date, group in df.groupby("event_date"):
     cash.append(cash_i)
     dates.append(date)
 
-
-    
 
 cash = cash[1:]
 invest = invest[1:]
@@ -492,176 +508,332 @@ ax.plot(
 
 ax.plot(
     dates,
-    [x-y for x,y in zip(cash,invest)],
+    [x - y for x, y in zip(cash, invest)],
     label="profit",
 )
 
-ax.axhline(0, c='k')
-ax.tick_params(axis='x', labelrotation=45)
+ax.axhline(0, c="k")
+ax.tick_params(axis="x", labelrotation=45)
 
 ax.legend()
 ax.grid()
 
 # %%
 import logging
+
 logger = logging.getLogger(__name__)
 
 # %%
 
 # %%
-len(names_f)
-
-# %%
-forecast_dataset = ForecastDataset(
-    data_processor=data_processor,
-    X_set=X_set,
-    Xf_set = Xf_set,
-    stat_fields= stat_fields,
-    status_array_size=status_array_size,
-)
-
-# %%
-trans_data = forecast_dataset.get_trans_stats()
-
-# %%
-trans_data
+from datetime import date
 
 # %%
 self = forecast_dataset
 
 # %%
-parse_ids
+forecast_dataset.update_data_trans(model.transformer)
 
 # %%
-fighter_names[0]
+from ufcpredictor.utils import pad_or_truncate
+
+padding = 20
 
 # %%
-self.Xf_set
+len(fighter_names)
 
 # %%
-"weight" in self.data_processor.normalized_fields
+len(opponent_names)
 
 # %%
-np.asarray(fight_features).T
+for f, o, fightfeat in zip(fighter_names, opponent_names, fight_features):
+    print(f"\t{f}\n\t{o}\n\t{fightfeat}\n")
 
-        # %%
-        fighter_names= ["Charles Oliveira", "Islam Makhachev"]
-        opponent_names= ["Ilia Topuria", "Arman Tsarukyan"]
-        event_dates= [date(2024, 12, 18), date(2025, 1, 1)]
-        fighter_odds=[1.5, 1.5]
-        opponent_odds= [1, 1]
-        model=trainer.model
-        fight_features=[[3, 155], [5, 156]]
-        parse_ids: bool = False
-        device: str = "cpu"
-        if not parse_ids:
-            fighter_ids = [self.data_processor.get_fighter_id(x) for x in fighter_names]
-            opponent_ids = [
-                self.data_processor.get_fighter_id(x) for x in opponent_names
+# %%
+len(fighter_names)
+
+# %%
+fighter_names = [
+    "Charles Oliveira",
+    "Islam Makhachev",
+    "Shavkat Rakhmonov",
+    "Ciryl Gane",
+    "Bryce Mitchell",
+    "Nate Landwehr",
+    "Dominick Reyes",
+    "Vicente Luque",
+    "Movsar Evloev",
+    "Randy Brown",
+    "Chris Weidman",
+    "Cody Durden",
+    "Michael Chiesa",
+    "Clay Guida",
+    "Kennedy Nzechukwu",
+]
+opponent_names = [
+    "Ilia Topuria",
+    "Arman Tsarukyan",
+    "Ian Machado Garry",
+    "Alexander Volkov",
+    "Kron Gracie",
+    "Choi Doo-ho",
+    "Anthony Smith",
+    "Themba Gorimbo",
+    "Aljamain Sterling",
+    "Bryan Battle",
+    "Eryk Anders",
+    "Joshua Van",
+    "Max Griffin",
+    "Chase Hooper",
+    "Lukasz Brzeski",
+]
+event_dates = [date(2024, 11, 6)] * len(fighter_names)
+fighter_odds = [1] * len(fighter_names)
+opponent_odds = [1] * len(opponent_names)
+model = trainer.model
+fight_features = [
+    [3, 155],
+    [5, 156],
+    [5, 175],
+    [3, 265],
+    [3, 145],
+    [3, 145],
+    [3, 205],
+    [3, 175],
+    [3, 145],
+    [3, 175],
+    [3, 185],
+    [3, 125],
+    [3, 175],
+    [3, 155],
+    [3, 265],
+]
+parse_ids: bool = False
+device: str = "cpu"
+if not parse_ids:
+    fighter_ids = [self.data_processor.get_fighter_id(x) for x in fighter_names]
+    opponent_ids = [self.data_processor.get_fighter_id(x) for x in opponent_names]
+else:
+    fighter_ids = fighter_names
+    opponent_ids = opponent_names
+
+match_data = pd.DataFrame(
+    {
+        "fighter_id": fighter_ids + opponent_ids,
+        "event_date_forecast": event_dates * 2,
+        "opening": np.concatenate((fighter_odds, opponent_odds)),
+    }
+)
+
+# %%
+len(match_data)
+
+# %%
+for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
+    match_data[feature_name] = np.concatenate((stats, stats))
+
+match_data = match_data.merge(
+    self.data_processor.data_normalized,
+    left_on="fighter_id",
+    right_on="fighter_id",
+)
+
+match_data = match_data[match_data["event_date"] < match_data["event_date_forecast"]]
+match_data = match_data.sort_values(
+    by=["fighter_id", "event_date"],
+    ascending=[True, False],
+)
+match_data = match_data.drop_duplicates(
+    subset=["fighter_id", "event_date_forecast"],
+    keep="first",
+)
+match_data["id_"] = (
+    match_data["fighter_id"].astype(str)
+    + "_"
+    + match_data["event_date_forecast"].astype(str)
+)
+
+
+# Add time_since_last_fight information
+match_data["time_since_last_fight"] = (
+    pd.to_datetime(match_data["event_date_forecast"]) - match_data["event_date"]
+).dt.days
+match_data["time_since_last_fight"] = (
+    match_data["time_since_last_fight"]
+    / self.data_processor.data_aggregated["time_since_last_fight"].mean()
+)
+
+
+# This data dict is used to facilitate the construction of the tensors
+data_dict = {
+    id_: data
+    for id_, data in zip(
+        match_data["id_"].values,
+        np.asarray([match_data[x] for x in self.X_set]).T,
+    )
+}
+match_data = match_data.merge(
+    trans_data[["fight_id", "fighter_id", "previous_fights", "previous_opponents"]]
+)
+
+for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
+    match_data[feature_name] = np.concatenate((stats, stats))
+
+if len(self.Xf_set) > 0:
+    fight_data_dict = {
+        id_: data
+        for id_, data in zip(
+            match_data["id_"].values,
+            np.asarray([match_data[x] for x in self.Xf_set]).T,
+        )
+    }
+else:
+    fight_data_dict = {id_: [] for id_ in match_data["id_"].values}
+
+trans_data_f_dict = {
+    id_: data
+    for id_, data in zip(
+        match_data["id_"].values,
+        np.asarray(
+            [
+                pad_or_truncate(self.trans_data[idxs], padding).detach().numpy()
+                for idxs in match_data["previous_fights"].values
             ]
-        else:
-            fighter_ids = fighter_names
-            opponent_ids = opponent_names
+        ),
+    )
+}
 
-        match_data = pd.DataFrame(
-            {
-                "fighter_id": fighter_ids + opponent_ids,
-                "event_date_forecast": event_dates * 2,
-                "opening": np.concatenate((fighter_odds, opponent_odds)),
-            }
+trans_data_o_dict = {
+    id_: data
+    for id_, data in zip(
+        match_data["id_"].values,
+        np.asarray(
+            [
+                pad_or_truncate(self.trans_data[idxs], padding).detach().numpy()
+                for idxs in match_data["previous_opponents"].values
+            ]
+        ),
+    )
+}
+
+data = [
+    torch.FloatTensor(
+        np.asarray(
+            [
+                data_dict[fighter_id + "_" + str(event_date)]
+                for fighter_id, event_date in zip(fighter_ids, event_dates)
+            ]
         )
-
-        # %%
-        for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
-            match_data[feature_name] = np.concatenate((stats, stats))
-
-        match_data = match_data.merge(
-            self.data_processor.data_normalized,
-            left_on="fighter_id",
-            right_on="fighter_id",
+    ),  # X1
+    torch.FloatTensor(
+        np.asarray(
+            [
+                data_dict[fighter_id + "_" + str(event_date)]
+                for fighter_id, event_date in zip(opponent_ids, event_dates)
+            ]
         )
-
-        match_data = match_data[
-            match_data["event_date"] < match_data["event_date_forecast"]
-        ]
-        match_data = match_data.sort_values(
-            by=["fighter_id", "event_date"],
-            ascending=[True, False],
+    ),  # X2
+    torch.FloatTensor(
+        np.asarray(
+            [
+                fight_data_dict[fighter_id + "_" + str(event_date)]
+                for fighter_id, event_date in zip(fighter_ids, event_dates)
+            ]
         )
-        match_data = match_data.drop_duplicates(
-            subset=["fighter_id", "event_date_forecast"],
-            keep="first",
+    ),  # X3
+    torch.FloatTensor(np.asarray(fighter_odds)).reshape(-1, 1),  # Odds1,
+    torch.FloatTensor(np.asarray(opponent_odds)).reshape(-1, 1),  # Odds2
+    torch.FloatTensor(
+        np.asarray(
+            [
+                trans_data_f_dict[fighter_id + "_" + str(event_date)]
+                for fighter_id, event_date in zip(fighter_ids, event_dates)
+            ]
         )
-        match_data["id_"] = (
-            match_data["fighter_id"].astype(str)
-            + "_"
-            + match_data["event_date_forecast"].astype(str)
+    ),
+    torch.FloatTensor(
+        np.asarray(
+            [
+                trans_data_f_dict[fighter_id + "_" + str(event_date)]
+                for fighter_id, event_date in zip(opponent_ids, event_dates)
+            ]
         )
-
-
-        # Add time_since_last_fight information
-        match_data["time_since_last_fight"] = (
-            pd.to_datetime(match_data["event_date_forecast"]) - match_data["event_date"]
-        ).dt.days
-        match_data["time_since_last_fight"] = (
-            match_data["time_since_last_fight"]
-            / self.data_processor.data_aggregated["time_since_last_fight"].mean()
+    ),
+    torch.FloatTensor(
+        np.asarray(
+            [
+                trans_data_o_dict[fighter_id + "_" + str(event_date)]
+                for fighter_id, event_date in zip(fighter_ids, event_dates)
+            ]
         )
+    ),
+    torch.FloatTensor(
+        np.asarray(
+            [
+                trans_data_o_dict[fighter_id + "_" + str(event_date)]
+                for fighter_id, event_date in zip(opponent_ids, event_dates)
+            ]
+        )
+    ),
+]
 
+# %%
+X1, X2, X3, odds1, odds2, ff, of, fo, oo = data
 
-        # This data dict is used to facilitate the construction of the tensors
-        data_dict = {
-            id_: data
-            for id_, data in zip(
-                match_data["id_"].values,
-                np.asarray([match_data[x] for x in self.X_set]).T,
-            )
-        }
+# %%
+model = trainer.model
 
-        for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
-            match_data[feature_name] = np.concatenate((stats, stats))
+# %%
+X1, X2, X3, odds1, odds2, ff, of, fo, oo, model = (
+    X1.to(device),
+    X2.to(device),
+    X3.to(device),
+    odds1.to(device),
+    odds2.to(device),
+    ff.to(device),
+    of.to(device),
+    fo.to(device),
+    oo.to(device),
+    model.to(device),
+)
 
-        if len(self.Xf_set) > 0:
-            fight_data_dict = {
-                id_: data
-                for id_, data in zip(
-                    match_data["id_"].values,
-                    np.asarray([match_data[x] for x in self.Xf_set]).T,
-                )
-            }
-        else:
-            fight_data_dict = {id_: [] for id_ in match_data["id_"].values}
+# %%
+model.eval()
+with torch.no_grad():
+    p1 = model(X1, X2, X3, odds1, odds2, ff, of, fo, oo)
+    p2 = 1 - model(X2, X1, X3, odds2, odds1, of, ff, oo, fo)
 
-        data = [
-            torch.FloatTensor(
-                np.asarray(
-                    [
-                        data_dict[fighter_id + "_" + str(event_date)]
-                        for fighter_id, event_date in zip(fighter_ids, event_dates)
-                    ]
-                )
-            ),  # X1
-            torch.FloatTensor(
-                np.asarray(
-                    [
-                        data_dict[fighter_id + "_" + str(event_date)]
-                        for fighter_id, event_date in zip(opponent_ids, event_dates)
-                    ]
-                )
-            ),  # X2
-            torch.FloatTensor(
-                np.asarray(
-                    [
-                        fight_data_dict[fighter_id + "_" + str(event_date)]
-                        for fighter_id, event_date in zip(fighter_ids, event_dates)
-                    ]
-                )
-            ),  # X3
-            torch.FloatTensor(np.asarray(fighter_odds)).reshape(-1, 1),  # Odds1,
-            torch.FloatTensor(np.asarray(opponent_odds)).reshape(-1, 1),  # Odds2
-        ]
-    
+# %%
+for f, o, fightfeat, p1h, p2h in zip(
+    fighter_names, opponent_names, fight_features, p1, p2
+):
+    print(
+        f"\t{f}\n\t{o}\n\t{fightfeat}\n\t{(p1h[0] + p2h[0]) / 2:.3f}+-{abs(p1h[0]-p2h[0]):.3f}\n"
+    )
 
+# %%
+opponent_names
+
+# %%
+
+# %%
+
+# %%
+match_data["previous_fights"].values[0]
+
+# %%
+
+# %%
+trans_data.iloc[11741]
+
+# %%
+match_data
+
+# %%
+self.trans_data[match_data["previous_opponents"][0]]
+
+# %%
+match_data["previous_fights"]
 
 # %%
 

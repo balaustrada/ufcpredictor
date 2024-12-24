@@ -265,7 +265,7 @@ from ufcpredictor.loss_functions import BettingLoss
 
 
 # %%
-status_array_size = 30
+status_array_size = 15
 Xf_set = ["num_rounds", "weight"]
 stat_fields_f = ["num_rounds", "weight", "winner"]
 
@@ -336,7 +336,7 @@ np.random.seed(seed)
 # %%
 dropout = 0.45  # 0.35 seemed to work good, but also 0.45 or even 0.5
 model = SimpleFightNet(
-    input_size=116,
+    input_size=106,
     # input_size_f=len(Xf_set),
     dropout_prob=dropout,
     # fighter_network_shape=[256, 512, 1024, 512],
@@ -348,7 +348,7 @@ model = SimpleFightNet(
     status_array_size=status_array_size,
     # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
     fighter_transformer_kwargs=dict(
-        state_dim=20,  # 20,
+        state_dim=15,  # 20,
         stat_dim=len(stat_fields),
         match_dim=len(stat_fields_f),
         layer_sizes=[512, 128, 64],

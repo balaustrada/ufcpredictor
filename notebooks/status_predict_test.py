@@ -384,13 +384,13 @@ trainer = Trainer(
 
 # %%
 trainer.train(
-    epochs=10,
+    epochs=15,
     train_loader=early_train_dataloader,
     test_loader=test_dataloader,
 )
 
 # %%
-trainer.train(epochs=2)  # ~8 is a good match if dropout to 0.35
+trainer.train(epochs=5)  # ~8 is a good match if dropout to 0.35
 
 # %%
 # Save model dict
@@ -540,19 +540,6 @@ from ufcpredictor.utils import pad_or_truncate
 padding = 20
 
 # %%
-len(fighter_names)
-
-# %%
-len(opponent_names)
-
-# %%
-for f, o, fightfeat in zip(fighter_names, opponent_names, fight_features):
-    print(f"\t{f}\n\t{o}\n\t{fightfeat}\n")
-
-# %%
-len(fighter_names)
-
-# %%
 fighter_names = [
     "Charles Oliveira",
     "Islam Makhachev",
@@ -627,6 +614,9 @@ match_data = pd.DataFrame(
 
 # %%
 len(match_data)
+
+# %%
+trans_data = forecast_dataset.get_trans_stats()
 
 # %%
 for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
@@ -1162,5 +1152,15 @@ group["win"].sum() - group["bet"].sum()
 group["bet"].count()
 
 # %%
+
+# %%
+forecast_dataset.get_forecast_prediction(
+    fighter_names = ["Ilia Topuria",],
+    opponent_names = ["Islam Makhachev",],
+    event_dates = ["20250808",],
+    fighter_odds = [100,],
+    opponent_odds = [100,],
+    model = model,
+)
 
 # %%

@@ -84,6 +84,7 @@ data_processor = DataProcessor(
 if True:
     X_set = [
         "age",
+        # "notice_days",
         # "body_strikes_att_opponent_per_minute",
         # "body_strikes_att_per_minute",
         "body_strikes_succ_opponent_per_minute",
@@ -151,6 +152,7 @@ else:
 
 stat_fields = [
         "age",
+        # "notice_days",
         # "body_strikes_att_opponent_per_minute",
         # "body_strikes_att_per_minute",
         "body_strikes_succ_opponent_per_minute",
@@ -227,6 +229,9 @@ data_processor.add_per_minute_and_fight_stats()
 data_processor.normalize_data()
 
 # %% [markdown]
+# ___
+
+# %% [markdown]
 # ----
 
 # %%
@@ -238,6 +243,19 @@ fight_ids = data_processor.data["fight_id"].unique()
 invalid_fights = set(data_processor.data[data_processor.data["num_fight"] < 5]["fight_id"]) # The usual is 4
 
 # invalid_fights |= set(self.data_aggregated[self.data_aggregated["event_date"] < "2013-01-01"]["fight_id"])
+
+# %%
+len(invalid_fights)
+
+# %%
+invalid_fights.update(
+    data_processor.data[
+        data_processor.data["notice_days"] != 1/60
+    ]["fight_id"]
+)
+
+# %%
+len(invalid_fights)
 
 # %%
 early_split_date = "2017-01-01"#"2017-01-01"
@@ -326,7 +344,7 @@ test_dataloader = torch.utils.data.DataLoader(
 # %%
 
 # %%
-seed = 50
+seed = 3
 torch.manual_seed(seed)
 import random
 
@@ -334,9 +352,11 @@ random.seed(seed)
 np.random.seed(seed)
 
 # %%
+
+# %%
 dropout = 0.45  # 0.35 seemed to work good, but also 0.45 or even 0.5
 model = SimpleFightNet(
-    input_size=106,
+    input_size=2*len(X_set)+ len(Xf_set) + 2 + 2*status_array_size, # 2 are the odds,
     # input_size_f=len(Xf_set),
     dropout_prob=dropout,
     # fighter_network_shape=[256, 512, 1024, 512],
@@ -348,7 +368,7 @@ model = SimpleFightNet(
     status_array_size=status_array_size,
     # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
     fighter_transformer_kwargs=dict(
-        state_dim=15,  # 20,
+        state_dim=status_array_size,  # 20,
         stat_dim=len(stat_fields),
         match_dim=len(stat_fields_f),
         layer_sizes=[512, 128, 64],
@@ -390,10 +410,10 @@ trainer.train(
 )
 
 # %%
-trainer.train(epochs=5)  # ~8 is a good match if dropout to 0.35
+trainer.train(epochs=10)  # ~8 is a good match if dropout to 0.35
 
 # %%
-# Save model dict
+# Save modeÇdict
 # torch.save(model.state_dict(), 'model.pth')
 
 # %%
@@ -556,6 +576,9 @@ fighter_names = [
     "Michael Chiesa",
     "Clay Guida",
     "Kennedy Nzechukwu",
+    "Alex Pereira",
+    "Dustin Poirier",
+    "Dricus Du Plesis",
 ]
 opponent_names = [
     "Ilia Topuria",
@@ -573,6 +596,9 @@ opponent_names = [
     "Max Griffin",
     "Chase Hooper",
     "Lukasz Brzeski",
+    "Magomed Ankalaev",
+    "Max Holloway",
+    "Khamzat Chimaev",
 ]
 event_dates = [date(2024, 11, 6)] * len(fighter_names)
 fighter_odds = [1] * len(fighter_names)
@@ -594,6 +620,9 @@ fight_features = [
     [3, 175],
     [3, 155],
     [3, 265],
+    [5, 205],
+    [5, 155],
+    [5, 186],
 ]
 parse_ids: bool = False
 device: str = "cpu"

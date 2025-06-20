@@ -258,7 +258,7 @@ invalid_fights.update(
 len(invalid_fights)
 
 # %%
-early_split_date = "2017-01-01"#"2017-01-01"
+early_split_date = "2018-01-01"#"2017-01-01"
 split_date = "2023-08-01"#"2023-08-01"
 max_date = "2025-11-11" 
 
@@ -283,7 +283,7 @@ from ufcpredictor.loss_functions import BettingLoss
 
 
 # %%
-status_array_size = 15
+status_array_size = 8
 Xf_set = ["num_rounds", "weight"]
 stat_fields_f = ["num_rounds", "weight", "winner"]
 
@@ -344,7 +344,7 @@ test_dataloader = torch.utils.data.DataLoader(
 # %%
 
 # %%
-seed = 3
+seed = 4
 torch.manual_seed(seed)
 import random
 
@@ -364,14 +364,15 @@ model = SimpleFightNet(
     # network_shape=[122, 1024, 2048, 1024, 512, 256, 128, 64, 1],
     # network_shape=[512,1024, 512, 256, 128, 64, 1],
     # network_shape=[256, 512, 256, 128, 64, 1],  # This was the best one so far
-    network_shape=[512, 128, 64, 1],
+    # network_shape=[512, 128, 64, 1],
+    network_shape=[128, 64, 32, 1],
     status_array_size=status_array_size,
     # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
     fighter_transformer_kwargs=dict(
         state_dim=status_array_size,  # 20,
         stat_dim=len(stat_fields),
         match_dim=len(stat_fields_f),
-        layer_sizes=[512, 128, 64],
+        layer_sizes=[128, 64],
         # layer_sizes=[128, 64, 10], # This better(?)
         # layer_sizes=[128, 512, 256, 128, 64, 10], # This worked
         dropout=dropout * 0.9,
@@ -385,7 +386,7 @@ model = SimpleFightNet(
 # mlflow.start_run()
 
 optimizer = torch.optim.Adam(
-    params=model.parameters(), lr=1e-3, weight_decay=2e-5
+    params=model.parameters(), lr=1.3e-3, weight_decay=1e-5#1e-5
 )  # , weight_decay=2e-5)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode="min", factor=0.7, patience=2
@@ -404,7 +405,7 @@ trainer = Trainer(
 
 # %%
 trainer.train(
-    epochs=15,
+    epochs=10,
     train_loader=early_train_dataloader,
     test_loader=test_dataloader,
 )
@@ -555,75 +556,53 @@ self = forecast_dataset
 forecast_dataset.update_data_trans(model.transformer)
 
 # %%
-from ufcpredictor.utils import pad_or_truncate
+from ufcpredictor.utils import pad_or_truncate, convert_odds_to_decimal
 
 padding = 20
 
 # %%
+convert_odds_to_decimal([100,])
+
+# %%
 fighter_names = [
-    "Charles Oliveira",
-    "Islam Makhachev",
-    "Shavkat Rakhmonov",
-    "Ciryl Gane",
-    "Bryce Mitchell",
-    "Nate Landwehr",
-    "Dominick Reyes",
-    "Vicente Luque",
-    "Movsar Evloev",
-    "Randy Brown",
-    "Chris Weidman",
-    "Cody Durden",
-    "Michael Chiesa",
-    "Clay Guida",
-    "Kennedy Nzechukwu",
-    "Alex Pereira",
-    "Dustin Poirier",
-    "Dricus Du Plesis",
+    "Khalil Rountree",
+    "Rafael Fiziev",
+    "Curtis Blaydes",
+    "Tofiq Musayev",
+    "Ismail Naurdiev",
 ]
+fighter_odds = convert_odds_to_decimal([
+    +1000,#-130,
+    105,
+    -270,
+    140,
+    150
+])
 opponent_names = [
-    "Ilia Topuria",
-    "Arman Tsarukyan",
-    "Ian Machado Garry",
-    "Alexander Volkov",
-    "Kron Gracie",
-    "Choi Doo-ho",
-    "Anthony Smith",
-    "Themba Gorimbo",
-    "Aljamain Sterling",
-    "Bryan Battle",
-    "Eryk Anders",
-    "Joshua Van",
-    "Max Griffin",
-    "Chase Hooper",
-    "Lukasz Brzeski",
-    "Magomed Ankalaev",
-    "Max Holloway",
-    "Khamzat Chimaev",
+    "Jamahal Hill",
+    "Ignacio Bahamondes",
+    "Rizvan Kuniev",
+    "Myktybek Orolbai",
+    "JunYong Park",
 ]
-event_dates = [date(2024, 11, 6)] * len(fighter_names)
-fighter_odds = [1] * len(fighter_names)
-opponent_odds = [1] * len(opponent_names)
-model = trainer.model
+opponent_odds = convert_odds_to_decimal([
+    -1000,#110,
+    -125,
+    220,
+    -166,
+    -180
+])
 fight_features = [
-    [3, 155],
-    [5, 156],
-    [5, 175],
-    [3, 265],
-    [3, 145],
-    [3, 145],
-    [3, 205],
-    [3, 175],
-    [3, 145],
-    [3, 175],
-    [3, 185],
-    [3, 125],
-    [3, 175],
-    [3, 155],
-    [3, 265],
     [5, 205],
-    [5, 155],
-    [5, 186],
+    [3, 155],
+    [3, 265],
+    [3, 165], # orolbai
+    [3, 185],
 ]
+event_dates = [date(2025, 6, 20)] * len(fighter_names)
+# fighter_odds = [1] * len(fighter_names)
+# opponent_odds = [1] * len(opponent_names)
+model = trainer.model
 parse_ids: bool = False
 device: str = "cpu"
 if not parse_ids:
@@ -827,8 +806,48 @@ for f, o, fightfeat, p1h, p2h in zip(
     fighter_names, opponent_names, fight_features, p1, p2
 ):
     print(
-        f"\t{f}\n\t{o}\n\t{fightfeat}\n\t{(p1h[0] + p2h[0]) / 2:.3f}+-{abs(p1h[0]-p2h[0]):.3f}\n"
+        f"\t{f}\n\t{o}\n\t{fightfeat}\n\t{(p1h[0] + p2h[0]) / 2:.5f}+-{abs(p1h[0]-p2h[0]):.5f}\n"
     )
+
+# %%
+
+# %%
+value = (p1 + p2)/2
+confidence = abs((value - 0.5)*2)
+
+# %%
+max_bet = 20 / 0.8
+bet = confidence*max_bet/30
+
+# %%
+bet
+
+# %%
+bet.sum()
+
+# %%
+bets = confidence * max_bet / 10 *10
+bets
+
+# %%
+bets = confidence * max_bet / 10 
+bets
+
+# %%
+bets.sum()
+
+ # %%
+ abs((value - 0.5) * 2)
+
+    # %%
+    max_bet = max(cash[-1] * 0.1, 20) / df["confidence"].max()
+    win = (group["confidence"] * group["win"] * max_bet / 10).sum()
+    bet = (group["confidence"] * group["bet"] * max_bet / 10).sum()
+
+    if bet > max_bet:
+        win = win / bet * max_bet
+        bet = max_bet
+
 
 # %%
 opponent_names

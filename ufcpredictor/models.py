@@ -354,8 +354,6 @@ class FighterTransformer(nn.Module):
             X1_new (tensor): Fighter 1 new state tensor of shape (batch_size, state_dim).
             X2_new (tensor): Fighter 2 new state tensor of shape (batch_size, state_dim).
         """
-        if s1.isnan().sum() > 0 or s2.isnan().sum() > 0:
-            import pdb; pdb.set_trace()
             
         # Concatenate all inputs
         combined_input = torch.cat([X1, X2, s1, s2, m], dim=-1)

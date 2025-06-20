@@ -160,6 +160,7 @@ class DataProcessor:
         round_data = self.scraper.fight_scraper.rounds_handler.data
         fighter_data = self.scraper.fighter_scraper.data
         event_data = self.scraper.event_scraper.data
+        replacement_data = self.scraper.replacement_scraper.data
 
         odds_data = self.bfo_scraper.data
 
@@ -209,6 +210,14 @@ class DataProcessor:
             how="left",
             suffixes=("", "_opponent"),
         )
+
+        # Also merging the replacement data if available
+        data = data.merge(
+            replacement_data,
+            on=["fight_id", "fighter_id"],
+            how="left",
+        )
+        data["notice_days"] = 1 / data["notice_days"].fillna(60)
 
         #############################################################
         # Add round data.

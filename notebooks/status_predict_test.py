@@ -344,7 +344,7 @@ test_dataloader = torch.utils.data.DataLoader(
 # %%
 
 # %%
-seed = 4
+seed = 18
 torch.manual_seed(seed)
 import random
 
@@ -621,6 +621,8 @@ match_data = pd.DataFrame(
 )
 
 # %%
+
+# %%
 len(match_data)
 
 # %%
@@ -636,7 +638,9 @@ match_data = match_data.merge(
     right_on="fighter_id",
 )
 
-match_data = match_data[match_data["event_date"] < match_data["event_date_forecast"]]
+match_data = match_data[
+    match_data["event_date"] < match_data["event_date_forecast"]
+]
 match_data = match_data.sort_values(
     by=["fighter_id", "event_date"],
     ascending=[True, False],
@@ -651,17 +655,63 @@ match_data["id_"] = (
     + match_data["event_date_forecast"].astype(str)
 )
 
-
-# Add time_since_last_fight information
-match_data["time_since_last_fight"] = (
-    pd.to_datetime(match_data["event_date_forecast"]) - match_data["event_date"]
-).dt.days
-match_data["time_since_last_fight"] = (
-    match_data["time_since_last_fight"]
-    / self.data_processor.data_aggregated["time_since_last_fight"].mean()
+match_data = match_data.rename(
+    columns={
+        "weight_x": "weight",
+    }
 )
 
+###############################################################
+# Now we need to fix some fields to adapt them to the match to
+# be predicted, since we are modifying the last line we are
+# modifying on top of the last fight.
+###############################################################
+# Add time_since_last_fight information
+match_data["event_date_forecast"] = pd.to_datetime(
+    match_data["event_date_forecast"]
+)
+match_data["time_since_last_fight"] = (
+    match_data["event_date_forecast"] - match_data["event_date"]
+).dt.days
 
+match_data["age"] = (
+    match_data["event_date_forecast"] - match_data["fighter_dob"]
+).dt.days / 365
+match_data["num_fight"] = match_data["num_fight"] + 1
+
+new_fields = ["age", "time_since_last_fight"] + self.Xf_set
+# Now we iterate over enhancers, in case it is a RankedField
+# We need to pass the appropriate fields to rank them.
+fields = []
+exponents = []
+for data_enhancer in self.data_processor.data_enhancers:
+    if isinstance(data_enhancer, RankedFields):
+        for field, exponent in zip(
+            data_enhancer.fields, data_enhancer.exponents
+        ):
+            if field in new_fields:
+                exponents.append(exponent)
+                fields.append(field)
+
+# If there are fields to be ranked, we do so
+if len(fields) > 0:
+    ranked_fields = RankedFields(fields, exponents)
+
+    original_df = self.data_processor.data[
+        [field + "not_ranked" for field in fields]
+    ].rename(columns={field + "not_ranked": field for field in fields})
+    
+    match_data[fields] = ranked_fields.add_data_fields(
+        pd.concat([original_df, match_data[fields]])
+    ).iloc[len(self.data_processor.data) :][fields]
+
+# Now we will normalize the fields that need to be normalized.
+for field in new_fields:
+    if field in self.data_processor.normalization_factors.keys():
+        match_data[field] /= self.data_processor.normalization_factors[field]
+###############################################################
+# Now we start building the tensor to input to the model
+###############################################################
 # This data dict is used to facilitate the construction of the tensors
 data_dict = {
     id_: data

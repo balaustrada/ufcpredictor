@@ -975,6 +975,12 @@ class ForecastDataset(BasicDataset):
             )
         }
 
+        trans_data = self.get_trans_stats()
+
+        match_data = match_data.merge(
+            trans_data[["fight_id", "fighter_id", "previous_fights", "previous_opponents"]]
+        )
+
         for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
             match_data[feature_name] = np.concatenate((stats, stats))
 
@@ -988,6 +994,32 @@ class ForecastDataset(BasicDataset):
             }
         else:
             fight_data_dict = {id_: [] for id_ in match_data["id_"].values}
+
+        trans_data_f_dict = {
+            id_: data
+            for id_, data in zip(
+                match_data["id_"].values,
+                np.asarray(
+                    [
+                        pad_or_truncate(self.trans_data[idxs], padding).detach().numpy()
+                        for idxs in match_data["previous_fights"].values
+                    ]
+                )
+            )
+        }
+
+        trans_data_o_dict = {
+            id_: data
+            for id_, data in zip(
+                match_data["id_"].values,
+                np.asarray(
+                    [
+                        pad_or_truncate(self.trans_data[idxs], padding).detach().numpy()
+                        for idxs in match_data["previous_opponents"].values
+                    ]
+                ),
+            )
+        }
 
         data = [
             torch.FloatTensor(
@@ -1016,20 +1048,56 @@ class ForecastDataset(BasicDataset):
             ),  # X3
             torch.FloatTensor(np.asarray(fighter_odds)).reshape(-1, 1),  # Odds1,
             torch.FloatTensor(np.asarray(opponent_odds)).reshape(-1, 1),  # Odds2
+            torch.FloatTensor(
+                np.asarray(
+                    [
+                        trans_data_f_dict[fighter_id + "_" + str(event_date)]
+                        for fighter_id, event_date in zip(fighter_ids, event_dates)
+                    ]
+                )
+            ),
+            torch.FloatTensor(
+                np.asarray(
+                    [
+                        trans_data_f_dict[fighter_id + "_" + str(event_date)]
+                        for fighter_id, event_date in zip(opponent_ids, event_dates)
+                    ]
+                )
+            ),
+            torch.FloatTensor(
+                np.asarray(
+                    [
+                        trans_data_o_dict[fighter_id + "_" + str(event_date)]
+                        for fighter_id, event_date in zip(fighter_ids, event_dates)
+                    ]
+                )
+            ),
+            torch.FloatTensor(
+                np.asarray(
+                    [
+                        trans_data_o_dict[fighter_id + "_" + str(event_date)]
+                        for fighter_id, event_date in zip(opponent_ids, event_dates)
+                    ]
+                )
+            ),
         ]
 
-        X1, X2, X3, odds1, odds2 = data
-        X1, X2, X3, odds1, odds2, model = (
+        X1, X2, X3, odds1, odds2, ff, of, fo, oo = data
+        X1, X2, X3, odds1, odds2, ff, of, fo, oo, model = (
             X1.to(device),
             X2.to(device),
             X3.to(device),
             odds1.to(device),
             odds2.to(device),
+            ff.to(device),
+            of.to(device),
+            fo.to(device),
+            oo.to(device),
             model.to(device),
         )
         model.eval()
         with torch.no_grad():
-            predictions_1 = model(X1, X2, X3, odds1, odds2).detach().cpu().numpy()
-            predictions_2 = 1 - model(X2, X1, X3, odds2, odds1).detach().cpu().numpy()
+            predictions_1 = model(X1, X2, X3, odds1, odds2, ff, of, fo, oo)
+            predictions_2 = 1 - model(X2, X1, X3, odds2, odds1, of, ff, oo, fo)
 
         return predictions_1, predictions_2

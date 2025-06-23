@@ -14,6 +14,11 @@
 # ---
 
 # %%
+import logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# %%
 import os
 
 
@@ -435,6 +440,8 @@ ax.set_ylim(-10, 30)
 ax.grid()
 
 # %%
+
+# %%
 df = pd.DataFrame(
     stats,
     columns=[
@@ -540,11 +547,6 @@ ax.legend()
 ax.grid()
 
 # %%
-import logging
-
-logger = logging.getLogger(__name__)
-
-# %%
 
 # %%
 from datetime import date
@@ -556,7 +558,7 @@ self = forecast_dataset
 forecast_dataset.update_data_trans(model.transformer)
 
 # %%
-from ufcpredictor.utils import pad_or_truncate, convert_odds_to_decimal
+from ufcpredictor.utils import pad_or_truncate, convert_odds_to_decimal, convert_odds_to_moneyline
 
 padding = 20
 
@@ -565,39 +567,64 @@ convert_odds_to_decimal([100,])
 
 # %%
 fighter_names = [
-    "Khalil Rountree",
-    "Rafael Fiziev",
-    "Curtis Blaydes",
-    "Tofiq Musayev",
-    "Ismail Naurdiev",
+    "Ilia Topuria",
+    "Alexandre Pantoja",
+    "Brandon Royval",
+    "Beneil Dariush",
+    "Payton Talbott",
+    "Jack Hermansson",
+    # "Hyder Amil",
+    # "Viviane Araujo",
+    "Terrance McKinney",
+    # "Sedriques Dumas",
+    # "Jhonata Diniz",
+    # "Niko Price",
 ]
 fighter_odds = convert_odds_to_decimal([
-    +1000,#-130,
-    105,
-    -270,
-    140,
-    150
+    -425,#-130,
+    -265,
+    -125,
+    136,
+    150,
+    160,
+    -185,
 ])
 opponent_names = [
-    "Jamahal Hill",
-    "Ignacio Bahamondes",
-    "Rizvan Kuniev",
-    "Myktybek Orolbai",
-    "JunYong Park",
+    "Charles Oliveira",
+    "Kai Kara-France",
+    "Joshua Van",
+    "Renato Moicano",
+    "Felipe Lima",
+    "Gregory Rodrigues",
+    # "Jose Delgado",
+    # "Tracy Cortez",
+    "Viacheslav Borshchev",
+    # "Jackson McVey",
+    # "Alvin Hines",
+    # "Jacobe Smith"
 ]
 opponent_odds = convert_odds_to_decimal([
-    -1000,#110,
-    -125,
-    220,
-    -166,
-    -180
+    330,
+    215,
+    105,
+    -162,
+    -185,
+    -190,
+    150,
 ])
 fight_features = [
-    [5, 205],
-    [3, 155],
-    [3, 265],
-    [3, 165], # orolbai
+    [5, 155],
+    [5, 125],
+    [3, 125],
+    [3, 155], 
+    [3, 135],
     [3, 185],
+    # [3, 145],
+    # [3, 115],
+    [3, 155],
+    # [3, 185],
+    # [3, 265],
+    # [3, 170],
 ]
 event_dates = [date(2025, 6, 20)] * len(fighter_names)
 # fighter_odds = [1] * len(fighter_names)
@@ -623,241 +650,17 @@ match_data = pd.DataFrame(
 # %%
 
 # %%
-len(match_data)
-
-# %%
-trans_data = forecast_dataset.get_trans_stats()
-
-# %%
-for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
-    match_data[feature_name] = np.concatenate((stats, stats))
-
-match_data = match_data.merge(
-    self.data_processor.data_normalized,
-    left_on="fighter_id",
-    right_on="fighter_id",
+p1, p2 = forecast_dataset.get_forecast_prediction(
+    fighter_names,
+    opponent_names,
+    event_dates,
+    fighter_odds,
+    opponent_odds,
+    model,
+    fight_features,
+    parse_ids = False,
+    device= device
 )
-
-match_data = match_data[
-    match_data["event_date"] < match_data["event_date_forecast"]
-]
-match_data = match_data.sort_values(
-    by=["fighter_id", "event_date"],
-    ascending=[True, False],
-)
-match_data = match_data.drop_duplicates(
-    subset=["fighter_id", "event_date_forecast"],
-    keep="first",
-)
-match_data["id_"] = (
-    match_data["fighter_id"].astype(str)
-    + "_"
-    + match_data["event_date_forecast"].astype(str)
-)
-
-match_data = match_data.rename(
-    columns={
-        "weight_x": "weight",
-    }
-)
-
-###############################################################
-# Now we need to fix some fields to adapt them to the match to
-# be predicted, since we are modifying the last line we are
-# modifying on top of the last fight.
-###############################################################
-# Add time_since_last_fight information
-match_data["event_date_forecast"] = pd.to_datetime(
-    match_data["event_date_forecast"]
-)
-match_data["time_since_last_fight"] = (
-    match_data["event_date_forecast"] - match_data["event_date"]
-).dt.days
-
-match_data["age"] = (
-    match_data["event_date_forecast"] - match_data["fighter_dob"]
-).dt.days / 365
-match_data["num_fight"] = match_data["num_fight"] + 1
-
-new_fields = ["age", "time_since_last_fight"] + self.Xf_set
-# Now we iterate over enhancers, in case it is a RankedField
-# We need to pass the appropriate fields to rank them.
-fields = []
-exponents = []
-for data_enhancer in self.data_processor.data_enhancers:
-    if isinstance(data_enhancer, RankedFields):
-        for field, exponent in zip(
-            data_enhancer.fields, data_enhancer.exponents
-        ):
-            if field in new_fields:
-                exponents.append(exponent)
-                fields.append(field)
-
-# If there are fields to be ranked, we do so
-if len(fields) > 0:
-    ranked_fields = RankedFields(fields, exponents)
-
-    original_df = self.data_processor.data[
-        [field + "not_ranked" for field in fields]
-    ].rename(columns={field + "not_ranked": field for field in fields})
-    
-    match_data[fields] = ranked_fields.add_data_fields(
-        pd.concat([original_df, match_data[fields]])
-    ).iloc[len(self.data_processor.data) :][fields]
-
-# Now we will normalize the fields that need to be normalized.
-for field in new_fields:
-    if field in self.data_processor.normalization_factors.keys():
-        match_data[field] /= self.data_processor.normalization_factors[field]
-###############################################################
-# Now we start building the tensor to input to the model
-###############################################################
-# This data dict is used to facilitate the construction of the tensors
-data_dict = {
-    id_: data
-    for id_, data in zip(
-        match_data["id_"].values,
-        np.asarray([match_data[x] for x in self.X_set]).T,
-    )
-}
-match_data = match_data.merge(
-    trans_data[["fight_id", "fighter_id", "previous_fights", "previous_opponents"]]
-)
-
-for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
-    match_data[feature_name] = np.concatenate((stats, stats))
-
-if len(self.Xf_set) > 0:
-    fight_data_dict = {
-        id_: data
-        for id_, data in zip(
-            match_data["id_"].values,
-            np.asarray([match_data[x] for x in self.Xf_set]).T,
-        )
-    }
-else:
-    fight_data_dict = {id_: [] for id_ in match_data["id_"].values}
-
-trans_data_f_dict = {
-    id_: data
-    for id_, data in zip(
-        match_data["id_"].values,
-        np.asarray(
-            [
-                pad_or_truncate(self.trans_data[idxs], padding).detach().numpy()
-                for idxs in match_data["previous_fights"].values
-            ]
-        ),
-    )
-}
-
-trans_data_o_dict = {
-    id_: data
-    for id_, data in zip(
-        match_data["id_"].values,
-        np.asarray(
-            [
-                pad_or_truncate(self.trans_data[idxs], padding).detach().numpy()
-                for idxs in match_data["previous_opponents"].values
-            ]
-        ),
-    )
-}
-
-data = [
-    torch.FloatTensor(
-        np.asarray(
-            [
-                data_dict[fighter_id + "_" + str(event_date)]
-                for fighter_id, event_date in zip(fighter_ids, event_dates)
-            ]
-        )
-    ),  # X1
-    torch.FloatTensor(
-        np.asarray(
-            [
-                data_dict[fighter_id + "_" + str(event_date)]
-                for fighter_id, event_date in zip(opponent_ids, event_dates)
-            ]
-        )
-    ),  # X2
-    torch.FloatTensor(
-        np.asarray(
-            [
-                fight_data_dict[fighter_id + "_" + str(event_date)]
-                for fighter_id, event_date in zip(fighter_ids, event_dates)
-            ]
-        )
-    ),  # X3
-    torch.FloatTensor(np.asarray(fighter_odds)).reshape(-1, 1),  # Odds1,
-    torch.FloatTensor(np.asarray(opponent_odds)).reshape(-1, 1),  # Odds2
-    torch.FloatTensor(
-        np.asarray(
-            [
-                trans_data_f_dict[fighter_id + "_" + str(event_date)]
-                for fighter_id, event_date in zip(fighter_ids, event_dates)
-            ]
-        )
-    ),
-    torch.FloatTensor(
-        np.asarray(
-            [
-                trans_data_f_dict[fighter_id + "_" + str(event_date)]
-                for fighter_id, event_date in zip(opponent_ids, event_dates)
-            ]
-        )
-    ),
-    torch.FloatTensor(
-        np.asarray(
-            [
-                trans_data_o_dict[fighter_id + "_" + str(event_date)]
-                for fighter_id, event_date in zip(fighter_ids, event_dates)
-            ]
-        )
-    ),
-    torch.FloatTensor(
-        np.asarray(
-            [
-                trans_data_o_dict[fighter_id + "_" + str(event_date)]
-                for fighter_id, event_date in zip(opponent_ids, event_dates)
-            ]
-        )
-    ),
-]
-
-# %%
-X1, X2, X3, odds1, odds2, ff, of, fo, oo = data
-
-# %%
-model = trainer.model
-
-# %%
-X1, X2, X3, odds1, odds2, ff, of, fo, oo, model = (
-    X1.to(device),
-    X2.to(device),
-    X3.to(device),
-    odds1.to(device),
-    odds2.to(device),
-    ff.to(device),
-    of.to(device),
-    fo.to(device),
-    oo.to(device),
-    model.to(device),
-)
-
-# %%
-model.eval()
-with torch.no_grad():
-    p1 = model(X1, X2, X3, odds1, odds2, ff, of, fo, oo)
-    p2 = 1 - model(X2, X1, X3, odds2, odds1, of, ff, oo, fo)
-
-# %%
-for f, o, fightfeat, p1h, p2h in zip(
-    fighter_names, opponent_names, fight_features, p1, p2
-):
-    print(
-        f"\t{f}\n\t{o}\n\t{fightfeat}\n\t{(p1h[0] + p2h[0]) / 2:.5f}+-{abs(p1h[0]-p2h[0]):.5f}\n"
-    )
 
 # %%
 
@@ -866,90 +669,29 @@ value = (p1 + p2)/2
 confidence = abs((value - 0.5)*2)
 
 # %%
-max_bet = 20 / 0.8
-bet = confidence*max_bet/30
+max_bet = 20
+confidence = abs(p1 + p2 -1)
+bet =  max_bet / 10 *confidence
+bet = bet.numpy().flatten().round(2)
 
 # %%
-bet
+for f, o, fightfeat, p1h, p2h, beth, fodds, oodds in zip(
+    fighter_names, opponent_names, fight_features, p1, p2, bet, fighter_odds, opponent_odds,
+):
+    fodds = convert_odds_to_moneyline(fodds)
+    oodds = convert_odds_to_moneyline(oodds)
+    
+    print(
+        f"\t{f}({fodds})\n\t{o}({oodds})\n\t{fightfeat}\n\t{(p1h[0] + p2h[0]) / 2:.5f}+-{abs(p1h[0]-p2h[0]):.5f}\n"
+        f"\tSuggested bet: {beth:.2f}\n"
+    )
 
 # %%
 bet.sum()
 
 # %%
-bets = confidence * max_bet / 10 *10
-bets
 
 # %%
-bets = confidence * max_bet / 10 
-bets
-
-# %%
-bets.sum()
-
- # %%
- abs((value - 0.5) * 2)
-
-    # %%
-    max_bet = max(cash[-1] * 0.1, 20) / df["confidence"].max()
-    win = (group["confidence"] * group["win"] * max_bet / 10).sum()
-    bet = (group["confidence"] * group["bet"] * max_bet / 10).sum()
-
-    if bet > max_bet:
-        win = win / bet * max_bet
-        bet = max_bet
-
-
-# %%
-opponent_names
-
-# %%
-
-# %%
-
-# %%
-match_data["previous_fights"].values[0]
-
-# %%
-
-# %%
-trans_data.iloc[11741]
-
-# %%
-match_data
-
-# %%
-self.trans_data[match_data["previous_opponents"][0]]
-
-# %%
-match_data["previous_fights"]
-
-# %%
-
-        X1, X2, X3, odds1, odds2 = data
-        X1, X2, X3, odds1, odds2, model = (
-            X1.to(device),
-            X2.to(device),
-            X3.to(device),
-            odds1.to(device),
-            odds2.to(device),
-            model.to(device),
-        )
-
-        # %%
-        model.eval()
-        with torch.no_grad():
-            predictions_1 = model(X1, X2, X3, odds1, odds2).detach().cpu().numpy()
-            predictions_2 = 1 - model(X2, X1, X3, odds2, odds1).detach().cpu().numpy()
-
-        X1, X2, X3, odds1, odds2 = data
-        X1, X2, X3, odds1, odds2, model = (
-            X1.to(device),
-            X2.to(device),
-            X3.to(device),
-            odds1.to(device),
-            odds2.to(device),
-            model.to(device),
-        )
 
 # %%
 

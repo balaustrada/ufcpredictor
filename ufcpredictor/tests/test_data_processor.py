@@ -83,11 +83,20 @@ class BaseTestDataProcessor(object):
             }
         )
 
+        self.mock_replacement_data = pd.DataFrame(
+            {
+                "fight_id": [1, ],
+                "fighter_id": ["f1", ],
+                "notice_days": [20, ]
+            }
+        )
+
         # Attach mock data to the scrapers
         self.processor.scraper.fight_scraper.data = self.mock_fight_data
         self.processor.scraper.fight_scraper.rounds_handler.data = self.mock_round_data
         self.processor.scraper.fighter_scraper.data = self.mock_fighter_data
         self.processor.scraper.event_scraper.data = self.mock_event_data
+        self.processor.scraper.replacement_scraper.data = self.mock_replacement_data
         self.processor.bfo_scraper.data = self.mock_odds_data
 
     def test_get_fighter_name_and_id(self):

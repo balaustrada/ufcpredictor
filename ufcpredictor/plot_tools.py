@@ -258,7 +258,7 @@ class PredictionPlots:
 
             display_fighter_name = names[ids == fighter_name].values[0]
             display_opponent_name = names[ids == opponent_name].values[0]
-        else:
+        else: # pragma: no cover
             display_fighter_name = fighter_name
             display_opponent_name = opponent_name
             

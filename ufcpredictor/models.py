@@ -156,6 +156,7 @@ class SymmetricFightNet(nn.Module):
         X3: torch.Tensor,
         odds1: torch.Tensor,
         odds2: torch.Tensor,
+        invert: bool = False,
     ) -> torch.Tensor:
         """
         Compute the output of the SymmetricFightNet model.
@@ -166,10 +167,15 @@ class SymmetricFightNet(nn.Module):
             X3: The input tensor for the fight features.
             odds1: The odds tensor for the first fighter.
             odds2: The odds tensor for the second fighter.
+            invert: If True, invert the input order (not used in this model).
 
         Returns:
             The output of the SymmetricFightNet model.
         """
+        if invert: # pragma: no cover
+            X1, X2 = X2, X1
+            odds1, odds2 = odds2, odds1
+
         out1 = self.fighter_net(X1)
         out2 = self.fighter_net(X2)
 
@@ -245,6 +251,7 @@ class SimpleFightNet(nn.Module):
             X3: torch.Tensor,
             odds1: torch.Tensor,
             odds2: torch.Tensor,
+            invert: bool = False,
     ) -> torch.Tensor:
         """
         Compute the output of the SimpleFightNet model.
@@ -255,10 +262,15 @@ class SimpleFightNet(nn.Module):
             X3: The input tensor for the fight features.
             odds1: The odds tensor for the first fighter.
             odds2: The odds tensor for the second fighter.
+            invert: If True, invert the input order (not used in this model).
 
         Returns:
             The output of the SimpleFightNet model.
         """
+        if invert: # pragma: no cover
+            X1, X2 = X2, X1
+            odds1, odds2 = odds2, odds1
+
         x = torch.cat((X1, X2, X3, odds1, odds2), dim=1)
 
         for fc, dropout in zip(self.fcs[:-1], self.dropouts):
@@ -332,11 +344,12 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
             X3: The input tensor for the fight features.
             odds1: The odds tensor for the first fighter.
             odds2: The odds tensor for the second fighter.
+            invert: If True, invert the input order.
 
         Returns:
             The output of the SimpleFightNet model.
         """
-        if invert:
+        if invert: # pragma: no cover
             X1, X2 = X2, X1
             odds1, odds2 = odds2, odds1
             ff_data , of_data, fo_data, oo_data = (

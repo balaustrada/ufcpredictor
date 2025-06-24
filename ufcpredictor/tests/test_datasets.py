@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from ufcpredictor.datasets import BasicDataset, ForecastDataset
+from ufcpredictor.datasets import BasicDataset, ForecastDataset, DatasetWithTimeEvolution
 
 
 def mock_call_return_args(*args, **kwargs):
@@ -460,6 +460,116 @@ class TestForecastDataset(unittest.TestCase):
             "Columns not found in normalized data: ['missing_column']", str(e.exception)
         )
 
+class TestDatasetWithTimeEvolution(unittest.TestCase):
+    X_set = ["knockdowns_per_minute"]
+    def test_get_trans_stats_winner_binary(self):
+        # Prepare mock data with winner and fighter_id columns
+        mock_data = pd.DataFrame(
+            {
+                "fight_id": ["fight1", "fight1", "fight2", "fight2"],
+                "fighter_id": ["f1", "f2", "f3", "f4"],
+                "event_date": pd.to_datetime(["2023-01-01", "2023-01-01", "2023-01-02", "2023-01-02"]),
+                "num_fight": [1, 1, 2, 2],
+                "opponent_id": ["f2", "f1", "f4", "f3"],
+                "body_strikes_att_per_minute": [1.0, 2.0, 3.0, 4.0],
+                "clinch_strikes_att_per_minute": [1.1, 2.1, 3.1, 4.1],
+                "knockdowns_per_minute": [0.5, 0.6, 0.7, 0.8],
+                "ELO": [1000, 1100, 1200, 1300],
+                "opening": [1.5, 2.0, 1.8, 2.2],  # Add this line
+                "winner": ["f1", "f2", "f3", "f4"],
+            }
+        )
 
-if __name__ == "__main__":  # pragma: no cover
+        # Patch DataProcessor to provide this DataFrame for both normalized and nonagg
+        mock_processor = MagicMock()
+        mock_processor.data_normalized_nonagg = mock_data.copy()
+        mock_processor.data_normalized = mock_data.copy()
+        # stat_fields and stat_fields_f must match the columns above
+        
+        stat_fields = [
+            "body_strikes_att_per_minute",
+            "clinch_strikes_att_per_minute",
+            "knockdowns_per_minute",
+            "ELO",
+            "opening",  # Add this line
+        ]
+        stat_fields_f = ["winner"]
+
+        dataset = DatasetWithTimeEvolution(
+            data_processor=mock_processor,
+            X_set=["body_strikes_att_per_minute"],
+            Xf_set=[],
+            stat_fields=stat_fields,
+            stat_fields_f=stat_fields_f,
+            status_array_size=2,
+        )
+
+        # Call get_trans_stats directly to check the winner column
+        reduced_data = dataset.get_trans_stats()
+        # The winner column should be 1 for all rows, since winner == fighter_id
+        assert (reduced_data["winner"] == 1).all()
+
+        # Now, set winner to something else and check for 0s
+        mock_data2 = mock_data.copy()
+        mock_data2.loc[0, "winner"] = "not_f1"
+        mock_processor.data_normalized_nonagg = mock_data2
+        mock_processor.data_normalized = mock_data2
+        reduced_data2 = dataset.get_trans_stats()
+        assert reduced_data2.loc[0, "winner"] == 0
+        assert (reduced_data2.loc[1:, "winner"] == 1).all()
+
+    def test_get_fight_data_from_ids_with_fight_ids(self):
+        # Prepare mock data
+        mock_data = pd.DataFrame({
+            "fight_id": ["fight1", "fight1", "fight2", "fight2"],
+            "fighter_id": ["f1", "f2", "f3", "f4"],
+            "event_date": pd.to_datetime(["2023-01-01", "2023-01-01", "2023-01-02", "2023-01-02"]),
+            "num_fight": [1, 1, 2, 2],
+            "opponent_id": ["f2", "f1", "f4", "f3"],
+            "body_strikes_att_per_minute": [1.0, 2.0, 3.0, 4.0],
+            "clinch_strikes_att_per_minute": [1.1, 2.1, 3.1, 4.1],
+            "knockdowns_per_minute": [0.5, 0.6, 0.7, 0.8],
+            "ELO": [1000, 1100, 1200, 1300],
+            "winner": ["f1", "f2", "f3", "f4"],
+            "opening": [1.5, 2.0, 1.8, 2.2],
+            "fighter_name": ["A", "B", "C", "D"],
+        })
+
+        mock_processor = MagicMock()
+        mock_processor.data_normalized_nonagg = mock_data.copy()
+        mock_processor.data_normalized = mock_data.copy()
+        mock_processor.data_enhancers = []
+        mock_processor.normalization_factors = {}
+
+        stat_fields = [
+            "body_strikes_att_per_minute",
+            "clinch_strikes_att_per_minute",
+            "knockdowns_per_minute",
+            "ELO",
+        ]
+        stat_fields_f = ["winner"]
+
+        dataset = DatasetWithTimeEvolution(
+            data_processor=mock_processor,
+            X_set=["body_strikes_att_per_minute"],
+            Xf_set=[],
+            stat_fields=stat_fields,
+            stat_fields_f=stat_fields_f,
+            status_array_size=2,
+        )
+
+        # Use only fight1 for test
+        fight_ids = ["fight1"]
+        result = dataset.get_fight_data_from_ids(fight_ids=fight_ids)
+        # Check that the returned data only contains fight1
+        # result[6] and result[7] are fighter_names and opponent_names
+        fighter_names = result[-2]
+        opponent_names = result[-1]
+        self.assertTrue(all(f in ["A", "B"] for f in fighter_names))
+        self.assertTrue(all(o in ["A", "B"] for o in opponent_names))
+        # Check that the shapes match the number of fights (should be 1 row)
+        self.assertEqual(result[0][0].shape[0], 1)
+
+
+if __name__ == "__main__":  # pragma: no cover    unittest.main()
     unittest.main()

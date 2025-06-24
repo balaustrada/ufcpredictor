@@ -323,7 +323,7 @@ test_dataset = DatasetWithTimeEvolution(
     status_array_size=status_array_size,
 )
 
-forecast_dataset = DatasetWithTimeEvolution(
+forecast_dataset = ForecastDatasetTimeEvolution(
     data_processor=data_processor,
     X_set=X_set,
     Xf_set=Xf_set,

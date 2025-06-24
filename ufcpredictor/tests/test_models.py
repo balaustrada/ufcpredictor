@@ -8,7 +8,6 @@ from ufcpredictor.models import FighterNet, SymmetricFightNet
 
 # Assuming FighterNet and SymmetricFightNet are imported here
 
-
 class TestFighterNet(unittest.TestCase):
     def setUp(self):
         self.input_size = 10  # Example input size

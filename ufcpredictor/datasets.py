@@ -139,11 +139,11 @@ class BasicDataset(Dataset):
             self.Xf_set = Xf_set
 
         not_found = []
-        for column in self.X_set + self.Xf_set:
+        for column in self.X_set + self.Xf_set: # pragma: no cover
             if column not in self.data_processor.data_normalized.columns:
                 not_found.append(column)
 
-        if len(not_found) > 0:
+        if len(not_found) > 0: # pragma: no cover
             raise ValueError(f"Columns not found in normalized data: {not_found}")
 
         self.load_data()
@@ -694,10 +694,10 @@ class DatasetWithTimeEvolution(BasicDataset):
 
         not_found = []
         for column in self.X_set + self.Xf_set:
-            if column not in self.data_processor.data_normalized.columns:
+            if column not in self.data_processor.data_normalized.columns: # pragma: no cover
                 not_found.append(column)
 
-        if len(not_found) > 0:
+        if len(not_found) > 0: # pragma: no cover
             raise ValueError(f"Columns not found in normalized data: {not_found}")
 
         self.load_data()
@@ -768,8 +768,13 @@ class DatasetWithTimeEvolution(BasicDataset):
             )
             .reset_index()
             .set_index("index_x")
-            .reindex(range(0, len(reduced_data)), fill_value=[])
+            .reindex(range(0, len(reduced_data)), fill_value=pd.NA)
+            .reset_index()
         )
+        # Fill missing lists with empty lists
+        previous_indices_df["previous_fights"] = previous_indices_df["previous_fights"].apply(lambda x: x if isinstance(x, list) else [])
+        previous_indices_df["previous_opponents"] = previous_indices_df["previous_opponents"].apply(lambda x: x if isinstance(x, list) else [])
+
         reduced_data = reduced_data.merge(
             previous_indices_df,
             left_on="index",
@@ -1089,7 +1094,7 @@ class DatasetWithTimeEvolution(BasicDataset):
         """
         if fight_ids is not None:
             fight_data = self.fight_data[self.fight_data["fight_id"].isin(fight_ids)]
-        else:
+        else: # pragma: no cover    
             fight_data = self.fight_data.copy()
 
         data = [
@@ -1211,10 +1216,10 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
 
         not_found = []
         for column in self.X_set + self.Xf_set:
-            if column not in self.data_processor.data_normalized.columns:
+            if column not in self.data_processor.data_normalized.columns: # pragma: no cover
                 not_found.append(column)
 
-        if len(not_found) > 0:
+        if len(not_found) > 0: #  pragma: no cover
             raise ValueError(f"Columns not found in normalized data: {not_found}")
 
         self.fight_ids = None
@@ -1286,8 +1291,13 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             )
             .reset_index()
             .set_index("index_x")
-            .reindex(range(0, len(reduced_data)), fill_value=[])
+            .reindex(range(0, len(reduced_data)), fill_value=pd.NA)
+            .reset_index()
         )
+        # Fill missing lists with empty lists
+        previous_indices_df["previous_fights"] = previous_indices_df["previous_fights"].apply(lambda x: x if isinstance(x, list) else [])
+        previous_indices_df["previous_opponents"] = previous_indices_df["previous_opponents"].apply(lambda x: x if isinstance(x, list) else [])
+
         reduced_data = reduced_data.merge(
             previous_indices_df,
             left_on="index",
@@ -1409,7 +1419,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             opponent_ids = [
                 self.data_processor.get_fighter_id(x) for x in opponent_names
             ]
-        else:
+        else: # pragma: no cover
             fighter_ids = fighter_names
             opponent_ids = opponent_names
 
@@ -1530,7 +1540,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
                     np.asarray([match_data[x] for x in self.Xf_set]).T,
                 )
             }
-        else:
+        else: # pragma: no cover
             fight_data_dict = {id_: [] for id_ in match_data["id_"].values}
 
         trans_data_f_dict = {

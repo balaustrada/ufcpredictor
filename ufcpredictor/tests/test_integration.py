@@ -7,9 +7,9 @@ import torch
 from ufcpredictor.data_aggregator import WeightedDataAggregator
 from ufcpredictor.data_enhancers import RankedFields, SumFlexibleELO
 from ufcpredictor.data_processor import DataProcessor
-from ufcpredictor.datasets import BasicDataset, ForecastDataset
+from ufcpredictor.datasets import BasicDataset, ForecastDataset, DatasetWithTimeEvolution, ForecastDatasetTimeEvolution
 from ufcpredictor.loss_functions import BettingLoss
-from ufcpredictor.models import SimpleFightNet
+from ufcpredictor.models import SimpleFightNet, SimpleFightNetWithTimeEvolution
 from ufcpredictor.trainer import Trainer
 
 THIS_DIR = Path(__file__).parent
@@ -200,7 +200,7 @@ class TestSimpleModel(unittest.TestCase):
         self.assertAlmostEqual(p1, 0.2658733, places=3)
         self.assertAlmostEqual(p2, 0.7346755, places=3)
 
-    def test_temporal_evolution(self):
+    def test_time_evolution(self):
         data_processor_kwargs = {
             "data_folder": THIS_DIR / "test_files",
             "data_aggregator": WeightedDataAggregator(alpha=-0.0001),
@@ -383,7 +383,7 @@ class TestSimpleModel(unittest.TestCase):
         train_fights = set(train_fights) - set(invalid_fights)
 
         # Create datasets
-        early_train_dataset = BasicDataset(
+        early_train_dataset = DatasetWithTimeEvolution(
             data_processor,
             early_train_fights,
             X_set=X_set,
@@ -393,7 +393,7 @@ class TestSimpleModel(unittest.TestCase):
             status_array_size=status_array_size,
         )
 
-        train_dataset = BasicDataset(
+        train_dataset = DatasetWithTimeEvolution(
             data_processor,
             train_fights,
             X_set=X_set,
@@ -403,7 +403,7 @@ class TestSimpleModel(unittest.TestCase):
             status_array_size=status_array_size,
         )
 
-        forecast_dataset = ForecastDataset(
+        forecast_dataset = ForecastDatasetTimeEvolution(
             data_processor=data_processor,
             X_set=X_set,
             Xf_set=Xf_set,
@@ -429,7 +429,7 @@ class TestSimpleModel(unittest.TestCase):
 
 
         dropout = 0.01
-        model = SimpleFightNet(
+        model = SimpleFightNetWithTimeEvolution (
             input_size=2*len(X_set)+ len(Xf_set) + 2 + 2*status_array_size, # 2 are the odds,
             # input_size_f=len(Xf_set),
             dropout_prob=dropout,

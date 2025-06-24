@@ -47,7 +47,7 @@ from ufcpredictor.utils import convert_odds_to_decimal
 from ufcpredictor.data_processor import DataProcessor
 from ufcpredictor.data_enhancers import SumFlexibleELO, RankedFields
 from ufcpredictor.data_aggregator import WeightedDataAggregator
-from ufcpredictor.datasets import BasicDataset, ForecastDataset
+from ufcpredictor.datasets import DatasetWithTimeEvolution, ForecastDatasetTimeEvolution
 from ufcpredictor.trainer import Trainer
 from ufcpredictor.plot_tools import PredictionPlots
 import torch
@@ -283,7 +283,7 @@ train_fights = set(train_fights) - set(invalid_fights)
 test_fights = set(test_fights) - set(invalid_fights)
 
 # %%
-from ufcpredictor.models import SimpleFightNet
+from ufcpredictor.models import SimpleFightNetWithTimeEvolution
 from ufcpredictor.loss_functions import BettingLoss
 
 
@@ -293,7 +293,7 @@ Xf_set = ["num_rounds", "weight"]
 stat_fields_f = ["num_rounds", "weight", "winner"]
 
 # Xf_set = []
-early_train_dataset = BasicDataset(
+early_train_dataset = DatasetWithTimeEvolution(
     data_processor,
     early_train_fights,
     X_set=X_set,
@@ -303,7 +303,7 @@ early_train_dataset = BasicDataset(
     status_array_size=status_array_size,
 )
 
-train_dataset = BasicDataset(
+train_dataset = DatasetWithTimeEvolution(
     data_processor,
     train_fights,
     X_set=X_set,
@@ -313,7 +313,7 @@ train_dataset = BasicDataset(
     status_array_size=status_array_size,
 )
 
-test_dataset = BasicDataset(
+test_dataset = DatasetWithTimeEvolution(
     data_processor,
     test_fights,
     X_set=X_set,
@@ -323,7 +323,7 @@ test_dataset = BasicDataset(
     status_array_size=status_array_size,
 )
 
-forecast_dataset = ForecastDataset(
+forecast_dataset = DatasetWithTimeEvolution(
     data_processor=data_processor,
     X_set=X_set,
     Xf_set=Xf_set,
@@ -360,7 +360,7 @@ np.random.seed(seed)
 
 # %%
 dropout = 0.45  # 0.35 seemed to work good, but also 0.45 or even 0.5
-model = SimpleFightNet(
+model = SimpleFightNetWithTimeEvolution(
     input_size=2*len(X_set)+ len(Xf_set) + 2 + 2*status_array_size, # 2 are the odds,
     # input_size_f=len(Xf_set),
     dropout_prob=dropout,
@@ -421,8 +421,6 @@ trainer.train(epochs=10)  # ~8 is a good match if dropout to 0.35
 # %%
 # Save modeÇdict
 # torch.save(model.state_dict(), 'model.pth')
-
-# %%
 
 # %%
 fig, ax = plt.subplots()

@@ -160,23 +160,16 @@ class Trainer:
             self.model.train()
             train_loss = []
 
-            for X1, X2, X3, Y, odds1, odds2, ff, of, fo, oo,  in tqdm(iter(train_loader), disable=silent):
-                X1, X2, X3, Y, odds1, odds2, ff, of, fo, oo = (
-                    X1.to(self.device),
-                    X2.to(self.device),
-                    X3.to(self.device),
-                    Y.to(self.device),
-                    odds1.to(self.device),
-                    odds2.to(self.device),
-                    ff.to(self.device),
-                    of.to(self.device),
-                    fo.to(self.device),
-                    oo.to(self.device),
-                )
+            for X, Y, odds in tqdm(iter(train_loader), disable=silent):
+                X = [xi.to(self.device) for xi in X]
+                odds = [oddsi.to(self.device) for oddsi in odds]
+                Y = Y.to(self.device)
+
 
                 self.optimizer.zero_grad()
-                target_logit = self.model(X1, X2, X3, odds1, odds2, ff, of, fo, oo)
-                loss = self.loss_fn(target_logit, Y, odds1, odds2)
+                target_logit = self.model(*X, *odds)
+                loss = self.loss_fn(target_logit, Y, *odds)
+
 
                 loss.backward()
                 self.optimizer.step()
@@ -188,8 +181,10 @@ class Trainer:
                 )
                 target_labels += Y.detach().cpu().numpy().tolist()
 
-                with torch.no_grad():
-                    train_loader.dataset.update_data_trans(self.model.transformer, self.device)
+                if hasattr(train_loader.dataset, "update_data_trans"):
+                    with torch.no_grad():
+                        train_loader.dataset.update_data_trans(self.model.transformer, self.device)
+
 
             match = np.asarray(target_preds).reshape(-1) == np.asarray(
                 target_labels
@@ -249,22 +244,14 @@ class Trainer:
         target_labels = []
 
         with torch.no_grad():
-            test_loader.dataset.update_data_trans(self.model.transformer, self.device)
-            for X1, X2, X3, Y, odds1, odds2, ff, of, fo, oo in tqdm(iter(test_loader), disable=silent):
-                X1, X2, X3, Y, odds1, odds2, ff, of, fo, oo = (
-                    X1.to(self.device),
-                    X2.to(self.device),
-                    X3.to(self.device),
-                    Y.to(self.device),
-                    odds1.to(self.device),
-                    odds2.to(self.device),
-                    ff.to(self.device),
-                    of.to(self.device),
-                    fo.to(self.device),
-                    oo.to(self.device),
-                )
-                target_logit = self.model(X1, X2, X3, odds1, odds2, ff, of, fo, oo)
-                loss = self.loss_fn(target_logit, Y, odds1, odds2)
+            for X, Y, odds in tqdm(iter(test_loader), disable=silent):
+                X = [xi.to(self.device) for xi in X]
+                odds = [oddsi.to(self.device) for oddsi in odds]
+                Y = Y.to(self.device)
+
+                self.optimizer.zero_grad()
+                target_logit = self.model(*X, *odds)
+                loss = self.loss_fn(target_logit, Y, *odds)
                 val_loss.append(loss.item())
 
                 target += target_logit

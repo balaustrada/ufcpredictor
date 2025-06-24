@@ -114,7 +114,7 @@ class TestBasicDataset(unittest.TestCase):
         )
     
         # Retrieve an item
-        X1, X2, X3, winner, odds_1, odds_2 = dataset[0]
+        (X1, X2, X3), winner, (odds_1, odds_2) = dataset[0]
 
         assert isinstance(
             X1, torch.FloatTensor
@@ -144,7 +144,7 @@ class TestBasicDataset(unittest.TestCase):
         mock_processor = MagicMock()
         mock_processor.data_normalized = mock_data
 
-        fight_ids = ["fight1"]
+        fight_ids = ["fight1", "fight2", "fight3"]
 
         dataset = BasicDataset(
             data_processor=mock_processor, fight_ids=fight_ids, X_set=self.X_set
@@ -152,14 +152,12 @@ class TestBasicDataset(unittest.TestCase):
 
         # Retrieve an item multiple times to check for swapping
         with patch("numpy.random.random", side_effect=[0.1, 0.8]):
-            original = dataset[0]
-            swapped = dataset[0]
+            original = dataset[2]
+            swapped = dataset[2]
 
-        assert not torch.equal(
-            original[0], swapped[0]
-        )  # X should be different after swap
+        assert original[0][0] == swapped[0][1] 
         assert not torch.equal(original[1], swapped[1])  # Y should be swapped as well
-        assert not torch.equal(original[3], swapped[3])  # Winner should be swapped
+        assert original[2] == swapped[2][::-1]  # Winner should be swapped
 
     def test_get_fight_data_from_ids(self):
         # Mock data

@@ -85,9 +85,15 @@ class BaseTestDataProcessor(object):
 
         self.mock_replacement_data = pd.DataFrame(
             {
-                "fight_id": [1, ],
-                "fighter_id": ["f1", ],
-                "notice_days": [20, ]
+                "fight_id": [
+                    1,
+                ],
+                "fighter_id": [
+                    "f1",
+                ],
+                "notice_days": [
+                    20,
+                ],
             }
         )
 

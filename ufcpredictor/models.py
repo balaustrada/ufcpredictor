@@ -1,9 +1,9 @@
 """
-This module contains neural network models designed to predict the outcome of UFC 
+This module contains neural network models designed to predict the outcome of UFC
 fights.
 
-The models take into account various characteristics of the fighters and the odds 
-of the fights, and can be used to make predictions on the outcome of a fight and 
+The models take into account various characteristics of the fighters and the odds
+of the fights, and can be used to make predictions on the outcome of a fight and
 to calculate the benefit of a bet.
 """
 
@@ -17,7 +17,7 @@ import torch.nn.functional as F
 from torch import nn
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any, Dict, List, Optional
+    from typing import Any, Dict, List, Optional, Tuple
 
 
 class FighterNet(nn.Module):
@@ -93,7 +93,9 @@ class SymmetricFightNet(nn.Module):
     """
 
     mlflow_params: List[str] = [
-        "dropout_prob", "network_shape", "fighter_network_shape"
+        "dropout_prob",
+        "network_shape",
+        "fighter_network_shape",
     ]
 
     def __init__(
@@ -103,7 +105,7 @@ class SymmetricFightNet(nn.Module):
         dropout_prob: float = 0.0,
         network_shape: List[int] = [512, 128, 64, 1],
         fighter_network_shape: Optional[List[int]] = None,
-    ) -> None:
+    ):
         """
         Initialize the SymmetricFightNet model with the given input size and dropout
         probability.
@@ -121,7 +123,7 @@ class SymmetricFightNet(nn.Module):
             "input_size": input_size,
             "dropout_prob": dropout_prob,
         }
-        if fighter_network_shape is not None: # pragma: no cover
+        if fighter_network_shape is not None:  # pragma: no cover
             fighter_network_args["network_shape"] = fighter_network_shape
 
         self.fighter_net = FighterNet(**fighter_network_args)
@@ -172,7 +174,7 @@ class SymmetricFightNet(nn.Module):
         Returns:
             The output of the SymmetricFightNet model.
         """
-        if invert: # pragma: no cover
+        if invert:  # pragma: no cover
             X1, X2 = X2, X1
             odds1, odds2 = odds2, odds1
 
@@ -192,6 +194,7 @@ class SymmetricFightNet(nn.Module):
         x = self.sigmoid(x)
         return x
 
+
 class SimpleFightNet(nn.Module):
     """
     A neural network model designed to predict the outcome of a fight between two
@@ -204,10 +207,7 @@ class SimpleFightNet(nn.Module):
     the benefit of a bet.
     """
 
-    mlflow_params: List[str] = [
-        "dropout_prob",
-        "network_shape"
-    ]
+    mlflow_params: List[str] = ["dropout_prob", "network_shape"]
 
     status_array_size = 5
 
@@ -227,7 +227,9 @@ class SimpleFightNet(nn.Module):
         """
         super().__init__()
 
-        self.network_shape = [input_size,] + network_shape
+        self.network_shape = [
+            input_size,
+        ] + network_shape
 
         self.fcs = nn.ModuleList(
             [
@@ -245,13 +247,13 @@ class SimpleFightNet(nn.Module):
         self.dropout_prob = dropout_prob
 
     def forward(
-            self,
-            X1: torch.Tensor,
-            X2: torch.Tensor,
-            X3: torch.Tensor,
-            odds1: torch.Tensor,
-            odds2: torch.Tensor,
-            invert: bool = False,
+        self,
+        X1: torch.Tensor,
+        X2: torch.Tensor,
+        X3: torch.Tensor,
+        odds1: torch.Tensor,
+        odds2: torch.Tensor,
+        invert: bool = False,
     ) -> torch.Tensor:
         """
         Compute the output of the SimpleFightNet model.
@@ -267,7 +269,7 @@ class SimpleFightNet(nn.Module):
         Returns:
             The output of the SimpleFightNet model.
         """
-        if invert: # pragma: no cover
+        if invert:  # pragma: no cover
             X1, X2 = X2, X1
             odds1, odds2 = odds2, odds1
 
@@ -281,14 +283,15 @@ class SimpleFightNet(nn.Module):
         x = self.sigmoid(x)
         return x
 
+
 class SimpleFightNetWithTimeEvolution(nn.Module):
     def __init__(
         self,
         input_size: int,
         dropout_prob: float = 0.0,
         network_shape: List[int] = [1024, 512, 256, 128, 64, 1],
-        fighter_transformer_kwargs = dict(),
-        status_array_size: Optional[int] = None
+        fighter_transformer_kwargs: Dict = dict(),
+        status_array_size: Optional[int] = None,
     ):
         """
         Initialize the SimpleFightNet model with the given input size and dropout
@@ -303,7 +306,9 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
         if status_array_size is not None:
             self.status_array_size = status_array_size
 
-        self.network_shape = [input_size,] + network_shape
+        self.network_shape = [
+            input_size,
+        ] + network_shape
 
         self.transformer = FighterTransformer(**fighter_transformer_kwargs)
 
@@ -323,17 +328,17 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
         self.dropout_prob = dropout_prob
 
     def forward(
-            self,
-            X1: torch.Tensor,
-            X2: torch.Tensor,
-            X3: torch.Tensor,
-            ff_data,
-            of_data,
-            fo_data,
-            oo_data,
-            odds1: torch.Tensor,
-            odds2: torch.Tensor,
-            invert: bool = False,
+        self,
+        X1: torch.Tensor,
+        X2: torch.Tensor,
+        X3: torch.Tensor,
+        ff_data: torch.Tensor,
+        of_data: torch.Tensor,
+        fo_data: torch.Tensor,
+        oo_data: torch.Tensor,
+        odds1: torch.Tensor,
+        odds2: torch.Tensor,
+        invert: bool = False,
     ) -> torch.Tensor:
         """
         Compute the output of the SimpleFightNet model.
@@ -349,12 +354,10 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
         Returns:
             The output of the SimpleFightNet model.
         """
-        if invert: # pragma: no cover
+        if invert:  # pragma: no cover
             X1, X2 = X2, X1
             odds1, odds2 = odds2, odds1
-            ff_data , of_data, fo_data, oo_data = (
-                of_data, ff_data, oo_data, fo_data
-            )
+            ff_data, of_data, fo_data, oo_data = (of_data, ff_data, oo_data, fo_data)
 
         # odds1 = odds1 / odds1
         # odds2 = odds2 / odds2
@@ -368,25 +371,25 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
             of_data_i = of_data[:, i, :]
             fo_data_i = fo_data[:, i, :]
             oo_data_i = oo_data[:, i, :]
-            
+
             S1, _ = self.transformer(
                 S1,
-                fo_data_i[:, :self.status_array_size],
-                ff_data_i[:, self.status_array_size:-self.transformer.match_dim],
-                fo_data_i[:, self.status_array_size:-self.transformer.match_dim],
-                ff_data_i[:, -self.transformer.match_dim:],
+                fo_data_i[:, : self.status_array_size],
+                ff_data_i[:, self.status_array_size : -self.transformer.match_dim],
+                fo_data_i[:, self.status_array_size : -self.transformer.match_dim],
+                ff_data_i[:, -self.transformer.match_dim :],
             )
 
             S2, _ = self.transformer(
                 S2,
-                oo_data_i[:, :self.status_array_size],
-                of_data_i[:, self.status_array_size:-self.transformer.match_dim],
-                oo_data_i[:, self.status_array_size:-self.transformer.match_dim],
-                oo_data_i[:, -self.transformer.match_dim:],
+                oo_data_i[:, : self.status_array_size],
+                of_data_i[:, self.status_array_size : -self.transformer.match_dim],
+                oo_data_i[:, self.status_array_size : -self.transformer.match_dim],
+                oo_data_i[:, -self.transformer.match_dim :],
             )
 
         # x = torch.cat((X1, X2, X3, odds1, odds2, S1-S2, S2-S1), dim=1)
-        x = torch.cat((X1, X2, X3, odds1, odds2, S1-S2, S2-S1), dim=1)
+        x = torch.cat((X1, X2, X3, odds1, odds2, S1 - S2, S2 - S1), dim=1)
 
         for fc, dropout in zip(self.fcs[:-1], self.dropouts):
             x = self.relu(fc(x))
@@ -395,9 +398,17 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
         x = self.fcs[-1](x)
         x = self.sigmoid(x)
         return x
-    
+
+
 class FighterTransformer(nn.Module):
-    def __init__(self, state_dim, stat_dim, match_dim, layer_sizes, dropout=0.1):
+    def __init__(
+        self,
+        state_dim: int,
+        stat_dim: int,
+        match_dim: int,
+        layer_sizes: List[int],
+        dropout: float = 0.1,
+    ):
         """
         Args:
             state_dim (int): Dimension of the fighter states (X1, X2).
@@ -407,30 +418,37 @@ class FighterTransformer(nn.Module):
             dropout (float): Dropout probability.
         """
         super().__init__()
-        
+
         # Calculate the input dimension
         input_dim = 2 * state_dim + 2 * stat_dim + match_dim
 
         self.state_dim = state_dim
         self.stat_dim = stat_dim
         self.match_dim = match_dim
-        
+
         # Create the layers of the feedforward network
-        layers = []
+        layers: List[nn.Module] = []
         previous_dim = input_dim
         for layer_size in layer_sizes:
             layers.append(nn.Linear(previous_dim, layer_size))
             layers.append(nn.ReLU())
             layers.append(nn.Dropout(dropout))
             previous_dim = layer_size
-        
+
         self.feedforward = nn.Sequential(*layers)
-        
+
         # Output projections for X1 and X2
         self.output_X1 = nn.Linear(previous_dim, state_dim)
         self.output_X2 = nn.Linear(previous_dim, state_dim)
-    
-    def forward(self, X1, X2, s1, s2, m):
+
+    def forward(
+        self,
+        X1: torch.Tensor,
+        X2: torch.Tensor,
+        s1: torch.Tensor,
+        s2: torch.Tensor,
+        m: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
             X1 (tensor): Fighter 1 state tensor of shape (batch_size, state_dim).
@@ -438,20 +456,20 @@ class FighterTransformer(nn.Module):
             s1 (tensor): Fighter 1 stats tensor of shape (batch_size, stat_dim).
             s2 (tensor): Fighter 2 stats tensor of shape (batch_size, stat_dim).
             m (tensor): Match stats tensor of shape (batch_size, match_dim).
-        
+
         Returns:
             X1_new (tensor): Fighter 1 new state tensor of shape (batch_size, state_dim).
             X2_new (tensor): Fighter 2 new state tensor of shape (batch_size, state_dim).
         """
-            
+
         # Concatenate all inputs
         combined_input = torch.cat([X1, X2, s1, s2, m], dim=-1)
-        
+
         # Pass through the feedforward network
         hidden_output = self.feedforward(combined_input)
-        
+
         # Compute outputs for X1 and X2
         X1_new = self.output_X1(hidden_output)
         X2_new = self.output_X2(hidden_output)
-        
+
         return X1_new, X2_new

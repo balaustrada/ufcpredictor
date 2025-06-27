@@ -17,8 +17,10 @@ class SimpleNet(nn.Module):
 
         return torch.sigmoid(self.fc1(X1) + self.fc1(X2))
 
+
 from torch.utils.data import Dataset
 import torch
+
 
 class CustomFightDataset(Dataset):
     def __init__(self, X1, X2, X3, Y, odds1, odds2):
@@ -33,8 +35,11 @@ class CustomFightDataset(Dataset):
         return len(self.Y)
 
     def __getitem__(self, idx):
-        return ((self.X1[idx], self.X2[idx], self.X3[idx]), self.Y[idx], (self.odds1[idx], self.odds2[idx]))
-
+        return (
+            (self.X1[idx], self.X2[idx], self.X3[idx]),
+            self.Y[idx],
+            (self.odds1[idx], self.odds2[idx]),
+        )
 
 
 class TestTrainer(unittest.TestCase):

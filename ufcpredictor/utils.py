@@ -12,12 +12,14 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
+import torch.nn.functional as F
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import List, Optional
 
     import numpy as np
     from numpy.typing import NDArray
+    from torch import Tensor
 
 
 weight_dict = {
@@ -104,10 +106,7 @@ def convert_odds_to_moneyline(
     return np.round(odds).astype(int)
 
 
-
-import torch.nn.functional as F
-
-def pad_or_truncate(tensor, desired_size):
+def pad_or_truncate(tensor: Tensor, desired_size: int) -> Tensor:
     """
     Pads or truncates the first axis of a tensor to match the desired size.
 
@@ -123,7 +122,7 @@ def pad_or_truncate(tensor, desired_size):
     if current_size < desired_size:
         # Calculate padding (add zeros to the left)
         padding = desired_size - current_size
-        padded_tensor = F.pad(tensor, (0, 0, padding, 0), mode='constant', value=0)
+        padded_tensor = F.pad(tensor, (0, 0, padding, 0), mode="constant", value=0)
         return padded_tensor
     elif current_size > desired_size:
         # Truncate the tensor to the desired size

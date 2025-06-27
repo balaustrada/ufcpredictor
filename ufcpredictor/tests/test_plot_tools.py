@@ -92,7 +92,7 @@ class TestPredictionPlots(unittest.TestCase):
             (
                 torch.tensor([[0.1, 0.2], [0.3, 0.4]]),  # X1
                 torch.tensor([[0.5, 0.6], [0.7, 0.8]]),  # X2
-                torch.empty(2, 0), # X3
+                torch.empty(2, 0),  # X3
             ),
             torch.tensor([1.0, 0.0]),  # Y
             (  # odds

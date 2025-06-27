@@ -1,8 +1,8 @@
 """
-This module contains loss functions designed to train neural network models to predict 
+This module contains loss functions designed to train neural network models to predict
 the outcome of UFC fights.
 
-The loss functions take into account the predictions made by the model and the actual 
+The loss functions take into account the predictions made by the model and the actual
 outcomes of the fights, and are used to optimize the model's performance.
 """
 
@@ -17,7 +17,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from typing import List
 
 # import torch.nn.functional as F
-
 
 
 class BettingLoss(nn.Module):
@@ -98,9 +97,7 @@ class BettingLoss(nn.Module):
         return (losses - earnings).mean()
 
         # return F.binary_cross_entropy(predictions, targets.float())
-        
-            
-            
+
         # # Soft approximation of rounding using sigmoid
         # sharpness = 3  # increase for sharper transition
         # soft_pred_1 = torch.sigmoid(sharpness * (0.5 - predictions))  # approximates prediction < 0.5

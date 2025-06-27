@@ -371,14 +371,14 @@ def train_model(
 
     early_train_dataset = BasicDataset(
         data_processor,
-        early_train_fights,
+        list(early_train_fights),
         X_set=X_set,
         Xf_set=Xf_set,
     )
 
     train_dataset = BasicDataset(
         data_processor,
-        train_fights,
+        list(train_fights),
         X_set=X_set,
         Xf_set=Xf_set,
     )
@@ -386,7 +386,7 @@ def train_model(
     if test:
         test_dataset = BasicDataset(
             data_processor,
-            test_fights,
+            list(test_fights),
             X_set=X_set,
             Xf_set=Xf_set,
         )

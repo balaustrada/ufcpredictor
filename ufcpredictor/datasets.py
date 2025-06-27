@@ -1,9 +1,9 @@
 """
-This module contains dataset classes designed to handle UFC fight data for training 
+This module contains dataset classes designed to handle UFC fight data for training
 and testing neural network models.
 
-The dataset classes provide a structured way to store and retrieve data for fighter 
-characteristics, fight outcomes, and odds. They are designed to work with the 
+The dataset classes provide a structured way to store and retrieve data for fighter
+characteristics, fight outcomes, and odds. They are designed to work with the
 DataProcessor class to prepare and normalize the data.
 """
 
@@ -36,8 +36,7 @@ if TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
-
-class BasicDataset(Dataset):
+class BaseDataset(Dataset):
     """
     A basic dataset class designed to handle UFC fight data for training and testing
     neural network models.
@@ -113,7 +112,7 @@ class BasicDataset(Dataset):
     def __init__(
         self,
         data_processor: DataProcessor,
-        fight_ids: List[str],
+        fight_ids: Optional[List[str]] = None,
         X_set: Optional[List[str]] = None,
         Xf_set: Optional[List[str]] = None,
     ) -> None:
@@ -139,11 +138,11 @@ class BasicDataset(Dataset):
             self.Xf_set = Xf_set
 
         not_found = []
-        for column in self.X_set + self.Xf_set: # pragma: no cover
+        for column in self.X_set + self.Xf_set:  # pragma: no cover
             if column not in self.data_processor.data_normalized.columns:
                 not_found.append(column)
 
-        if len(not_found) > 0: # pragma: no cover
+        if len(not_found) > 0:  # pragma: no cover
             raise ValueError(f"Columns not found in normalized data: {not_found}")
 
         self.load_data()
@@ -169,7 +168,7 @@ class BasicDataset(Dataset):
                 reduced_data[x] = reduced_data.groupby("fighter_id")[x].shift(1)
 
         # We remove invalid fights
-        
+
         if self.fight_ids is not None:
             reduced_data = reduced_data[reduced_data["fight_id"].isin(self.fight_ids)]
 
@@ -223,107 +222,8 @@ class BasicDataset(Dataset):
         """
         return len(self.data[0])
 
-    def __getitem__(self, idx: int) -> Tuple[
-        torch.Tensor,
-        torch.Tensor,
-        torch.Tensor,
-        torch.Tensor,
-        torch.Tensor,
-        torch.Tensor,
-    ]:
-        """
-        Returns a tuple of (X, Y, winner, odds_1, odds_2) for the given index.
 
-        The data is randomly flipped to simulate the possibility of a fight being
-        between two fighters in either order.
-
-        Args:
-            idx: The index of the data to return.
-
-        Returns:
-            A tuple of (X, Y, winner, odds_1, odds_2) where X and Y are the
-            input data for the two fighters, winner is a tensor of size 1
-            indicating which fighter won, and odds_1 and odds_2 are the opening
-            odds for the two fighters.
-        """
-        X1, X2, X3, winner, odds_1, odds_2 = [x[idx] for x in self.data]
-
-        if np.random.random() >= 0.5:
-            X1, X2 = X2, X1
-            winner = 1 - winner
-            odds_1, odds_2 = odds_2, odds_1
-
-        return (
-            (
-                X1, 
-                X2, 
-                X3, 
-            ),
-            winner.reshape(-1),
-            (
-                odds_1.reshape(-1),
-                odds_2.reshape(-1),
-            ),
-        )
-
-    def get_fight_data_from_ids(self, fight_ids: Optional[List[str]] = None) -> Tuple[
-        torch.FloatTensor,
-        torch.FloatTensor,
-        torch.FloatTensor,
-        torch.FloatTensor,
-        torch.FloatTensor,
-        torch.FloatTensor,
-        NDArray[np.str_],
-        NDArray[np.str_],
-    ]:
-        """
-        Returns a tuple of (X, Y, winner, odds_1, odds_2, fighter_names, opponent_names)
-        for the given fight ids.
-
-        If fight_ids is None, returns all the data in the dataset.
-
-        Args:
-            fight_ids: The list of fight ids to include in the dataset. If None,
-                use all the data in the dataset.
-
-        Returns:
-            A tuple of (X, Y, winner, odds_1, odds_2, fighter_names, opponent_names)
-            where X and Y are the input data for the two fighters, winner is a tensor
-            of size 1 indicating which fighter won, and odds_1 and odds_2 are the
-            opening odds for the two fighters. fighter_names and opponent_names are
-            the names of the fighters and their opponents.
-        """
-        if fight_ids is not None:
-            fight_data = self.fight_data[self.fight_data["fight_id"].isin(fight_ids)]
-        else:
-            fight_data = self.fight_data.copy()
-
-        data = [
-            torch.FloatTensor(
-                np.asarray([fight_data[x + "_x"].values for x in self.X_set]).T
-            ),
-            torch.FloatTensor(
-                np.asarray([fight_data[x + "_y"].values for x in self.X_set]).T
-            ),
-            torch.FloatTensor(
-                np.asarray([fight_data[x + "_x"].values for x in self.Xf_set]).T
-            ),
-            torch.FloatTensor(
-                (fight_data["winner_x"] != fight_data["fighter_id_x"]).values
-            ),
-            torch.FloatTensor(fight_data["opening_x"].values),
-            torch.FloatTensor(fight_data["opening_y"].values),
-        ]
-
-        fighter_names = np.array(fight_data["fighter_name_x"].values)
-        opponent_names = np.array(fight_data["fighter_name_y"].values)
-
-        X1, X2, X3, Y, odds1, odds2 = data
-
-        return X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names
-
-
-class ForecastDataset(BasicDataset):
+class ForecastDataset(BaseDataset):
     """
     A dataset class designed to handle forecasting data for UFC fight predictions.
 
@@ -332,8 +232,8 @@ class ForecastDataset(BasicDataset):
     to prepare and normalize the data.
     """
 
-    X_set = BasicDataset.X_set
-    Xf_set = BasicDataset.Xf_set
+    X_set = BaseDataset.X_set
+    Xf_set = BaseDataset.Xf_set
 
     def __init__(
         self,
@@ -367,7 +267,7 @@ class ForecastDataset(BasicDataset):
 
         if len(not_found) > 0:
             raise ValueError(f"Columns not found in normalized data: {not_found}")
-        
+
         self.fight_ids = None
         self.load_data()
 
@@ -435,7 +335,7 @@ class ForecastDataset(BasicDataset):
         model: nn.Module,
         fight_features: List[List[float]] = [],
         parse_ids: bool = False,
-        device: str = "cpu",
+        device: str | torch.device = "cpu",
     ) -> Tuple[NDArray, NDArray]:
         """
         Make a prediction for a given list of matches. Either providing the names of
@@ -546,7 +446,7 @@ class ForecastDataset(BasicDataset):
             original_df = self.data_processor.data[
                 [field + "not_ranked" for field in fields]
             ].rename(columns={field + "not_ranked": field for field in fields})
-            
+
             match_data[fields] = ranked_fields.add_data_fields(
                 pd.concat([original_df, match_data[fields]])
             ).iloc[len(self.data_processor.data) :][fields]
@@ -626,8 +526,103 @@ class ForecastDataset(BasicDataset):
 
         return predictions_1, predictions_2
 
-    
-class DatasetWithTimeEvolution(BasicDataset):
+
+class BasicDataset(BaseDataset):
+    def __getitem__(self, idx: int) -> Tuple[
+        Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+        torch.Tensor,
+        Tuple[torch.Tensor, torch.Tensor],
+    ]:
+        """
+        Returns a tuple of (X, Y, winner, odds_1, odds_2) for the given index.
+
+        The data is randomly flipped to simulate the possibility of a fight being
+        between two fighters in either order.
+
+        Args:
+            idx: The index of the data to return.
+
+        Returns:
+            A tuple of (X, Y, winner, odds_1, odds_2) where X and Y are the
+            input data for the two fighters, winner is a tensor of size 1
+            indicating which fighter won, and odds_1 and odds_2 are the opening
+            odds for the two fighters.
+        """
+        X1, X2, X3, winner, odds_1, odds_2 = [x[idx] for x in self.data]
+
+        if np.random.random() >= 0.5:
+            X1, X2 = X2, X1
+            winner = 1 - winner
+            odds_1, odds_2 = odds_2, odds_1
+
+        return (
+            (
+                X1,
+                X2,
+                X3,
+            ),
+            winner.reshape(-1),
+            (
+                odds_1.reshape(-1),
+                odds_2.reshape(-1),
+            ),
+        )
+
+    def get_fight_data_from_ids(self, fight_ids: Optional[List[str]] = None) -> Tuple[
+        Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor],
+        torch.FloatTensor,
+        Tuple[torch.FloatTensor, torch.FloatTensor],
+        NDArray[np.str_],
+        NDArray[np.str_],
+    ]:
+        """
+        Returns a tuple of (X, Y, winner, odds_1, odds_2, fighter_names, opponent_names)
+        for the given fight ids.
+
+        If fight_ids is None, returns all the data in the dataset.
+
+        Args:
+            fight_ids: The list of fight ids to include in the dataset. If None,
+                use all the data in the dataset.
+
+        Returns:
+            A tuple of (X, Y, winner, odds_1, odds_2, fighter_names, opponent_names)
+            where X and Y are the input data for the two fighters, winner is a tensor
+            of size 1 indicating which fighter won, and odds_1 and odds_2 are the
+            opening odds for the two fighters. fighter_names and opponent_names are
+            the names of the fighters and their opponents.
+        """
+        if fight_ids is not None:
+            fight_data = self.fight_data[self.fight_data["fight_id"].isin(fight_ids)]
+        else:
+            fight_data = self.fight_data.copy()
+
+        data = [
+            torch.FloatTensor(
+                np.asarray([fight_data[x + "_x"].values for x in self.X_set]).T
+            ),
+            torch.FloatTensor(
+                np.asarray([fight_data[x + "_y"].values for x in self.X_set]).T
+            ),
+            torch.FloatTensor(
+                np.asarray([fight_data[x + "_x"].values for x in self.Xf_set]).T
+            ),
+            torch.FloatTensor(
+                (fight_data["winner_x"] != fight_data["fighter_id_x"]).values
+            ),
+            torch.FloatTensor(fight_data["opening_x"].values),
+            torch.FloatTensor(fight_data["opening_y"].values),
+        ]
+
+        fighter_names = np.array(fight_data["fighter_name_x"].values)
+        opponent_names = np.array(fight_data["fighter_name_y"].values)
+
+        X1, X2, X3, Y, odds1, odds2 = data
+
+        return (X1, X2, X3), Y, (odds1, odds2), fighter_names, opponent_names
+
+
+class DatasetWithTimeEvolution(BaseDataset):
     """
     A dataset class designed to handle UFC fight data with time evolution for
     predictions.
@@ -637,6 +632,7 @@ class DatasetWithTimeEvolution(BasicDataset):
     in the dataset based on their fight history and updates the data accordingly.
     """
 
+    trans_data: torch.Tensor
 
     stat_fields: List[str] = [
         "body_strikes_att_per_minute",
@@ -694,10 +690,12 @@ class DatasetWithTimeEvolution(BasicDataset):
 
         not_found = []
         for column in self.X_set + self.Xf_set:
-            if column not in self.data_processor.data_normalized.columns: # pragma: no cover
+            if (
+                column not in self.data_processor.data_normalized.columns
+            ):  # pragma: no cover
                 not_found.append(column)
 
-        if len(not_found) > 0: # pragma: no cover
+        if len(not_found) > 0:  # pragma: no cover
             raise ValueError(f"Columns not found in normalized data: {not_found}")
 
         self.load_data()
@@ -772,8 +770,12 @@ class DatasetWithTimeEvolution(BasicDataset):
             .reset_index()
         )
         # Fill missing lists with empty lists
-        previous_indices_df["previous_fights"] = previous_indices_df["previous_fights"].apply(lambda x: x if isinstance(x, list) else [])
-        previous_indices_df["previous_opponents"] = previous_indices_df["previous_opponents"].apply(lambda x: x if isinstance(x, list) else [])
+        previous_indices_df["previous_fights"] = previous_indices_df[
+            "previous_fights"
+        ].apply(lambda x: x if isinstance(x, list) else [])
+        previous_indices_df["previous_opponents"] = previous_indices_df[
+            "previous_opponents"
+        ].apply(lambda x: x if isinstance(x, list) else [])
 
         reduced_data = reduced_data.merge(
             previous_indices_df,
@@ -804,7 +806,7 @@ class DatasetWithTimeEvolution(BasicDataset):
 
         return reduced_data
 
-    def compute_position_data(self, reduced_data_trans: pd.DataFrame):
+    def compute_position_data(self, reduced_data_trans: pd.DataFrame) -> None:
         reduced_data_trans = reduced_data_trans.copy()
 
         preserved_fields = ["fight_id", "fighter_id", "num_fight", "next_fight"]
@@ -865,7 +867,9 @@ class DatasetWithTimeEvolution(BasicDataset):
         self.next_f1_positions = next_f1_positions
         self.next_f2_positions = next_f2_positions
 
-    def update_data_trans(self, transformer, device="cpu"):
+    def update_data_trans(
+        self, transformer: nn.Module, device: str | torch.device = "cpu"
+    ) -> None:
         for i, (
             f1_position,
             f2_position,
@@ -1010,12 +1014,17 @@ class DatasetWithTimeEvolution(BasicDataset):
         return len(self.data[0])
 
     def __getitem__(self, idx: int) -> Tuple[
+        Tuple[
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+        ],
         torch.Tensor,
-        torch.Tensor,
-        torch.Tensor,
-        torch.Tensor,
-        torch.Tensor,
-        torch.Tensor,
+        Tuple[torch.Tensor, torch.Tensor],
     ]:
         """
         Returns a tuple of (X, Y, winner, odds_1, odds_2) for the given index.
@@ -1066,12 +1075,17 @@ class DatasetWithTimeEvolution(BasicDataset):
         )
 
     def get_fight_data_from_ids(self, fight_ids: Optional[List[str]] = None) -> Tuple[
+        Tuple[
+            torch.FloatTensor,
+            torch.FloatTensor,
+            torch.FloatTensor,
+            torch.FloatTensor,
+            torch.FloatTensor,
+            torch.FloatTensor,
+            torch.FloatTensor,
+        ],
         torch.FloatTensor,
-        torch.FloatTensor,
-        torch.FloatTensor,
-        torch.FloatTensor,
-        torch.FloatTensor,
-        torch.FloatTensor,
+        Tuple[torch.Tensor, torch.Tensor],
         NDArray[np.str_],
         NDArray[np.str_],
     ]:
@@ -1094,7 +1108,7 @@ class DatasetWithTimeEvolution(BasicDataset):
         """
         if fight_ids is not None:
             fight_data = self.fight_data[self.fight_data["fight_id"].isin(fight_ids)]
-        else: # pragma: no cover    
+        else:  # pragma: no cover
             fight_data = self.fight_data.copy()
 
         data = [
@@ -1117,29 +1131,37 @@ class DatasetWithTimeEvolution(BasicDataset):
         fighter_names = np.array(fight_data["fighter_name_x"].values)
         opponent_names = np.array(fight_data["fighter_name_y"].values)
 
-        ff = torch.stack(
-            [
-                pad_or_truncate(self.trans_data[prev], padding)
-                for prev in fight_data["previous_fights_x"].values
-            ]
+        ff = torch.FloatTensor(
+            torch.stack(
+                [
+                    pad_or_truncate(self.trans_data[prev], padding)
+                    for prev in fight_data["previous_fights_x"].values
+                ]
+            )
         )
-        of = torch.stack(
-            [
-                pad_or_truncate(self.trans_data[prev], padding)
-                for prev in fight_data["previous_fights_y"].values
-            ]
+        of = torch.FloatTensor(
+            torch.stack(
+                [
+                    pad_or_truncate(self.trans_data[prev], padding)
+                    for prev in fight_data["previous_fights_y"].values
+                ]
+            )
         )
-        fo = torch.stack(
-            [
-                pad_or_truncate(self.trans_data[prev], padding)
-                for prev in fight_data["previous_opponents_x"].values
-            ]
+        fo = torch.FloatTensor(
+            torch.stack(
+                [
+                    pad_or_truncate(self.trans_data[prev], padding)
+                    for prev in fight_data["previous_opponents_x"].values
+                ]
+            )
         )
-        oo = torch.stack(
-            [
-                pad_or_truncate(self.trans_data[prev], padding)
-                for prev in fight_data["previous_opponents_y"].values
-            ]
+        oo = torch.FloatTensor(
+            torch.stack(
+                [
+                    pad_or_truncate(self.trans_data[prev], padding)
+                    for prev in fight_data["previous_opponents_y"].values
+                ]
+            )
         )
 
         X1, X2, X3, Y, odds1, odds2 = data
@@ -1162,6 +1184,7 @@ class DatasetWithTimeEvolution(BasicDataset):
             fighter_names,
             opponent_names,
         )
+
 
 class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
     """
@@ -1216,10 +1239,12 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
 
         not_found = []
         for column in self.X_set + self.Xf_set:
-            if column not in self.data_processor.data_normalized.columns: # pragma: no cover
+            if (
+                column not in self.data_processor.data_normalized.columns
+            ):  # pragma: no cover
                 not_found.append(column)
 
-        if len(not_found) > 0: #  pragma: no cover
+        if len(not_found) > 0:  #  pragma: no cover
             raise ValueError(f"Columns not found in normalized data: {not_found}")
 
         self.fight_ids = None
@@ -1295,8 +1320,12 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             .reset_index()
         )
         # Fill missing lists with empty lists
-        previous_indices_df["previous_fights"] = previous_indices_df["previous_fights"].apply(lambda x: x if isinstance(x, list) else [])
-        previous_indices_df["previous_opponents"] = previous_indices_df["previous_opponents"].apply(lambda x: x if isinstance(x, list) else [])
+        previous_indices_df["previous_fights"] = previous_indices_df[
+            "previous_fights"
+        ].apply(lambda x: x if isinstance(x, list) else [])
+        previous_indices_df["previous_opponents"] = previous_indices_df[
+            "previous_opponents"
+        ].apply(lambda x: x if isinstance(x, list) else [])
 
         reduced_data = reduced_data.merge(
             previous_indices_df,
@@ -1391,7 +1420,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
         model: nn.Module,
         fight_features: List[List[float]] = [],
         parse_ids: bool = False,
-        device: str = "cpu",
+        device: str | torch.device = "cpu",
     ) -> Tuple[NDArray, NDArray]:
         """
         Make a prediction for a given list of matches. Either providing the names of
@@ -1419,7 +1448,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             opponent_ids = [
                 self.data_processor.get_fighter_id(x) for x in opponent_names
             ]
-        else: # pragma: no cover
+        else:  # pragma: no cover
             fighter_ids = fighter_names
             opponent_ids = opponent_names
 
@@ -1502,7 +1531,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             original_df = self.data_processor.data[
                 [field + "not_ranked" for field in fields]
             ].rename(columns={field + "not_ranked": field for field in fields})
-            
+
             match_data[fields] = ranked_fields.add_data_fields(
                 pd.concat([original_df, match_data[fields]])
             ).iloc[len(self.data_processor.data) :][fields]
@@ -1526,7 +1555,9 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
         trans_data = self.get_trans_stats()
 
         match_data = match_data.merge(
-            trans_data[["fight_id", "fighter_id", "previous_fights", "previous_opponents"]]
+            trans_data[
+                ["fight_id", "fighter_id", "previous_fights", "previous_opponents"]
+            ]
         )
 
         for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
@@ -1540,7 +1571,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
                     np.asarray([match_data[x] for x in self.Xf_set]).T,
                 )
             }
-        else: # pragma: no cover
+        else:  # pragma: no cover
             fight_data_dict = {id_: [] for id_ in match_data["id_"].values}
 
         trans_data_f_dict = {
@@ -1552,7 +1583,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
                         pad_or_truncate(self.trans_data[idxs], padding).detach().numpy()
                         for idxs in match_data["previous_fights"].values
                     ]
-                )
+                ),
             )
         }
 

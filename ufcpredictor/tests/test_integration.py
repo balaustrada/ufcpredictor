@@ -7,7 +7,12 @@ import torch
 from ufcpredictor.data_aggregator import WeightedDataAggregator
 from ufcpredictor.data_enhancers import RankedFields, SumFlexibleELO
 from ufcpredictor.data_processor import DataProcessor
-from ufcpredictor.datasets import BasicDataset, ForecastDataset, DatasetWithTimeEvolution, ForecastDatasetTimeEvolution
+from ufcpredictor.datasets import (
+    BasicDataset,
+    ForecastDataset,
+    DatasetWithTimeEvolution,
+    ForecastDatasetTimeEvolution,
+)
 from ufcpredictor.loss_functions import BettingLoss
 from ufcpredictor.models import SimpleFightNet, SimpleFightNetWithTimeEvolution
 from ufcpredictor.trainer import Trainer
@@ -281,66 +286,66 @@ class TestSimpleModel(unittest.TestCase):
             "ELO",
         ]
         stat_fields = [
-                "age",
-                # "notice_days",
-                # "body_strikes_att_opponent_per_minute",
-                # "body_strikes_att_per_minute",
-                "body_strikes_succ_opponent_per_minute",
-                "body_strikes_succ_per_minute",
-                # "clinch_strikes_att_opponent_per_minute",
-                # "clinch_strikes_att_per_minute",
-                "clinch_strikes_succ_opponent_per_minute",
-                "clinch_strikes_succ_per_minute",
-                "ctrl_time_opponent_per_minute",
-                "ctrl_time_per_minute",
-                # "distance_strikes_att_opponent_per_minute",
-                # "distance_strikes_att_per_minute",
-                "distance_strikes_succ_opponent_per_minute",
-                "distance_strikes_succ_per_minute",
-                # "fighter_height_cm",
-                # "ground_strikes_att_opponent_per_minute",
-                # "ground_strikes_att_per_minute",
-                "ground_strikes_succ_opponent_per_minute",
-                "ground_strikes_succ_per_minute",
-                # "head_strikes_att_opponent_per_minute",
-                # "head_strikes_att_per_minute",
-                "head_strikes_succ_opponent_per_minute",
-                "head_strikes_succ_per_minute",
-                "knockdowns_opponent_per_minute",
-                "knockdowns_per_minute",
-                # "KO_opponent_per_fight",
-                "KO_opponent_per_minute",
-                # "KO_per_fight",
-                "KO_per_minute",
-                # "leg_strikes_att_opponent_per_minute",
-                # "leg_strikes_att_per_minute",
-                "leg_strikes_succ_opponent_per_minute",
-                "leg_strikes_succ_per_minute",
-                # "num_fight",
-                # "reversals_opponent_per_minute",
-                # "reversals_per_minute",
-                # "strikes_att_opponent_per_minute",
-                # "strikes_att_per_minute",
-                "strikes_succ_opponent_per_minute",
-                "strikes_succ_per_minute",
-                # "Sub_opponent_per_fight",
-                "Sub_opponent_per_minute",
-                # "Sub_per_fight",
-                "Sub_per_minute",
-                "submission_att_opponent_per_minute",
-                "submission_att_per_minute",
-                # "takedown_att_opponent_per_minute",
-                # "takedown_att_per_minute",
-                "takedown_succ_opponent_per_minute",
-                "takedown_succ_per_minute",
-                "time_since_last_fight", # Adding this somehow slowed the convergence and is not as good (why?) maybe because of the default value used(?) it was the mean (~ 7months)
-                # "total_strikes_att_opponent_per_minute",
-                # "total_strikes_att_per_minute",
-                "total_strikes_succ_opponent_per_minute",
-                "total_strikes_succ_per_minute",
-                # "win_opponent_per_fight",
-                # "win_per_fight",
-                "ELO",
+            "age",
+            # "notice_days",
+            # "body_strikes_att_opponent_per_minute",
+            # "body_strikes_att_per_minute",
+            "body_strikes_succ_opponent_per_minute",
+            "body_strikes_succ_per_minute",
+            # "clinch_strikes_att_opponent_per_minute",
+            # "clinch_strikes_att_per_minute",
+            "clinch_strikes_succ_opponent_per_minute",
+            "clinch_strikes_succ_per_minute",
+            "ctrl_time_opponent_per_minute",
+            "ctrl_time_per_minute",
+            # "distance_strikes_att_opponent_per_minute",
+            # "distance_strikes_att_per_minute",
+            "distance_strikes_succ_opponent_per_minute",
+            "distance_strikes_succ_per_minute",
+            # "fighter_height_cm",
+            # "ground_strikes_att_opponent_per_minute",
+            # "ground_strikes_att_per_minute",
+            "ground_strikes_succ_opponent_per_minute",
+            "ground_strikes_succ_per_minute",
+            # "head_strikes_att_opponent_per_minute",
+            # "head_strikes_att_per_minute",
+            "head_strikes_succ_opponent_per_minute",
+            "head_strikes_succ_per_minute",
+            "knockdowns_opponent_per_minute",
+            "knockdowns_per_minute",
+            # "KO_opponent_per_fight",
+            "KO_opponent_per_minute",
+            # "KO_per_fight",
+            "KO_per_minute",
+            # "leg_strikes_att_opponent_per_minute",
+            # "leg_strikes_att_per_minute",
+            "leg_strikes_succ_opponent_per_minute",
+            "leg_strikes_succ_per_minute",
+            # "num_fight",
+            # "reversals_opponent_per_minute",
+            # "reversals_per_minute",
+            # "strikes_att_opponent_per_minute",
+            # "strikes_att_per_minute",
+            "strikes_succ_opponent_per_minute",
+            "strikes_succ_per_minute",
+            # "Sub_opponent_per_fight",
+            "Sub_opponent_per_minute",
+            # "Sub_per_fight",
+            "Sub_per_minute",
+            "submission_att_opponent_per_minute",
+            "submission_att_per_minute",
+            # "takedown_att_opponent_per_minute",
+            # "takedown_att_per_minute",
+            "takedown_succ_opponent_per_minute",
+            "takedown_succ_per_minute",
+            "time_since_last_fight",  # Adding this somehow slowed the convergence and is not as good (why?) maybe because of the default value used(?) it was the mean (~ 7months)
+            # "total_strikes_att_opponent_per_minute",
+            # "total_strikes_att_per_minute",
+            "total_strikes_succ_opponent_per_minute",
+            "total_strikes_succ_per_minute",
+            # "win_opponent_per_fight",
+            # "win_per_fight",
+            "ELO",
         ]
         status_array_size = 8
         Xf_set = ["num_rounds", "weight"]
@@ -359,11 +364,11 @@ class TestSimpleModel(unittest.TestCase):
         )  # The usual is 4
 
         invalid_fights.update(
-            data_processor.data[
-                data_processor.data["notice_days"] != 1/60
-            ]["fight_id"]
-        ) # Short notices worsen the result, even when introduced in the model... 
-        
+            data_processor.data[data_processor.data["notice_days"] != 1 / 60][
+                "fight_id"
+            ]
+        )  # Short notices worsen the result, even when introduced in the model...
+
         early_split_date = "2022-01-01"
         split_date = "2024-01-01"
         max_date = "2024-10-10"
@@ -427,10 +432,12 @@ class TestSimpleModel(unittest.TestCase):
         random.seed(seed)
         np.random.seed(seed)
 
-
         dropout = 0.01
-        model = SimpleFightNetWithTimeEvolution (
-            input_size=2*len(X_set)+ len(Xf_set) + 2 + 2*status_array_size, # 2 are the odds,
+        model = SimpleFightNetWithTimeEvolution(
+            input_size=2 * len(X_set)
+            + len(Xf_set)
+            + 2
+            + 2 * status_array_size,  # 2 are the odds,
             # input_size_f=len(Xf_set),
             dropout_prob=dropout,
             # fighter_network_shape=[256, 512, 1024, 512],
@@ -450,16 +457,16 @@ class TestSimpleModel(unittest.TestCase):
                 # layer_sizes=[128, 64, 10], # This better(?)
                 # layer_sizes=[128, 512, 256, 128, 64, 10], # This worked
                 dropout=dropout * 0.9,
-            )
+            ),
         )
 
         optimizer = torch.optim.Adam(
-            params=model.parameters(), lr=1.3e-3, weight_decay=1e-5#1e-5
+            params=model.parameters(), lr=1.3e-3, weight_decay=1e-5  # 1e-5
         )  # , weight_decay=2e-5)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode="min", factor=0.7, patience=2
         )
-        
+
         trainer = Trainer(
             train_loader=train_dataloader,
             test_loader=None,
@@ -487,5 +494,5 @@ class TestSimpleModel(unittest.TestCase):
         self.assertAlmostEqual(float(p2), 0.5271908, places=3)
 
 
-if __name__ == "__main__": # pragma: no cover
+if __name__ == "__main__":  # pragma: no cover
     unittest.main()

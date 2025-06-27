@@ -5,7 +5,11 @@ import numpy as np
 import pandas as pd
 import torch
 
-from ufcpredictor.datasets import BasicDataset, ForecastDataset, DatasetWithTimeEvolution
+from ufcpredictor.datasets import (
+    BasicDataset,
+    ForecastDataset,
+    DatasetWithTimeEvolution,
+)
 
 
 def mock_call_return_args(*args, **kwargs):
@@ -112,7 +116,7 @@ class TestBasicDataset(unittest.TestCase):
         dataset = BasicDataset(
             data_processor=mock_processor, fight_ids=fight_ids, X_set=self.X_set
         )
-    
+
         # Retrieve an item
         (X1, X2, X3), winner, (odds_1, odds_2) = dataset[0]
 
@@ -155,7 +159,7 @@ class TestBasicDataset(unittest.TestCase):
             original = dataset[2]
             swapped = dataset[2]
 
-        assert original[0][0] == swapped[0][1] 
+        assert original[0][0] == swapped[0][1]
         assert not torch.equal(original[1], swapped[1])  # Y should be swapped as well
         assert original[2] == swapped[2][::-1]  # Winner should be swapped
 
@@ -189,7 +193,7 @@ class TestBasicDataset(unittest.TestCase):
         )
 
         # Test retrieving specific fight data
-        X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names = (
+        (X1, X2, X3), Y, (odds1, odds2), fighter_names, opponent_names = (
             dataset.get_fight_data_from_ids(fight_ids=["fight1"])
         )
 
@@ -226,7 +230,7 @@ class TestBasicDataset(unittest.TestCase):
         )
 
         # Test retrieving specific fight data
-        X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names = (
+        (X1, X2, X3), Y, (odds1, odds2), fighter_names, opponent_names = (
             dataset.get_fight_data_from_ids(fight_ids=None)
         )
 
@@ -276,7 +280,7 @@ class TestForecastDataset(unittest.TestCase):
                     2,
                     3,
                     3,
-                ]
+                ],
             }
         )
         mock_data["event_date"] = pd.to_datetime(mock_data["event_date"])
@@ -347,7 +351,8 @@ class TestForecastDataset(unittest.TestCase):
                     "2023-01-02",
                     "2023-01-03",
                     "2023-01-03",
-                ],                "fighter_dob": [
+                ],
+                "fighter_dob": [
                     "1990-01-01",
                     "1990-01-01",
                     "1990-01-02",
@@ -460,15 +465,19 @@ class TestForecastDataset(unittest.TestCase):
             "Columns not found in normalized data: ['missing_column']", str(e.exception)
         )
 
+
 class TestDatasetWithTimeEvolution(unittest.TestCase):
     X_set = ["knockdowns_per_minute"]
+
     def test_get_trans_stats_winner_binary(self):
         # Prepare mock data with winner and fighter_id columns
         mock_data = pd.DataFrame(
             {
                 "fight_id": ["fight1", "fight1", "fight2", "fight2"],
                 "fighter_id": ["f1", "f2", "f3", "f4"],
-                "event_date": pd.to_datetime(["2023-01-01", "2023-01-01", "2023-01-02", "2023-01-02"]),
+                "event_date": pd.to_datetime(
+                    ["2023-01-01", "2023-01-01", "2023-01-02", "2023-01-02"]
+                ),
                 "num_fight": [1, 1, 2, 2],
                 "opponent_id": ["f2", "f1", "f4", "f3"],
                 "body_strikes_att_per_minute": [1.0, 2.0, 3.0, 4.0],
@@ -485,7 +494,7 @@ class TestDatasetWithTimeEvolution(unittest.TestCase):
         mock_processor.data_normalized_nonagg = mock_data.copy()
         mock_processor.data_normalized = mock_data.copy()
         # stat_fields and stat_fields_f must match the columns above
-        
+
         stat_fields = [
             "body_strikes_att_per_minute",
             "clinch_strikes_att_per_minute",
@@ -520,20 +529,24 @@ class TestDatasetWithTimeEvolution(unittest.TestCase):
 
     def test_get_fight_data_from_ids_with_fight_ids(self):
         # Prepare mock data
-        mock_data = pd.DataFrame({
-            "fight_id": ["fight1", "fight1", "fight2", "fight2"],
-            "fighter_id": ["f1", "f2", "f3", "f4"],
-            "event_date": pd.to_datetime(["2023-01-01", "2023-01-01", "2023-01-02", "2023-01-02"]),
-            "num_fight": [1, 1, 2, 2],
-            "opponent_id": ["f2", "f1", "f4", "f3"],
-            "body_strikes_att_per_minute": [1.0, 2.0, 3.0, 4.0],
-            "clinch_strikes_att_per_minute": [1.1, 2.1, 3.1, 4.1],
-            "knockdowns_per_minute": [0.5, 0.6, 0.7, 0.8],
-            "ELO": [1000, 1100, 1200, 1300],
-            "winner": ["f1", "f2", "f3", "f4"],
-            "opening": [1.5, 2.0, 1.8, 2.2],
-            "fighter_name": ["A", "B", "C", "D"],
-        })
+        mock_data = pd.DataFrame(
+            {
+                "fight_id": ["fight1", "fight1", "fight2", "fight2"],
+                "fighter_id": ["f1", "f2", "f3", "f4"],
+                "event_date": pd.to_datetime(
+                    ["2023-01-01", "2023-01-01", "2023-01-02", "2023-01-02"]
+                ),
+                "num_fight": [1, 1, 2, 2],
+                "opponent_id": ["f2", "f1", "f4", "f3"],
+                "body_strikes_att_per_minute": [1.0, 2.0, 3.0, 4.0],
+                "clinch_strikes_att_per_minute": [1.1, 2.1, 3.1, 4.1],
+                "knockdowns_per_minute": [0.5, 0.6, 0.7, 0.8],
+                "ELO": [1000, 1100, 1200, 1300],
+                "winner": ["f1", "f2", "f3", "f4"],
+                "opening": [1.5, 2.0, 1.8, 2.2],
+                "fighter_name": ["A", "B", "C", "D"],
+            }
+        )
 
         mock_processor = MagicMock()
         mock_processor.data_normalized_nonagg = mock_data.copy()

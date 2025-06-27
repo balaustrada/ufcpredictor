@@ -619,10 +619,8 @@ class DataProcessor:
 
             # Also aggregate data per fight in data attribute
             new_columns_data[column + "_per_minute"] = (
-                self.data[column]
-                / self.data["total_time"]
+                self.data[column] / self.data["total_time"]
             )
-
 
         self.data_aggregated = pd.concat(
             [self.data_aggregated, pd.DataFrame(new_columns)], axis=1
@@ -660,7 +658,9 @@ class DataProcessor:
         data_normalized_nonagg = self.data.copy()
 
         data_normalized_nonagg = data_normalized_nonagg.merge(
-            self.data_normalized[["fight_id", "fighter_id", "time_since_last_fight", "num_fight"]],
+            self.data_normalized[
+                ["fight_id", "fighter_id", "time_since_last_fight", "num_fight"]
+            ],
             how="left",
         )
 

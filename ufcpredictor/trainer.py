@@ -2,8 +2,8 @@
 This module provides a Trainer class for training and testing PyTorch models using a
 specific workflow.
 
-The Trainer class encapsulates the training and testing data, model, optimizer, loss 
-function, and learning rate scheduler, providing a simple way to train and test a 
+The Trainer class encapsulates the training and testing data, model, optimizer, loss
+function, and learning rate scheduler, providing a simple way to train and test a
 PyTorch model.
 """
 
@@ -120,10 +120,8 @@ class Trainer:
 
             for set_ in "X_set", "Xf_set":
                 if hasattr(self.train_loader.dataset, set_):
-                    params[set_] = sorted(
-                        getattr(self.train_loader.dataset, set_)
-                    )
-                    
+                    params[set_] = sorted(getattr(self.train_loader.dataset, set_))
+
             mlflow.log_params(dict(sorted(params.items())))
 
     def train(
@@ -152,45 +150,42 @@ class Trainer:
 
         self.model.to(self.device)
 
-        target_preds = []
-        target_labels = []
-
         for epoch in range(1, epochs + 1):
             self.epoch_counter += 1
             self.model.train()
             train_loss = []
+            target_preds: List[float] = []
+            target_labels: List[float] = []
 
             for X, Y, odds in tqdm(iter(train_loader), disable=silent):
                 X = [xi.to(self.device) for xi in X]
                 odds = [oddsi.to(self.device) for oddsi in odds]
                 Y = Y.to(self.device)
 
-
                 self.optimizer.zero_grad()
                 target_logit = self.model(*X, *odds)
                 loss = self.loss_fn(target_logit, Y, *odds)
-
 
                 loss.backward()
                 self.optimizer.step()
 
                 train_loss.append(loss.item())
-
-                target_preds += (
-                    torch.round(target_logit).detach().cpu().numpy().tolist()
-                )
-                target_labels += Y.detach().cpu().numpy().tolist()
+                target_preds += torch.round(target_logit).detach().cpu().numpy().flatten().tolist()  # type: ignore
+                target_labels += Y.detach().cpu().numpy().flatten().tolist()
 
                 if hasattr(train_loader.dataset, "update_data_trans"):
                     with torch.no_grad():
-                        train_loader.dataset.update_data_trans(self.model.transformer, self.device)
-
+                        train_loader.dataset.update_data_trans(
+                            self.model.transformer, self.device
+                        )
 
             match = np.asarray(target_preds).reshape(-1) == np.asarray(
                 target_labels
             ).reshape(-1)
 
-            val_loss, val_target_f1, correct, _, _ = self.test(test_loader, silent=silent)
+            val_loss, val_target_f1, correct, _, _ = self.test(
+                test_loader, silent=silent
+            )
 
             if not silent:
                 print(f"Train acc: [{match.sum() / len(match):.5f}]")
@@ -215,7 +210,9 @@ class Trainer:
                 self.scheduler.step(val_loss)
 
     def test(
-        self, test_loader: torch.utils.data.DataLoader | None = None, silent: bool =False,
+        self,
+        test_loader: torch.utils.data.DataLoader | None = None,
+        silent: bool = False,
     ) -> Tuple[float, float, float, List, List]:
         """
         Evaluates the model on the test data and returns the validation loss, target F1
@@ -239,9 +236,8 @@ class Trainer:
         self.model.eval()
         val_loss = []
 
-        target_preds = []
-        target = []
-        target_labels = []
+        target_preds: List[float] = []
+        target_labels: List[float] = []
 
         with torch.no_grad():
             for X, Y, odds in tqdm(iter(test_loader), disable=silent):
@@ -254,9 +250,8 @@ class Trainer:
                 loss = self.loss_fn(target_logit, Y, *odds)
                 val_loss.append(loss.item())
 
-                target += target_logit
                 target_preds += (
-                    torch.round(target_logit).detach().cpu().numpy().tolist()
+                    torch.round(target_logit).detach().cpu().numpy().tolist()  # type: ignore
                 )
                 target_labels += Y.detach().cpu().numpy().tolist()
 
@@ -270,6 +265,6 @@ class Trainer:
             np.mean(val_loss),
             target_f1,
             match.sum() / len(match),
-            target,
+            target_preds,
             target_labels,
         )

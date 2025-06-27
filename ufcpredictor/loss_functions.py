@@ -16,6 +16,9 @@ from torch import nn
 if TYPE_CHECKING:  # pragma: no cover
     from typing import List
 
+# import torch.nn.functional as F
+
+
 
 class BettingLoss(nn.Module):
 
@@ -93,3 +96,35 @@ class BettingLoss(nn.Module):
         earnings[msk & (targets == 1)] = return_fighter_2[msk & (targets == 1)]
 
         return (losses - earnings).mean()
+
+        # return F.binary_cross_entropy(predictions, targets.float())
+        
+            
+            
+        # # Soft approximation of rounding using sigmoid
+        # sharpness = 3  # increase for sharper transition
+        # soft_pred_1 = torch.sigmoid(sharpness * (0.5 - predictions))  # approximates prediction < 0.5
+        # soft_pred_2 = torch.sigmoid(sharpness * (predictions - 0.5))  # approximates prediction > 0.5
+
+        # # Betting amounts
+        # bet_1 = self.get_bet(0.5 - predictions)
+        # bet_2 = self.get_bet(predictions - 0.5)
+
+        # # Total loss (total amount bet)
+        # losses = bet_1 * soft_pred_1 + bet_2 * soft_pred_2
+
+        # # Soft masks for correct prediction
+        # soft_correct = torch.sigmoid(sharpness * (1.0 - torch.abs(predictions - targets)))
+
+        # # Target masks (0 or 1)
+        # target_is_0 = (1 - targets).float()
+        # target_is_1 = targets.float()
+
+        # # Earnings (softly weighted by match quality)
+        # earnings_1 = bet_1 * odds_1 * soft_correct * target_is_0
+        # earnings_2 = bet_2 * odds_2 * soft_correct * target_is_1
+
+        # # Total earnings (note: no hard indexing!)
+        # earnings = earnings_1 + earnings_2
+
+        # return (losses - earnings).mean()

@@ -356,6 +356,9 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
                 of_data, ff_data, oo_data, fo_data
             )
 
+        # odds1 = odds1 / odds1
+        # odds2 = odds2 / odds2
+
         # zeros torch tensor
         S1 = torch.zeros(X1.shape[0], self.status_array_size).to(X1.device)
         S2 = torch.zeros(X2.shape[0], self.status_array_size).to(X1.device)

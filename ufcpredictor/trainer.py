@@ -176,7 +176,7 @@ class Trainer:
                 if hasattr(train_loader.dataset, "update_data_trans"):
                     with torch.no_grad():
                         train_loader.dataset.update_data_trans(
-                            self.model.transformer, self.device
+                            self.model.evolver, self.device
                         )
 
             match = np.asarray(target_preds).reshape(-1) == np.asarray(

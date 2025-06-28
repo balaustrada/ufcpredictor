@@ -347,7 +347,7 @@ class TestSimpleModel(unittest.TestCase):
             # "win_per_fight",
             "ELO",
         ]
-        status_array_size = 8
+        state_size = 8
         Xf_set = ["num_rounds", "weight"]
         stat_fields_f = ["num_rounds", "weight", "winner"]
 
@@ -395,7 +395,7 @@ class TestSimpleModel(unittest.TestCase):
             Xf_set=Xf_set,
             stat_fields=stat_fields,
             stat_fields_f=stat_fields_f,
-            status_array_size=status_array_size,
+            state_size=state_size,
         )
 
         train_dataset = DatasetWithTimeEvolution(
@@ -405,7 +405,7 @@ class TestSimpleModel(unittest.TestCase):
             Xf_set=Xf_set,
             stat_fields=stat_fields,
             stat_fields_f=stat_fields_f,
-            status_array_size=status_array_size,
+            state_size=state_size,
         )
 
         forecast_dataset = ForecastDatasetTimeEvolution(
@@ -414,7 +414,7 @@ class TestSimpleModel(unittest.TestCase):
             Xf_set=Xf_set,
             stat_fields=stat_fields,
             stat_fields_f=stat_fields_f,
-            status_array_size=status_array_size,
+            state_size=state_size,
         )
 
         batch_size = 64  # 2048
@@ -437,25 +437,16 @@ class TestSimpleModel(unittest.TestCase):
             input_size=2 * len(X_set)
             + len(Xf_set)
             + 2
-            + 2 * status_array_size,  # 2 are the odds,
-            # input_size_f=len(Xf_set),
+            + 2 * state_size,  # 2 are the odds,
             dropout_prob=dropout,
-            # fighter_network_shape=[256, 512, 1024, 512],
-            # network_shape=[2048, 1024, 512, 128, 64, 1],
-            # network_shape=[122, 1024, 2048, 1024, 512, 256, 128, 64, 1],
-            # network_shape=[512,1024, 512, 256, 128, 64, 1],
-            # network_shape=[256, 512, 256, 128, 64, 1],  # This was the best one so far
-            # network_shape=[512, 128, 64, 1],
             network_shape=[128, 64, 32, 1],
-            status_array_size=status_array_size,
+            state_size=state_size,
             # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
             fighter_transformer_kwargs=dict(
-                state_dim=status_array_size,  # 20,
-                stat_dim=len(stat_fields),
-                match_dim=len(stat_fields_f),
-                layer_sizes=[128, 64],
-                # layer_sizes=[128, 64, 10], # This better(?)
-                # layer_sizes=[128, 512, 256, 128, 64, 10], # This worked
+                state_size=state_size,  # 20,
+                statistics_size=len(stat_fields),
+                fight_parameters_size=len(stat_fields_f),
+                network_shape=[128, 64],
                 dropout=dropout * 0.9,
             ),
         )

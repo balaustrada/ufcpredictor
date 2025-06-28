@@ -510,7 +510,7 @@ class TestDatasetWithTimeEvolution(unittest.TestCase):
             Xf_set=[],
             stat_fields=stat_fields,
             stat_fields_f=stat_fields_f,
-            status_array_size=2,
+            state_size=2,
         )
 
         # Call get_trans_stats directly to check the winner column
@@ -568,7 +568,7 @@ class TestDatasetWithTimeEvolution(unittest.TestCase):
             Xf_set=[],
             stat_fields=stat_fields,
             stat_fields_f=stat_fields_f,
-            status_array_size=2,
+            state_size=2,
         )
 
         # Use only fight1 for test

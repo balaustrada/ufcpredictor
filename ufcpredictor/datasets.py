@@ -11,9 +11,6 @@ from __future__ import annotations
 
 from ufcpredictor import data_processor
 
-
-padding = 20
-
 import logging
 from typing import TYPE_CHECKING
 
@@ -646,7 +643,9 @@ class DatasetWithTimeEvolution(BaseDataset):
         "winner",
     ]
 
-    status_array_size = 5
+    state_size = 5
+    num_past_fights = 20
+
 
     def __init__(
         self,
@@ -656,7 +655,8 @@ class DatasetWithTimeEvolution(BaseDataset):
         Xf_set: Optional[List[str]] = None,
         stat_fields: Optional[List[str]] = None,
         stat_fields_f: Optional[List[str]] = None,
-        status_array_size: Optional[int] = None,
+        state_size: Optional[int] = None,
+        num_past_fights: Optional[int] = None
     ) -> None:
         """
         Constructor for ForecastDataset.
@@ -685,8 +685,11 @@ class DatasetWithTimeEvolution(BaseDataset):
         if stat_fields_f is not None:
             self.stat_fields_f = stat_fields_f
 
-        if status_array_size is not None:
-            self.status_array_size = status_array_size
+        if state_size is not None:
+            self.state_size = state_size
+
+        if num_past_fights is not None:
+            self.num_past_fights = num_past_fights
 
         not_found = []
         for column in self.X_set + self.Xf_set:
@@ -884,13 +887,13 @@ class DatasetWithTimeEvolution(BaseDataset):
             )
         ):
             self.trans_data = self.trans_data.to(device)
-            X1 = self.trans_data[f1_position][:, : self.status_array_size]
-            X2 = self.trans_data[f2_position][:, : self.status_array_size]
+            X1 = self.trans_data[f1_position][:, : self.state_size]
+            X2 = self.trans_data[f2_position][:, : self.state_size]
             s1 = self.trans_data[f1_position][
-                :, self.status_array_size : -len(self.stat_fields_f)
+                :, self.state_size : -len(self.stat_fields_f)
             ]
             s2 = self.trans_data[f2_position][
-                :, self.status_array_size : -len(self.stat_fields_f)
+                :, self.state_size : -len(self.stat_fields_f)
             ]
 
             m = self.trans_data[f1_position][:, -len(self.stat_fields_f) :]
@@ -898,10 +901,10 @@ class DatasetWithTimeEvolution(BaseDataset):
             X1, X2 = transformer(X1, X2, s1, s2, m)
 
             msk = next_f1_position > 0
-            self.trans_data[next_f1_position[msk], : self.status_array_size] = X1[msk]
+            self.trans_data[next_f1_position[msk], : self.state_size] = X1[msk]
 
             msk = next_f2_position > 0
-            self.trans_data[next_f2_position[msk], : self.status_array_size] = X2[msk]
+            self.trans_data[next_f2_position[msk], : self.state_size] = X2[msk]
 
     def load_data(self) -> None:
         """
@@ -948,7 +951,7 @@ class DatasetWithTimeEvolution(BaseDataset):
         self.trans_data = torch.concat(
             (
                 torch.zeros(
-                    (self.trans_data.size()[0], self.status_array_size),
+                    (self.trans_data.size()[0], self.state_size),
                     dtype=torch.float,
                 ),
                 self.trans_data,
@@ -1062,10 +1065,10 @@ class DatasetWithTimeEvolution(BaseDataset):
                 X1,
                 X2,
                 X3,
-                pad_or_truncate(ff_data, padding),
-                pad_or_truncate(of_data, padding),
-                pad_or_truncate(fo_data, padding),
-                pad_or_truncate(oo_data, padding),
+                pad_or_truncate(ff_data, self.num_past_fights),
+                pad_or_truncate(of_data, self.num_past_fights),
+                pad_or_truncate(fo_data, self.num_past_fights),
+                pad_or_truncate(oo_data, self.num_past_fights),
             ),
             winner.reshape(-1),
             (
@@ -1134,7 +1137,7 @@ class DatasetWithTimeEvolution(BaseDataset):
         ff = torch.FloatTensor(
             torch.stack(
                 [
-                    pad_or_truncate(self.trans_data[prev], padding)
+                    pad_or_truncate(self.trans_data[prev], self.num_past_fights)
                     for prev in fight_data["previous_fights_x"].values
                 ]
             )
@@ -1142,7 +1145,7 @@ class DatasetWithTimeEvolution(BaseDataset):
         of = torch.FloatTensor(
             torch.stack(
                 [
-                    pad_or_truncate(self.trans_data[prev], padding)
+                    pad_or_truncate(self.trans_data[prev], self.num_past_fights)
                     for prev in fight_data["previous_fights_y"].values
                 ]
             )
@@ -1150,7 +1153,7 @@ class DatasetWithTimeEvolution(BaseDataset):
         fo = torch.FloatTensor(
             torch.stack(
                 [
-                    pad_or_truncate(self.trans_data[prev], padding)
+                    pad_or_truncate(self.trans_data[prev], self.num_past_fights)
                     for prev in fight_data["previous_opponents_x"].values
                 ]
             )
@@ -1158,7 +1161,7 @@ class DatasetWithTimeEvolution(BaseDataset):
         oo = torch.FloatTensor(
             torch.stack(
                 [
-                    pad_or_truncate(self.trans_data[prev], padding)
+                    pad_or_truncate(self.trans_data[prev], self.num_past_fights)
                     for prev in fight_data["previous_opponents_y"].values
                 ]
             )
@@ -1207,7 +1210,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
         Xf_set: Optional[List[str]] = None,
         stat_fields: Optional[List[str]] = None,
         stat_fields_f: Optional[List[str]] = None,
-        status_array_size: Optional[int] = None,
+        state_size: Optional[int] = None,
     ) -> None:
         """
         Constructor for ForecastDataset.
@@ -1234,8 +1237,8 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
         if stat_fields_f is not None:
             self.stat_fields_f = stat_fields_f
 
-        if status_array_size is not None:
-            self.status_array_size = status_array_size
+        if state_size is not None:
+            self.state_size = state_size
 
         not_found = []
         for column in self.X_set + self.Xf_set:
@@ -1580,7 +1583,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
                 match_data["id_"].values,
                 np.asarray(
                     [
-                        pad_or_truncate(self.trans_data[idxs], padding).detach().numpy()
+                        pad_or_truncate(self.trans_data[idxs], self.num_past_fights).detach().numpy()
                         for idxs in match_data["previous_fights"].values
                     ]
                 ),
@@ -1593,7 +1596,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
                 match_data["id_"].values,
                 np.asarray(
                     [
-                        pad_or_truncate(self.trans_data[idxs], padding).detach().numpy()
+                        pad_or_truncate(self.trans_data[idxs], self.num_past_fights).detach().numpy()
                         for idxs in match_data["previous_opponents"].values
                     ]
                 ),

@@ -350,7 +350,7 @@ model = SimpleFightNet(
     fighter_transformer_kwargs=dict(
         state_dim=15,  # 20,
         stat_dim=len(stat_fields),
-        match_dim=len(stat_fields_f),
+        fight_parameters_size=len(stat_fields_f),
         layer_sizes=[512, 128, 64],
         # layer_sizes=[128, 64, 10], # This better(?)
         # layer_sizes=[128, 512, 256, 128, 64, 10], # This worked
@@ -532,7 +532,7 @@ from datetime import date
 self = forecast_dataset
 
 # %%
-forecast_dataset.update_data_trans(model.transformer)
+forecast_dataset.update_data_trans(model.evolver)
 
 # %%
 from ufcpredictor.utils import pad_or_truncate

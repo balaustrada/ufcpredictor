@@ -11,7 +11,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ufcpredictor.datasets import padding
+from ufcpredictor.datasets import DatasetWithTimeEvolution
+
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -209,7 +210,7 @@ class SimpleFightNet(nn.Module):
 
     mlflow_params: List[str] = ["dropout_prob", "network_shape"]
 
-    status_array_size = 5
+    state_size = 5
 
     def __init__(
         self,
@@ -222,6 +223,10 @@ class SimpleFightNet(nn.Module):
         probability.
 
         Args:
+            input_size: The size of the input to the model. This is
+                (X1 + X2 + X3 + 2) meaning the input stats for the first fighter,
+                the second fighter, the fight parameters and the odds for both
+                fighters.
             dropout_prob: The probability of dropout.
             network_shape: Shape of the network layers (except input layer).
         """
@@ -259,12 +264,13 @@ class SimpleFightNet(nn.Module):
         Compute the output of the SimpleFightNet model.
 
         Args:
-            X1: The input tensor for the first fighter.
-            X2: The input tensor for the second fighter.
-            X3: The input tensor for the fight features.
-            odds1: The odds tensor for the first fighter.
-            odds2: The odds tensor for the second fighter.
-            invert: If True, invert the input order (not used in this model).
+            X1: Fighter 1 stats tensor of shape (batch_size, _).
+            X2: Fighter 2 stats tensor of shape (batch_size, _).
+            X3: Fight parameters tensor of shape (batch_size, _).
+            odds1: Odds for Fighter 1 tensor of shape (batch_size, 1).
+            odds2: Odds for Fighter 2 tensor of shape (batch_size, 1).
+            invert: If True, invert the input order. Used in non-symmetric
+            models to generate stronger predictions.
 
         Returns:
             The output of the SimpleFightNet model.
@@ -285,32 +291,53 @@ class SimpleFightNet(nn.Module):
 
 
 class SimpleFightNetWithTimeEvolution(nn.Module):
+    """
+    A neural network model designed to predict the outcome of a fight between
+    two fighters.
+
+    This model extends the functionality of SimpleFightNet by incorporating a
+    FighterStateEvolver, which allows to evolve the fighters' states over
+    time.
+    """
+
     def __init__(
         self,
         input_size: int,
         dropout_prob: float = 0.0,
         network_shape: List[int] = [1024, 512, 256, 128, 64, 1],
         fighter_transformer_kwargs: Dict = dict(),
-        status_array_size: Optional[int] = None,
+        state_size: int = 8,
+        num_past_fights: int = DatasetWithTimeEvolution.num_past_fights,
     ):
         """
         Initialize the SimpleFightNet model with the given input size and dropout
         probability.
 
         Args:
+            input_size: The size of the input to the model. This is
+                (X1 + X2 + X3 + 2) meaning the input stats for the first fighter,
+                the second fighter, the fight parameters and the odds for both
+                fighters.
             dropout_prob: The probability of dropout.
             network_shape: Shape of the network layers (except input layer).
+            fighter_transformer_kwargs: Keyword arguments for the
+                FighterStateEvolver model.
+            state_size: The size of the state tensor.
+            num_past_fights: The number of past fights to consider for the
+                FighterStateEvolver model. Defaults to the value from
+                DatasetWithTimeEvolution.num_past_fights.
         """
         super().__init__()
 
-        if status_array_size is not None:
-            self.status_array_size = status_array_size
+        self.state_size = state_size
 
         self.network_shape = [
             input_size,
         ] + network_shape
 
-        self.transformer = FighterTransformer(**fighter_transformer_kwargs)
+        self.num_past_fights = num_past_fights
+
+        self.evolver = FighterStateEvolver(**fighter_transformer_kwargs)
 
         self.fcs = nn.ModuleList(
             [
@@ -344,12 +371,13 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
         Compute the output of the SimpleFightNet model.
 
         Args:
-            X1: The input tensor for the first fighter.
-            X2: The input tensor for the second fighter.
-            X3: The input tensor for the fight features.
-            odds1: The odds tensor for the first fighter.
-            odds2: The odds tensor for the second fighter.
-            invert: If True, invert the input order.
+            X1: Fighter 1 stats tensor of shape (batch_size, _).
+            X2: Fighter 2 stats tensor of shape (batch_size, _).
+            X3: Fight parameters tensor of shape (batch_size, _).
+            odds1: Odds for Fighter 1 tensor of shape (batch_size, 1).
+            odds2: Odds for Fighter 2 tensor of shape (batch_size, 1).
+            invert: If True, invert the input order. Used in non-symmetric
+            models to generate stronger predictions.
 
         Returns:
             The output of the SimpleFightNet model.
@@ -362,30 +390,30 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
         # odds1 = odds1 / odds1
         # odds2 = odds2 / odds2
 
-        # zeros torch tensor
-        S1 = torch.zeros(X1.shape[0], self.status_array_size).to(X1.device)
-        S2 = torch.zeros(X2.shape[0], self.status_array_size).to(X1.device)
+        # We start with the initial states of both fighters, to evolve them
+        S1 = torch.zeros(X1.shape[0], self.state_size).to(X1.device)
+        S2 = torch.zeros(X2.shape[0], self.state_size).to(X1.device)
 
-        for i in range(padding):
+        for i in range(self.num_past_fights):
             ff_data_i = ff_data[:, i, :]
             of_data_i = of_data[:, i, :]
             fo_data_i = fo_data[:, i, :]
             oo_data_i = oo_data[:, i, :]
 
-            S1, _ = self.transformer(
+            S1, _ = self.evolver(
                 S1,
-                fo_data_i[:, : self.status_array_size],
-                ff_data_i[:, self.status_array_size : -self.transformer.match_dim],
-                fo_data_i[:, self.status_array_size : -self.transformer.match_dim],
-                ff_data_i[:, -self.transformer.match_dim :],
+                fo_data_i[:, : self.state_size],
+                ff_data_i[:, self.state_size : -self.evolver.fight_parameters_size],
+                fo_data_i[:, self.state_size : -self.evolver.fight_parameters_size],
+                ff_data_i[:, -self.evolver.fight_parameters_size :],
             )
 
-            S2, _ = self.transformer(
+            S2, _ = self.evolver(
                 S2,
-                oo_data_i[:, : self.status_array_size],
-                of_data_i[:, self.status_array_size : -self.transformer.match_dim],
-                oo_data_i[:, self.status_array_size : -self.transformer.match_dim],
-                oo_data_i[:, -self.transformer.match_dim :],
+                oo_data_i[:, : self.state_size],
+                of_data_i[:, self.state_size : -self.evolver.fight_parameters_size],
+                oo_data_i[:, self.state_size : -self.evolver.fight_parameters_size],
+                oo_data_i[:, -self.evolver.fight_parameters_size :],
             )
 
         # x = torch.cat((X1, X2, X3, odds1, odds2, S1-S2, S2-S1), dim=1)
@@ -400,36 +428,46 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
         return x
 
 
-class FighterTransformer(nn.Module):
+class FighterStateEvolver(nn.Module):
+    """
+    A neural network model designed to predict the evolution of a fighter's state after a fight.
+
+    The model takes into account the current state of both fighters, their
+    fight statistics, and the fight parameters.
+    """
+
     def __init__(
         self,
-        state_dim: int,
-        stat_dim: int,
-        match_dim: int,
-        layer_sizes: List[int],
+        state_size: int,
+        statistics_size: int,
+        fight_parameters_size: int,
+        network_shape: List[int],
         dropout: float = 0.1,
     ):
         """
+        Initialize the FighterStateEvolver model.
+
         Args:
-            state_dim (int): Dimension of the fighter states (X1, X2).
-            stat_dim (int): Dimension of the fighter stats (s1, s2).
-            match_dim (int): Dimension of the match stats (m).
-            layer_sizes (list of int): List specifying the sizes of hidden layers.
+            state_size (int): Size of the fighters state tensor.
+            statistics_size (int): Size of the fighters statistics tensor.
+            fight_parameters_size (int): Size of the fight parameters tensor.
+            network_shape (list of int): List specifying the sizes of hidden
+                layers.
             dropout (float): Dropout probability.
         """
         super().__init__()
 
         # Calculate the input dimension
-        input_dim = 2 * state_dim + 2 * stat_dim + match_dim
+        input_dim = 2 * state_size + 2 * statistics_size + fight_parameters_size
 
-        self.state_dim = state_dim
-        self.stat_dim = stat_dim
-        self.match_dim = match_dim
+        self.state_size = state_size
+        self.statistics_size = statistics_size
+        self.fight_parameters_size = fight_parameters_size
 
         # Create the layers of the feedforward network
         layers: List[nn.Module] = []
         previous_dim = input_dim
-        for layer_size in layer_sizes:
+        for layer_size in network_shape:
             layers.append(nn.Linear(previous_dim, layer_size))
             layers.append(nn.ReLU())
             layers.append(nn.Dropout(dropout))
@@ -438,8 +476,8 @@ class FighterTransformer(nn.Module):
         self.feedforward = nn.Sequential(*layers)
 
         # Output projections for X1 and X2
-        self.output_X1 = nn.Linear(previous_dim, state_dim)
-        self.output_X2 = nn.Linear(previous_dim, state_dim)
+        self.output_X1 = nn.Linear(previous_dim, state_size)
+        self.output_X2 = nn.Linear(previous_dim, state_size)
 
     def forward(
         self,
@@ -450,16 +488,23 @@ class FighterTransformer(nn.Module):
         m: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
+        Forward pass of the FighterStateEvolver model.
+
         Args:
-            X1 (tensor): Fighter 1 state tensor of shape (batch_size, state_dim).
-            X2 (tensor): Fighter 2 state tensor of shape (batch_size, state_dim).
-            s1 (tensor): Fighter 1 stats tensor of shape (batch_size, stat_dim).
-            s2 (tensor): Fighter 2 stats tensor of shape (batch_size, stat_dim).
-            m (tensor): Match stats tensor of shape (batch_size, match_dim).
+            X1 (tensor): Fighter 1 state tensor of shape (batch_size, state_size).
+            X2 (tensor): Fighter 2 state tensor of shape (batch_size, state_size).
+            s1 (tensor): Fighter 1 fight statistics tensor of shape
+                (batch_size, statistics_size).
+            s2 (tensor): Fighter 2 fight statistics tensor of shape
+                (batch_size, statistics_size).
+            m (tensor): Match fight statistics tensor of shape
+                (batch_size, fight_parameters_size).
 
         Returns:
-            X1_new (tensor): Fighter 1 new state tensor of shape (batch_size, state_dim).
-            X2_new (tensor): Fighter 2 new state tensor of shape (batch_size, state_dim).
+            X1_new (tensor): Fighter 1 new state tensor of shape
+                (batch_size, state_size).
+            X2_new (tensor): Fighter 2 new state tensor of shape
+                (batch_size, state_size).
         """
 
         # Concatenate all inputs

@@ -439,7 +439,7 @@ class FighterStateEvolver(nn.Module):
     def __init__(
         self,
         state_size: int,
-        statistics_size: int,
+        fighter_fight_statistics_size: int,
         fight_parameters_size: int,
         network_shape: List[int],
         dropout: float = 0.1,
@@ -449,7 +449,7 @@ class FighterStateEvolver(nn.Module):
 
         Args:
             state_size (int): Size of the fighters state tensor.
-            statistics_size (int): Size of the fighters statistics tensor.
+            fighter_fight_statistics_size (int): Size of the fighters statistics tensor.
             fight_parameters_size (int): Size of the fight parameters tensor.
             network_shape (list of int): List specifying the sizes of hidden
                 layers.
@@ -458,10 +458,10 @@ class FighterStateEvolver(nn.Module):
         super().__init__()
 
         # Calculate the input dimension
-        input_dim = 2 * state_size + 2 * statistics_size + fight_parameters_size
+        input_dim = 2 * state_size + 2 * fighter_fight_statistics_size + fight_parameters_size
 
         self.state_size = state_size
-        self.statistics_size = statistics_size
+        self.fighter_fight_statistics_size = fighter_fight_statistics_size
         self.fight_parameters_size = fight_parameters_size
 
         # Create the layers of the feedforward network
@@ -494,9 +494,9 @@ class FighterStateEvolver(nn.Module):
             X1 (tensor): Fighter 1 state tensor of shape (batch_size, state_size).
             X2 (tensor): Fighter 2 state tensor of shape (batch_size, state_size).
             s1 (tensor): Fighter 1 fight statistics tensor of shape
-                (batch_size, statistics_size).
+                (batch_size, fighter_fight_statistics_size).
             s2 (tensor): Fighter 2 fight statistics tensor of shape
-                (batch_size, statistics_size).
+                (batch_size, fighter_fight_statistics_size).
             m (tensor): Match fight statistics tensor of shape
                 (batch_size, fight_parameters_size).
 

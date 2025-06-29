@@ -299,7 +299,7 @@ dataset=  early_train_dataset
 # %%
 
 # %%
-reduced_data = dataset.get_trans_stats()
+previous_and_next_indices = dataset.get_indices_previous_and_next()
 
 # %%
 
@@ -368,7 +368,7 @@ pad_or_truncate(dataset[5][-1], 3)
 dataset[5][-1]
 
 # %%
-dataset.trans_data
+dataset.fighter_history_tensor
 
 # %%
 
@@ -378,13 +378,13 @@ dataset.trans_data
 dataset.compute_position_data(
 
 # %%
-x = reduced_data
+x = previous_and_next_indices
 x[x["fighter_id"] == "484acc7b0f856ce9"]
 
 # %%
 preserved_fields = ["fight_id", "fighter_id", "num_fight", "next_fight"]
-fight_data_nonag = reduced_data[preserved_fields].merge(
-    reduced_data[preserved_fields],
+fight_data_nonag = previous_and_next_indices[preserved_fields].merge(
+    previous_and_next_indices[preserved_fields],
     left_on="fight_id",
     right_on="fight_id",
     how="inner",
@@ -400,29 +400,29 @@ fight_data_nonag = fight_data_nonag.drop_duplicates(subset=["fight_id"], keep="f
 fight_data_nonag["max_num_fight"] = fight_data_nonag[["num_fight_x", "num_fight_y"]].max(axis=1)
 
 # %%
-assert len(fight_data_nonag) == len(reduced_data)/2 # Check that we haven't lost any record.
+assert len(fight_data_nonag) == len(previous_and_next_indices)/2 # Check that we haven't lost any record.
 
 # %%
 fight_data_nonag
 
 # %%
-reduced_data = reduced_data.reset_index(drop=True)
-reduced_data['Index'] = reduced_data.index
-reduced_data
+previous_and_next_indices = previous_and_next_indices.reset_index(drop=True)
+previous_and_next_indices['Index'] = previous_and_next_indices.index
+previous_and_next_indices
 
 # %%
 fight_data_nonag
 
 # %%
-reduced_data
+previous_and_next_indices
 
 # %%
 X = fight_data_nonag.merge(
-    reduced_data[["fight_id", "fighter_id", "Index"]],
+    previous_and_next_indices[["fight_id", "fighter_id", "Index"]],
     left_on=["fight_id", "fighter_id_x"],
     right_on=["fight_id", "fighter_id"],
 ).rename(columns={"Index": "Index_x"}).drop(columns="fighter_id").merge(
-    reduced_data[["fight_id", "fighter_id", "Index"]],
+    previous_and_next_indices[["fight_id", "fighter_id", "Index"]],
     left_on=["fight_id", "fighter_id_y"],
     right_on=["fight_id", "fighter_id"],
 ).rename(columns={"Index": "Index_y"}).drop(columns="fighter_id")   
@@ -472,20 +472,20 @@ fighter_transformer = FighterTransformer(
 for i, (f1_position, f2_position, next_f1_position, next_f2_position) in enumerate(
   zip(f1_positions, f2_positions, next_f1_positions, next_f2_positions)
 ):
-    X1 = dataset.trans_data[f1_position][:, :3]
-    X2 = dataset.trans_data[f2_position][:, :3]
-    s1 = dataset.trans_data[f1_position][:, 5:]
-    s2 = dataset.trans_data[f2_position][:, 5:]
-    m = dataset.trans_data[f1_position][:, 0].reshape(-1, 1)
+    X1 = dataset.fighter_history_tensor[f1_position][:, :3]
+    X2 = dataset.fighter_history_tensor[f2_position][:, :3]
+    s1 = dataset.fighter_history_tensor[f1_position][:, 5:]
+    s2 = dataset.fighter_history_tensor[f2_position][:, 5:]
+    m = dataset.fighter_history_tensor[f1_position][:, 0].reshape(-1, 1)
 
     X1, X2 = fighter_transformer(X1, X2, s1, s2, m)
 
 
     msk = next_f1_position > 0
-    dataset.trans_data[next_f1_position[msk],:3] = X1[msk]
+    dataset.fighter_history_tensor[next_f1_position[msk],:3] = X1[msk]
     
     msk = next_f2_position > 0
-    dataset.trans_data[next_f2_position[msk], :3] = X2[msk]
+    dataset.fighter_history_tensor[next_f2_position[msk], :3] = X2[msk]
 
 # %%
 
@@ -496,7 +496,7 @@ for i, (f1_position, f2_position, next_f1_position, next_f2_position) in enumera
 # %%
 
 # %%
-dataset.trans_data[dataset.data[-1][0]]
+dataset.fighter_history_tensor[dataset.data[-1][0]]
 
 # %%
 dataset.data[-1]
@@ -509,21 +509,21 @@ for x in dataset.data_processor.data, dataset.data_processor.data_normalized:
 self = dataset
 
         # %%
-        reduced_data = self.data_processor.data_normalized.copy()
+        previous_and_next_indices = self.data_processor.data_normalized.copy()
 
         # We shift stats because the input for the model should be the
         # stats prior to the fight
         for x in self.fighter_fight_statistics:
             if x not in ["age", "num_fight", "time_since_last_fight"]:
-                reduced_data[x] = reduced_data.groupby("fighter_id")[x].shift(1)
+                previous_and_next_indices[x] = previous_and_next_indices.groupby("fighter_id")[x].shift(1)
 
         # We remove invalid fights
-        reduced_data = reduced_data[reduced_data["fight_id"].isin(self.fight_ids)]
+        previous_and_next_indices = previous_and_next_indices[previous_and_next_indices["fight_id"].isin(self.fight_ids)]
 
         # We now merge stats with itself to get one row per match with the data
         # from the two fighters
-        fight_data = reduced_data.merge(
-            reduced_data,
+        fight_data = previous_and_next_indices.merge(
+            previous_and_next_indices,
             left_on="fight_id",
             right_on="fight_id",
             how="inner",
@@ -539,26 +539,26 @@ self = dataset
         fight_data = fight_data.drop_duplicates(subset=["fight_id"], keep="first")
 
 # %%
-stat_fields = [
+previous_fights_statistics = [
     "body_strikes_att_per_minute",
     "clinch_strikes_att_per_minute",
     "knockdowns_per_minute",
 ]
 
         # %%
-        reduced_data_nonag = self.data_processor.data_normalized_nonagg.copy()
+        previous_and_next_indices_nonag = self.data_processor.data_normalized_nonagg.copy()
 
-        reduced_data_nonag = reduced_data_nonag[["fight_id", "fighter_id", "event_date", "fighter_name"] + stat_fields]
+        previous_and_next_indices_nonag = previous_and_next_indices_nonag[["fight_id", "fighter_id", "event_date", "fighter_name"] + previous_fights_statistics]
 
-        fight_counts = reduced_data_nonag.groupby('fight_id')['fighter_id'].nunique()
+        fight_counts = previous_and_next_indices_nonag.groupby('fight_id')['fighter_id'].nunique()
 
         invalid_fights = fight_counts[fight_counts != 2]
 
         assert invalid_fights.empty
 
 # %%
-reduced_data_nonag = reduced_data_nonag.sort_values(by=["event_date","fight_id"]).reset_index()
-x = reduced_data_nonag
+previous_and_next_indices_nonag = previous_and_next_indices_nonag.sort_values(by=["event_date","fight_id"]).reset_index()
+x = previous_and_next_indices_nonag
 x
 
 
@@ -659,7 +659,7 @@ def get_previous_fights(group):
 
 
 # %%
-reduced_data_nonag = reduced_data_nonag.groupby(
+previous_and_next_indices_nonag = previous_and_next_indices_nonag.groupby(
     "fighter_id", 
     group_keys=False,
 ).apply(
@@ -668,14 +668,14 @@ reduced_data_nonag = reduced_data_nonag.groupby(
 )
 
 # %%
-x = reduced_data_nonag 
+x = previous_and_next_indices_nonag 
 stipe_fights = x[x["fighter_name"].str.contains('Stipe')]["previous_fights"].iloc[-1]
 
 # %%
 x.loc[stipe_fights]
 
 # %%
-x = reduced_data_nonag
+x = previous_and_next_indices_nonag
 
 # %%
 fight_to_indices = x.groupby("fight_id").apply(
@@ -700,7 +700,7 @@ x.loc[8808]
 # %%
 
 # %%
-x = reduced_data_nonag
+x = previous_and_next_indices_nonag
 len_ = len(x)
 print(len(x) - len(x["fight_id"].unique()) * 2)
 

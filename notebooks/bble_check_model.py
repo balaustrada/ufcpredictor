@@ -300,16 +300,16 @@ len(data_agg) - len(data_agg["fight_id"].unique())*2
 len(data_normalized) - len(data_normalized["fight_id"].unique())*2
 
 # %%
-reduced_data = data_processor.data_normalized.copy()
+previous_and_next_indices = data_processor.data_normalized.copy()
 
 # We shift stats because the input for the model should be the
 # stats prior to the fight
 for x in self.fighter_fight_statistics:
     if x not in ["age", "num_fight", "time_since_last_fight"]:
-        reduced_data[x] = reduced_data.groupby("fighter_id")[x].shift(1)
+        previous_and_next_indices[x] = previous_and_next_indices.groupby("fighter_id")[x].shift(1)
 
 # We remove invalid fights
-reduced_data = reduced_data[reduced_data["fight_id"].isin(self.fight_ids)]
+previous_and_next_indices = previous_and_next_indices[previous_and_next_indices["fight_id"].isin(self.fight_ids)]
 
 
 # %%

@@ -131,13 +131,16 @@ class BaseDataset(Dataset):
         fight_parameters: Optional[List[str]] = None,
     ) -> None:
         """
-        Constructor for ForecastDataset.
+        Constructor for BaseDataset.
 
         Args:
             data_processor: The DataProcessor instance that contains the data.
-            fight_ids: The list of fight ids to include in the dataset.
-            fighter_fight_statistics: The list of columns to include in the dataset. If None, use all
-            columns.
+            fight_ids: The list of fight ids to include in the dataset. If None,
+                all fights are included.
+            fighter_fight_statistics: The list of columns to include in the dataset.
+                If None, use default columns defined in cls.fighter_fight_statistics.
+            fight_parameters: The list of fight parameters to include in the model.
+                If None, use an empty list.
 
         Raises:
             ValueError: If any column is not found in the normalized data.
@@ -165,12 +168,17 @@ class BaseDataset(Dataset):
         """
         Loads the data into a format that can be used to train a model.
 
-        The data is first reduced to only include the columns specified in fighter_fight_statistics.
+        The data is first reduced to only include the columns specified in
+        fighter_fight_statistics. 
+        
         Then, the stats are shifted to get the stats prior to each fight.
+
         The data is then merged with itself to get one row per match with the data
         from the two fighters.
+
         The matchings of the fighter with itself are removed and only one row per
         match is kept.
+        
         Finally, the data is loaded into torch tensors.
         """
         reduced_data = self.data_processor.data_normalized.copy()
@@ -662,14 +670,37 @@ class DatasetWithTimeEvolution(BaseDataset):
     A dataset class designed to handle UFC fight data with time evolution for
     predictions.
 
-    This class extends the BasicDataset class to include functionality for
-    handling time evolution of fight data. It computes the positions of fighters
-    in the dataset based on their fight history and updates the data accordingly.
+    This class extends the BaseDataset class to include functionality for
+    handling time evolution of fight state. This takes into account the statistics
+    of previous UFC fights to define the state of the fighters in the current fight.
+
+    Attributes:
+        fighter_history_tensor: A tensor containing the history of the fighters
+            in the dataset. This is used to define the state of the fighters in the
+            current fight. It contains the statistics of the fighters and the 
+            state vector.
+        previous_fights_statistics: A list of columns that contain statistics from
+            previous fights. These statistics are used to define the state of the
+            fighters in the current fight.
+        previous_fights_parameters: A list of columns that contain parameters from
+            previous fights. These parameters are used to define the state of the
+            fighters in the current fight.
+        state_size: The size of the state vector for each fighter.
+        num_past_fights: The number of past fights to consider for each fighter when
+            defining the state of the fighters in the current fight.
+        f1_positions: For each fighter/fight pair, it defines the location in the 
+            fighter_history_tensor of the previous fights.
+        f2_positions: For each fighter/fight pair, it defines the location in the
+            fighter_history_tensor of the opponent's previous fights.
+        next_f1_positions: For each fighter/fight pair, it defines the location in 
+            the fighter_history_tensor of the next fight of the fighter.
+        next_f2_positions: For each fighter/fight pair, it defines the location in
+            the fighter_history_tensor of the next fight of the opponent.
     """
 
-    trans_data: torch.Tensor
+    fighter_history_tensor: torch.Tensor
 
-    stat_fields: List[str] = [
+    previous_fights_statistics: List[str] = [
         "body_strikes_att_per_minute",
         "clinch_strikes_att_per_minute",
         "knockdowns_per_minute",
@@ -677,12 +708,16 @@ class DatasetWithTimeEvolution(BaseDataset):
         "knockdowns_per_minute",
     ]
 
-    stat_fields_f: List[str] = [
+    previous_fights_parameters: List[str] = [
         "winner",
     ]
 
-    state_size = 5
-    num_past_fights = 20
+    state_size: int = 5
+    num_past_fights: int = 20
+    f1_positions: List[List[int]]
+    f2_positions: List[List[int]]
+    next_f1_positions: List[int]
+    next_f2_positions: List[int]
 
 
     def __init__(
@@ -691,8 +726,8 @@ class DatasetWithTimeEvolution(BaseDataset):
         fight_ids: Optional[List[str]] = None,
         fighter_fight_statistics: Optional[List[str]] = None,
         fight_parameters: Optional[List[str]] = None,
-        stat_fields: Optional[List[str]] = None,
-        stat_fields_f: Optional[List[str]] = None,
+        previous_fights_statistics: Optional[List[str]] = None,
+        previous_fights_parameters: Optional[List[str]] = None,
         state_size: Optional[int] = None,
         num_past_fights: Optional[int] = None
     ) -> None:
@@ -701,9 +736,24 @@ class DatasetWithTimeEvolution(BaseDataset):
 
         Args:
             data_processor: The DataProcessor instance that contains the data.
-            fight_ids: The list of fight ids to include in the dataset.
-            fighter_fight_statistics: The list of columns to include in the dataset. If None, use all
-            columns.
+            fight_ids: The list of fight ids to include in the dataset. If None,
+                all fights are included.
+            fighter_fight_statistics: The list of columns to include in the dataset.
+                If None, use default columns defined in cls.fighter_fight_statistics.
+            fight_parameters: The list of fight parameters to include in the model.
+                If None, use an empty list. If None, use default columns defined in
+                cls.fight_parameters.
+            previous_fights_statistics: The list of columns to use for previous     
+                fights statistics. If None, use default columns defined in
+                cls.previous_fights_statistics.
+            previous_fights_parameters: The list of columns to use for previous
+                fights parameters. If None, use default columns defined in
+                cls.previous_fights_parameters.
+            state_size: The size of the state vector for each fighter. If None,
+                use the default value defined in cls.state_size.
+            num_past_fights: The number of past fights to consider for each fighter
+                when defining the state of the fighters in the current fight. If 
+                None, use the default value defined in cls.num_past_fights.
 
         Raises:
             ValueError: If some columns are not found in the normalized data.
@@ -717,11 +767,11 @@ class DatasetWithTimeEvolution(BaseDataset):
         if fight_parameters is not None:
             self.fight_parameters = fight_parameters
 
-        if stat_fields is not None:
-            self.stat_fields = stat_fields
+        if previous_fights_statistics is not None:
+            self.previous_fights_statistics = previous_fights_statistics
 
-        if stat_fields_f is not None:
-            self.stat_fields_f = stat_fields_f
+        if previous_fights_parameters is not None:
+            self.previous_fights_parameters = previous_fights_parameters
 
         if state_size is not None:
             self.state_size = state_size
@@ -741,34 +791,47 @@ class DatasetWithTimeEvolution(BaseDataset):
 
         self.load_data()
 
-    def get_trans_stats(self) -> pd.DataFrame:
+    def get_indices_previous_and_next(self) -> pd.DataFrame:
+        """
+        Get the indices of the previous and next fights for each fighter in the dataset.
+
+        Returns:
+            A pandas DataFrame containing the indices of the previous and next fights
+        """
         # We first retrieve the non aggregated data,
         # only keeping the relevant fields
-        reduced_data = (
+        previous_and_next_indices = (
             self.data_processor.data_normalized_nonagg.copy()
             .sort_values(by=["event_date", "fight_id"])
             .reset_index(drop=True)[
                 ["fight_id", "fighter_id", "event_date", "num_fight", "opponent_id"]
-                + self.stat_fields
-                + self.stat_fields_f
+                + self.previous_fights_statistics
+                + self.previous_fights_parameters
             ]
         )
 
-        # We now add the index of the fighter
-        reduced_data["index"] = reduced_data.index
-        reduced_data["winner"] = (
-            reduced_data["winner"] == reduced_data["fighter_id"]
+        # We now add the index of the fighter/fight pair
+        previous_and_next_indices["index"] = previous_and_next_indices.index
+
+        previous_and_next_indices["winner"] = (
+            previous_and_next_indices["winner"] == previous_and_next_indices["fighter_id"]
         ).astype(int)
-        if "time_since_last_fight" in reduced_data.columns:
-            reduced_data["time_since_last_fight"] = reduced_data[
+
+        # Fill missing values in time_since_last_fight, with the mean value
+        # this is for first fights where there is no previous fight.
+        # It is not needed in BasicDataset since the first three fights of
+        # a fighter are not usually included.
+        if "time_since_last_fight" in previous_and_next_indices.columns:
+            previous_and_next_indices["time_since_last_fight"] = previous_and_next_indices[
                 "time_since_last_fight"
-            ].fillna(reduced_data["time_since_last_fight"].mean())
+            ].fillna(previous_and_next_indices["time_since_last_fight"].mean())
 
         # To find the index of the opponent, we merge the data with itself
-        # but matching fighter_id with opponent_id
-        reduced_data = (
-            reduced_data.merge(
-                reduced_data[["fight_id", "opponent_id", "index"]],
+        # but matching fighter_id with opponent_id.
+        # Will link each fight row to the opponent row.
+        previous_and_next_indices = (
+            previous_and_next_indices.merge(
+                previous_and_next_indices[["fight_id", "opponent_id", "index"]],
                 left_on=["fight_id", "fighter_id"],
                 right_on=["fight_id", "opponent_id"],
             )
@@ -785,7 +848,7 @@ class DatasetWithTimeEvolution(BaseDataset):
         # Now we need to see which are the previous fights of each row
         # And also the next fight of each row, we start by defining a
         # simplified dataframe
-        indices_df = reduced_data[["fighter_id", "index", "opponent_row"]]
+        indices_df = previous_and_next_indices[["fighter_id", "index", "opponent_row"]]
 
         # Then we merge with the original dataframe to match
         # each fighter's fight to all past and future fights
@@ -807,7 +870,7 @@ class DatasetWithTimeEvolution(BaseDataset):
             )
             .reset_index()
             .set_index("index_x")
-            .reindex(range(0, len(reduced_data)), fill_value=pd.NA)
+            .reindex(range(0, len(previous_and_next_indices)), fill_value=pd.NA)
             .reset_index()
         )
         # Fill missing lists with empty lists
@@ -818,7 +881,8 @@ class DatasetWithTimeEvolution(BaseDataset):
             "previous_opponents"
         ].apply(lambda x: x if isinstance(x, list) else [])
 
-        reduced_data = reduced_data.merge(
+        # We now add this previous fights information to previous_and_next_indices
+        previous_and_next_indices = previous_and_next_indices.merge(
             previous_indices_df,
             left_on="index",
             right_on="index_x",
@@ -826,7 +890,7 @@ class DatasetWithTimeEvolution(BaseDataset):
 
         # We similarly preselect the future fights by looking at index_y > index_x
         # After that, we group by fight/fighter (index_x) and only will keep
-        # the inmediately next fight.
+        # the immediately next fight.
         # If there are no future fights, we just set this value to -1.
         next_indices_df = indices_df[indices_df["index_x"] < indices_df["index_y"]]
         next_indices_df = (
@@ -836,23 +900,31 @@ class DatasetWithTimeEvolution(BaseDataset):
                 keep="first",
             )[["index_x", "index_y"]]
             .set_index("index_x")
-            .reindex(range(0, len(reduced_data)), fill_value=-1)
+            .reindex(range(0, len(previous_and_next_indices)), fill_value=-1)
             .rename(columns={"index_y": "next_fight"})
         )
-        reduced_data = reduced_data.merge(
+        previous_and_next_indices = previous_and_next_indices.merge(
             next_indices_df,
             left_on="index",
             right_on="index_x",
         )
 
-        return reduced_data
+        return previous_and_next_indices
 
-    def compute_position_data(self, reduced_data_trans: pd.DataFrame) -> None:
-        reduced_data_trans = reduced_data_trans.copy()
+    def compute_position_data(self, previous_and_next_indices_trans: pd.DataFrame) -> None:
+        """
+        Compute the position data for each fighter based on their fight history.
+
+        This method generates two helper arrays that will help get the position 
+        of the previous and the next fights for each fighter/fight pair in the
+        dataset. Ensuring that the state vector can be efficiently updated at each
+        iteration of the model training.
+        """
+        previous_and_next_indices_trans = previous_and_next_indices_trans.copy()
 
         preserved_fields = ["fight_id", "fighter_id", "num_fight", "next_fight"]
-        fight_data_nonag = reduced_data_trans[preserved_fields].merge(
-            reduced_data_trans[preserved_fields],
+        fight_data_nonag = previous_and_next_indices_trans[preserved_fields].merge(
+            previous_and_next_indices_trans[preserved_fields],
             left_on="fight_id",
             right_on="fight_id",
             how="inner",
@@ -869,19 +941,19 @@ class DatasetWithTimeEvolution(BaseDataset):
             ["num_fight_x", "num_fight_y"]
         ].max(axis=1)
 
-        reduced_data_trans = reduced_data_trans.reset_index(drop=True)
-        reduced_data_trans["Index"] = reduced_data_trans.index
+        previous_and_next_indices_trans = previous_and_next_indices_trans.reset_index(drop=True)
+        previous_and_next_indices_trans["Index"] = previous_and_next_indices_trans.index
 
         X = (
             fight_data_nonag.merge(
-                reduced_data_trans[["fight_id", "fighter_id", "Index"]],
+                previous_and_next_indices_trans[["fight_id", "fighter_id", "Index"]],
                 left_on=["fight_id", "fighter_id_x"],
                 right_on=["fight_id", "fighter_id"],
             )
             .rename(columns={"Index": "Index_x"})
             .drop(columns="fighter_id")
             .merge(
-                reduced_data_trans[["fight_id", "fighter_id", "Index"]],
+                previous_and_next_indices_trans[["fight_id", "fighter_id", "Index"]],
                 left_on=["fight_id", "fighter_id_y"],
                 right_on=["fight_id", "fighter_id"],
             )
@@ -924,36 +996,41 @@ class DatasetWithTimeEvolution(BaseDataset):
                 self.next_f2_positions,
             )
         ):
-            self.trans_data = self.trans_data.to(device)
-            X1 = self.trans_data[f1_position][:, : self.state_size]
-            X2 = self.trans_data[f2_position][:, : self.state_size]
-            s1 = self.trans_data[f1_position][
-                :, self.state_size : -len(self.stat_fields_f)
+            self.fighter_history_tensor = self.fighter_history_tensor.to(device)
+            X1 = self.fighter_history_tensor[f1_position][:, : self.state_size]
+            X2 = self.fighter_history_tensor[f2_position][:, : self.state_size]
+            s1 = self.fighter_history_tensor[f1_position][
+                :, self.state_size : -len(self.previous_fights_parameters)
             ]
-            s2 = self.trans_data[f2_position][
-                :, self.state_size : -len(self.stat_fields_f)
+            s2 = self.fighter_history_tensor[f2_position][
+                :, self.state_size : -len(self.previous_fights_parameters)
             ]
 
-            m = self.trans_data[f1_position][:, -len(self.stat_fields_f) :]
+            m = self.fighter_history_tensor[f1_position][:, -len(self.previous_fights_parameters) :]
 
             X1, X2 = transformer(X1, X2, s1, s2, m)
 
             msk = next_f1_position > 0
-            self.trans_data[next_f1_position[msk], : self.state_size] = X1[msk]
+            self.fighter_history_tensor[next_f1_position[msk], : self.state_size] = X1[msk]
 
             msk = next_f2_position > 0
-            self.trans_data[next_f2_position[msk], : self.state_size] = X2[msk]
+            self.fighter_history_tensor[next_f2_position[msk], : self.state_size] = X2[msk]
 
     def load_data(self) -> None:
         """
         Loads the data into a format that can be used to train a model.
 
-        The data is first reduced to only include the columns specified in fighter_fight_statistics.
+        The data is first reduced to only include the columns specified in
+        fighter_fight_statistics. 
+        
         Then, the stats are shifted to get the stats prior to each fight.
+
         The data is then merged with itself to get one row per match with the data
         from the two fighters.
+
         The matchings of the fighter with itself are removed and only one row per
         match is kept.
+
         Finally, the data is loaded into torch tensors.
         """
         reduced_data = self.data_processor.data_normalized.copy()
@@ -969,32 +1046,32 @@ class DatasetWithTimeEvolution(BaseDataset):
             reduced_data = reduced_data[reduced_data["fight_id"].isin(self.fight_ids)]
 
         # We now generate the statistics data per match to create the transformer
-        reduced_data_trans = self.get_trans_stats()
-        reduced_data_trans = reduced_data_trans.loc[
-            :, ~reduced_data_trans.columns.duplicated()
+        previous_and_next_indices = self.get_indices_previous_and_next()
+        previous_and_next_indices = previous_and_next_indices.loc[
+            :, ~previous_and_next_indices.columns.duplicated()
         ].copy()
 
-        self.compute_position_data(reduced_data_trans)
+        self.compute_position_data(previous_and_next_indices)
 
         reduced_data = reduced_data.merge(
-            reduced_data_trans[
+            previous_and_next_indices[
                 ["fight_id", "fighter_id", "previous_fights", "previous_opponents"]
             ],
         )
 
-        self.trans_data = torch.FloatTensor(
-            [reduced_data_trans[x] for x in self.stat_fields]
+        self.fighter_history_tensor = torch.FloatTensor(
+            [previous_and_next_indices[x] for x in self.previous_fights_statistics]
         ).T
 
-        self.trans_data = torch.concat(
+        self.fighter_history_tensor = torch.concat(
             (
                 torch.zeros(
-                    (self.trans_data.size()[0], self.state_size),
+                    (self.fighter_history_tensor.size()[0], self.state_size),
                     dtype=torch.float,
                 ),
-                self.trans_data,
+                self.fighter_history_tensor,
                 torch.FloatTensor(
-                    [reduced_data_trans[x] for x in self.stat_fields_f]
+                    [previous_and_next_indices[x] for x in self.previous_fights_parameters]
                 ).T,
             ),
             dim=1,
@@ -1093,10 +1170,10 @@ class DatasetWithTimeEvolution(BaseDataset):
             f_prev_f, o_prev_f = o_prev_f, f_prev_f
             f_prev_o, o_prev_o = o_prev_o, f_prev_o
 
-        ff_data = self.trans_data[f_prev_f]
-        of_data = self.trans_data[o_prev_f]
-        fo_data = self.trans_data[f_prev_o]
-        oo_data = self.trans_data[o_prev_o]
+        ff_data = self.fighter_history_tensor[f_prev_f]
+        of_data = self.fighter_history_tensor[o_prev_f]
+        fo_data = self.fighter_history_tensor[f_prev_o]
+        oo_data = self.fighter_history_tensor[o_prev_o]
 
         return (
             (
@@ -1175,7 +1252,7 @@ class DatasetWithTimeEvolution(BaseDataset):
         ff = torch.FloatTensor(
             torch.stack(
                 [
-                    pad_or_truncate(self.trans_data[prev], self.num_past_fights)
+                    pad_or_truncate(self.fighter_history_tensor[prev], self.num_past_fights)
                     for prev in fight_data["previous_fights_x"].values
                 ]
             )
@@ -1183,7 +1260,7 @@ class DatasetWithTimeEvolution(BaseDataset):
         of = torch.FloatTensor(
             torch.stack(
                 [
-                    pad_or_truncate(self.trans_data[prev], self.num_past_fights)
+                    pad_or_truncate(self.fighter_history_tensor[prev], self.num_past_fights)
                     for prev in fight_data["previous_fights_y"].values
                 ]
             )
@@ -1191,7 +1268,7 @@ class DatasetWithTimeEvolution(BaseDataset):
         fo = torch.FloatTensor(
             torch.stack(
                 [
-                    pad_or_truncate(self.trans_data[prev], self.num_past_fights)
+                    pad_or_truncate(self.fighter_history_tensor[prev], self.num_past_fights)
                     for prev in fight_data["previous_opponents_x"].values
                 ]
             )
@@ -1199,7 +1276,7 @@ class DatasetWithTimeEvolution(BaseDataset):
         oo = torch.FloatTensor(
             torch.stack(
                 [
-                    pad_or_truncate(self.trans_data[prev], self.num_past_fights)
+                    pad_or_truncate(self.fighter_history_tensor[prev], self.num_past_fights)
                     for prev in fight_data["previous_opponents_y"].values
                 ]
             )
@@ -1238,16 +1315,16 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
 
     fighter_fight_statistics = DatasetWithTimeEvolution.fighter_fight_statistics
     fight_parameters = DatasetWithTimeEvolution.fight_parameters
-    stat_fields = DatasetWithTimeEvolution.stat_fields
-    stat_fields_f = DatasetWithTimeEvolution.stat_fields_f
+    previous_fights_statistics = DatasetWithTimeEvolution.previous_fights_statistics
+    previous_fights_parameters = DatasetWithTimeEvolution.previous_fights_parameters
 
     def __init__(
         self,
         data_processor: DataProcessor,
         fighter_fight_statistics: Optional[List[str]] = None,
         fight_parameters: Optional[List[str]] = None,
-        stat_fields: Optional[List[str]] = None,
-        stat_fields_f: Optional[List[str]] = None,
+        previous_fights_statistics: Optional[List[str]] = None,
+        previous_fights_parameters: Optional[List[str]] = None,
         state_size: Optional[int] = None,
     ) -> None:
         """
@@ -1269,11 +1346,11 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
         if fight_parameters is not None:
             self.fight_parameters = fight_parameters
 
-        if stat_fields is not None:
-            self.stat_fields = stat_fields
+        if previous_fights_statistics is not None:
+            self.previous_fights_statistics = previous_fights_statistics
 
-        if stat_fields_f is not None:
-            self.stat_fields_f = stat_fields_f
+        if previous_fights_parameters is not None:
+            self.previous_fights_parameters = previous_fights_parameters
 
         if state_size is not None:
             self.state_size = state_size
@@ -1291,34 +1368,34 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
         self.fight_ids = None
         self.load_data()
 
-    def get_trans_stats(self) -> pd.DataFrame:
+    def get_indices_previous_and_next(self) -> pd.DataFrame:
         # We first retrieve the non aggregated data,
         # only keeping the relevant fields
-        reduced_data = (
+        previous_and_next_indices = (
             self.data_processor.data_normalized_nonagg.copy()
             .sort_values(by=["event_date", "fight_id"])
             .reset_index(drop=True)[
                 ["fight_id", "fighter_id", "event_date", "num_fight", "opponent_id"]
-                + self.stat_fields
-                + self.stat_fields_f
+                + self.previous_fights_statistics
+                + self.previous_fights_parameters
             ]
         )
 
         # We now add the index of the fighter
-        reduced_data["index"] = reduced_data.index
-        reduced_data["winner"] = (
-            reduced_data["winner"] == reduced_data["fighter_id"]
+        previous_and_next_indices["index"] = previous_and_next_indices.index
+        previous_and_next_indices["winner"] = (
+            previous_and_next_indices["winner"] == previous_and_next_indices["fighter_id"]
         ).astype(int)
-        if "time_since_last_fight" in reduced_data.columns:
-            reduced_data["time_since_last_fight"] = reduced_data[
+        if "time_since_last_fight" in previous_and_next_indices.columns:
+            previous_and_next_indices["time_since_last_fight"] = previous_and_next_indices[
                 "time_since_last_fight"
-            ].fillna(reduced_data["time_since_last_fight"].mean())
+            ].fillna(previous_and_next_indices["time_since_last_fight"].mean())
 
         # To find the index of the opponent, we merge the data with itself
         # but matching fighter_id with opponent_id
-        reduced_data = (
-            reduced_data.merge(
-                reduced_data[["fight_id", "opponent_id", "index"]],
+        previous_and_next_indices = (
+            previous_and_next_indices.merge(
+                previous_and_next_indices[["fight_id", "opponent_id", "index"]],
                 left_on=["fight_id", "fighter_id"],
                 right_on=["fight_id", "opponent_id"],
             )
@@ -1335,7 +1412,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
         # Now we need to see which are the previous fights of each row
         # And also the next fight of each row, we start by defining a
         # simplified dataframe
-        indices_df = reduced_data[["fighter_id", "index", "opponent_row"]]
+        indices_df = previous_and_next_indices[["fighter_id", "index", "opponent_row"]]
 
         # Then we merge with the original dataframe to match
         # each fighter's fight to all past and future fights
@@ -1357,7 +1434,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             )
             .reset_index()
             .set_index("index_x")
-            .reindex(range(0, len(reduced_data)), fill_value=pd.NA)
+            .reindex(range(0, len(previous_and_next_indices)), fill_value=pd.NA)
             .reset_index()
         )
         # Fill missing lists with empty lists
@@ -1368,7 +1445,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             "previous_opponents"
         ].apply(lambda x: x if isinstance(x, list) else [])
 
-        reduced_data = reduced_data.merge(
+        previous_and_next_indices = previous_and_next_indices.merge(
             previous_indices_df,
             left_on="index",
             right_on="index_x",
@@ -1386,16 +1463,16 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
                 keep="first",
             )[["index_x", "index_y"]]
             .set_index("index_x")
-            .reindex(range(0, len(reduced_data)), fill_value=-1)
+            .reindex(range(0, len(previous_and_next_indices)), fill_value=-1)
             .rename(columns={"index_y": "next_fight"})
         )
-        reduced_data = reduced_data.merge(
+        previous_and_next_indices = previous_and_next_indices.merge(
             next_indices_df,
             left_on="index",
             right_on="index_x",
         )
 
-        return reduced_data
+        return previous_and_next_indices
 
     def get_single_forecast_prediction(
         self,
@@ -1596,10 +1673,10 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             )
         }
 
-        trans_data = self.get_trans_stats()
+        fighter_history_tensor = self.get_indices_previous_and_next()
 
         match_data = match_data.merge(
-            trans_data[
+            fighter_history_tensor[
                 ["fight_id", "fighter_id", "previous_fights", "previous_opponents"]
             ]
         )
@@ -1618,26 +1695,26 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
         else:  # pragma: no cover
             fight_data_dict = {id_: [] for id_ in match_data["id_"].values}
 
-        trans_data_f_dict = {
+        fighter_history_f_dict = {
             id_: data
             for id_, data in zip(
                 match_data["id_"].values,
                 np.asarray(
                     [
-                        pad_or_truncate(self.trans_data[idxs], self.num_past_fights).detach().numpy()
+                        pad_or_truncate(self.fighter_history_tensor[idxs], self.num_past_fights).detach().numpy()
                         for idxs in match_data["previous_fights"].values
                     ]
                 ),
             )
         }
 
-        trans_data_o_dict = {
+        fighter_history_o_dict = {
             id_: data
             for id_, data in zip(
                 match_data["id_"].values,
                 np.asarray(
                     [
-                        pad_or_truncate(self.trans_data[idxs], self.num_past_fights).detach().numpy()
+                        pad_or_truncate(self.fighter_history_tensor[idxs], self.num_past_fights).detach().numpy()
                         for idxs in match_data["previous_opponents"].values
                     ]
                 ),
@@ -1674,7 +1751,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             torch.FloatTensor(
                 np.asarray(
                     [
-                        trans_data_f_dict[fighter_id + "_" + str(event_date)]
+                        fighter_history_f_dict[fighter_id + "_" + str(event_date)]
                         for fighter_id, event_date in zip(fighter_ids, event_dates)
                     ]
                 )
@@ -1682,7 +1759,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             torch.FloatTensor(
                 np.asarray(
                     [
-                        trans_data_f_dict[fighter_id + "_" + str(event_date)]
+                        fighter_history_f_dict[fighter_id + "_" + str(event_date)]
                         for fighter_id, event_date in zip(opponent_ids, event_dates)
                     ]
                 )
@@ -1690,7 +1767,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             torch.FloatTensor(
                 np.asarray(
                     [
-                        trans_data_o_dict[fighter_id + "_" + str(event_date)]
+                        fighter_history_o_dict[fighter_id + "_" + str(event_date)]
                         for fighter_id, event_date in zip(fighter_ids, event_dates)
                     ]
                 )
@@ -1698,7 +1775,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             torch.FloatTensor(
                 np.asarray(
                     [
-                        trans_data_o_dict[fighter_id + "_" + str(event_date)]
+                        fighter_history_o_dict[fighter_id + "_" + str(event_date)]
                         for fighter_id, event_date in zip(opponent_ids, event_dates)
                     ]
                 )

@@ -285,7 +285,7 @@ class TestSimpleModel(unittest.TestCase):
             "win_per_fight",
             "ELO",
         ]
-        stat_fields = [
+        previous_fights_statistics = [
             "age",
             # "notice_days",
             # "body_strikes_att_opponent_per_minute",
@@ -349,7 +349,7 @@ class TestSimpleModel(unittest.TestCase):
         ]
         state_size = 8
         fight_parameters = ["num_rounds", "weight"]
-        stat_fields_f = ["num_rounds", "weight", "winner"]
+        previous_fights_parameters = ["num_rounds", "weight", "winner"]
 
         # build data processor
         data_processor.load_data()
@@ -393,8 +393,8 @@ class TestSimpleModel(unittest.TestCase):
             early_train_fights,
             fighter_fight_statistics=fighter_fight_statistics,
             fight_parameters=fight_parameters,
-            stat_fields=stat_fields,
-            stat_fields_f=stat_fields_f,
+            previous_fights_statistics=previous_fights_statistics,
+            previous_fights_parameters=previous_fights_parameters,
             state_size=state_size,
         )
 
@@ -403,8 +403,8 @@ class TestSimpleModel(unittest.TestCase):
             train_fights,
             fighter_fight_statistics=fighter_fight_statistics,
             fight_parameters=fight_parameters,
-            stat_fields=stat_fields,
-            stat_fields_f=stat_fields_f,
+            previous_fights_statistics=previous_fights_statistics,
+            previous_fights_parameters=previous_fights_parameters,
             state_size=state_size,
         )
 
@@ -412,8 +412,8 @@ class TestSimpleModel(unittest.TestCase):
             data_processor=data_processor,
             fighter_fight_statistics=fighter_fight_statistics,
             fight_parameters=fight_parameters,
-            stat_fields=stat_fields,
-            stat_fields_f=stat_fields_f,
+            previous_fights_statistics=previous_fights_statistics,
+            previous_fights_parameters=previous_fights_parameters,
             state_size=state_size,
         )
 
@@ -444,8 +444,8 @@ class TestSimpleModel(unittest.TestCase):
             # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
             fighter_transformer_kwargs=dict(
                 state_size=state_size,  # 20,
-                fighter_fight_statistics_size=len(stat_fields),
-                fight_parameters_size=len(stat_fields_f),
+                fighter_fight_statistics_size=len(previous_fights_statistics),
+                fight_parameters_size=len(previous_fights_parameters),
                 network_shape=[128, 64],
                 dropout=dropout * 0.9,
             ),

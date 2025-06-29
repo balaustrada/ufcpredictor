@@ -149,7 +149,7 @@ else:
         "ELO",
     ]
 
-stat_fields = [
+previous_fights_statistics = [
         "age",
         # "body_strikes_att_opponent_per_minute",
         # "body_strikes_att_per_minute",
@@ -267,7 +267,7 @@ from ufcpredictor.loss_functions import BettingLoss
 # %%
 status_array_size = 15
 fight_parameters = ["num_rounds", "weight"]
-stat_fields_f = ["num_rounds", "weight", "winner"]
+previous_fights_parameters = ["num_rounds", "weight", "winner"]
 
 # fight_parameters = []
 early_train_dataset = BasicDataset(
@@ -275,8 +275,8 @@ early_train_dataset = BasicDataset(
     early_train_fights,
     fighter_fight_statistics=fighter_fight_statistics,
     fight_parameters=fight_parameters,
-    stat_fields=stat_fields,
-    stat_fields_f=stat_fields_f,
+    previous_fights_statistics=previous_fights_statistics,
+    previous_fights_parameters=previous_fights_parameters,
     status_array_size=status_array_size,
 )
 
@@ -285,8 +285,8 @@ train_dataset = BasicDataset(
     train_fights,
     fighter_fight_statistics=fighter_fight_statistics,
     fight_parameters=fight_parameters,
-    stat_fields=stat_fields,
-    stat_fields_f=stat_fields_f,
+    previous_fights_statistics=previous_fights_statistics,
+    previous_fights_parameters=previous_fights_parameters,
     status_array_size=status_array_size,
 )
 
@@ -295,8 +295,8 @@ test_dataset = BasicDataset(
     test_fights,
     fighter_fight_statistics=fighter_fight_statistics,
     fight_parameters=fight_parameters,
-    stat_fields=stat_fields,
-    stat_fields_f=stat_fields_f,
+    previous_fights_statistics=previous_fights_statistics,
+    previous_fights_parameters=previous_fights_parameters,
     status_array_size=status_array_size,
 )
 
@@ -304,8 +304,8 @@ forecast_dataset = ForecastDataset(
     data_processor=data_processor,
     fighter_fight_statistics=fighter_fight_statistics,
     fight_parameters=fight_parameters,
-    stat_fields=stat_fields,
-    stat_fields_f=stat_fields_f,
+    previous_fights_statistics=previous_fights_statistics,
+    previous_fights_parameters=previous_fights_parameters,
     status_array_size=status_array_size,
 )
 
@@ -349,8 +349,8 @@ model = SimpleFightNet(
     # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
     fighter_transformer_kwargs=dict(
         state_dim=15,  # 20,
-        stat_dim=len(stat_fields),
-        fight_parameters_size=len(stat_fields_f),
+        stat_dim=len(previous_fights_statistics),
+        fight_parameters_size=len(previous_fights_parameters),
         layer_sizes=[512, 128, 64],
         # layer_sizes=[128, 64, 10], # This better(?)
         # layer_sizes=[128, 512, 256, 128, 64, 10], # This worked
@@ -673,7 +673,7 @@ data_dict = {
     )
 }
 match_data = match_data.merge(
-    trans_data[["fight_id", "fighter_id", "previous_fights", "previous_opponents"]]
+    fighter_history_tensor[["fight_id", "fighter_id", "previous_fights", "previous_opponents"]]
 )
 
 for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_parameters_values).T):
@@ -690,26 +690,26 @@ if len(self.fight_parameters) > 0:
 else:
     fight_data_dict = {id_: [] for id_ in match_data["id_"].values}
 
-trans_data_f_dict = {
+fighter_history_f_dict = {
     id_: data
     for id_, data in zip(
         match_data["id_"].values,
         np.asarray(
             [
-                pad_or_truncate(self.trans_data[idxs], padding).detach().numpy()
+                pad_or_truncate(self.fighter_history_tensor[idxs], padding).detach().numpy()
                 for idxs in match_data["previous_fights"].values
             ]
         ),
     )
 }
 
-trans_data_o_dict = {
+fighter_history_o_dict = {
     id_: data
     for id_, data in zip(
         match_data["id_"].values,
         np.asarray(
             [
-                pad_or_truncate(self.trans_data[idxs], padding).detach().numpy()
+                pad_or_truncate(self.fighter_history_tensor[idxs], padding).detach().numpy()
                 for idxs in match_data["previous_opponents"].values
             ]
         ),
@@ -746,7 +746,7 @@ data = [
     torch.FloatTensor(
         np.asarray(
             [
-                trans_data_f_dict[fighter_id + "_" + str(event_date)]
+                fighter_history_f_dict[fighter_id + "_" + str(event_date)]
                 for fighter_id, event_date in zip(fighter_ids, event_dates)
             ]
         )
@@ -754,7 +754,7 @@ data = [
     torch.FloatTensor(
         np.asarray(
             [
-                trans_data_f_dict[fighter_id + "_" + str(event_date)]
+                fighter_history_f_dict[fighter_id + "_" + str(event_date)]
                 for fighter_id, event_date in zip(opponent_ids, event_dates)
             ]
         )
@@ -762,7 +762,7 @@ data = [
     torch.FloatTensor(
         np.asarray(
             [
-                trans_data_o_dict[fighter_id + "_" + str(event_date)]
+                fighter_history_o_dict[fighter_id + "_" + str(event_date)]
                 for fighter_id, event_date in zip(fighter_ids, event_dates)
             ]
         )
@@ -770,7 +770,7 @@ data = [
     torch.FloatTensor(
         np.asarray(
             [
-                trans_data_o_dict[fighter_id + "_" + str(event_date)]
+                fighter_history_o_dict[fighter_id + "_" + str(event_date)]
                 for fighter_id, event_date in zip(opponent_ids, event_dates)
             ]
         )
@@ -824,13 +824,13 @@ match_data["previous_fights"].values[0]
 # %%
 
 # %%
-trans_data.iloc[11741]
+fighter_history_tensor.iloc[11741]
 
 # %%
 match_data
 
 # %%
-self.trans_data[match_data["previous_opponents"][0]]
+self.fighter_history_tensor[match_data["previous_opponents"][0]]
 
 # %%
 match_data["previous_fights"]

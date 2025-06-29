@@ -469,7 +469,7 @@ class TestForecastDataset(unittest.TestCase):
 class TestDatasetWithTimeEvolution(unittest.TestCase):
     fighter_fight_statistics = ["knockdowns_per_minute"]
 
-    def test_get_trans_stats_winner_binary(self):
+    def test_get_indices_previous_and_next_winner_binary(self):
         # Prepare mock data with winner and fighter_id columns
         mock_data = pd.DataFrame(
             {
@@ -493,39 +493,39 @@ class TestDatasetWithTimeEvolution(unittest.TestCase):
         mock_processor = MagicMock()
         mock_processor.data_normalized_nonagg = mock_data.copy()
         mock_processor.data_normalized = mock_data.copy()
-        # stat_fields and stat_fields_f must match the columns above
+        # previous_fights_statistics and previous_fights_parameters must match the columns above
 
-        stat_fields = [
+        previous_fights_statistics = [
             "body_strikes_att_per_minute",
             "clinch_strikes_att_per_minute",
             "knockdowns_per_minute",
             "ELO",
             "opening",  # Add this line
         ]
-        stat_fields_f = ["winner"]
+        previous_fights_parameters = ["winner"]
 
         dataset = DatasetWithTimeEvolution(
             data_processor=mock_processor,
             fighter_fight_statistics=["body_strikes_att_per_minute"],
             fight_parameters=[],
-            stat_fields=stat_fields,
-            stat_fields_f=stat_fields_f,
+            previous_fights_statistics=previous_fights_statistics,
+            previous_fights_parameters=previous_fights_parameters,
             state_size=2,
         )
 
-        # Call get_trans_stats directly to check the winner column
-        reduced_data = dataset.get_trans_stats()
+        # Call get_indices_previous_and_next directly to check the winner column
+        previous_and_next_indices = dataset.get_indices_previous_and_next()
         # The winner column should be 1 for all rows, since winner == fighter_id
-        assert (reduced_data["winner"] == 1).all()
+        assert (previous_and_next_indices["winner"] == 1).all()
 
         # Now, set winner to something else and check for 0s
         mock_data2 = mock_data.copy()
         mock_data2.loc[0, "winner"] = "not_f1"
         mock_processor.data_normalized_nonagg = mock_data2
         mock_processor.data_normalized = mock_data2
-        reduced_data2 = dataset.get_trans_stats()
-        assert reduced_data2.loc[0, "winner"] == 0
-        assert (reduced_data2.loc[1:, "winner"] == 1).all()
+        previous_and_next_indices2 = dataset.get_indices_previous_and_next()
+        assert previous_and_next_indices2.loc[0, "winner"] == 0
+        assert (previous_and_next_indices2.loc[1:, "winner"] == 1).all()
 
     def test_get_fight_data_from_ids_with_fight_ids(self):
         # Prepare mock data
@@ -554,20 +554,20 @@ class TestDatasetWithTimeEvolution(unittest.TestCase):
         mock_processor.data_enhancers = []
         mock_processor.normalization_factors = {}
 
-        stat_fields = [
+        previous_fights_statistics = [
             "body_strikes_att_per_minute",
             "clinch_strikes_att_per_minute",
             "knockdowns_per_minute",
             "ELO",
         ]
-        stat_fields_f = ["winner"]
+        previous_fights_parameters = ["winner"]
 
         dataset = DatasetWithTimeEvolution(
             data_processor=mock_processor,
             fighter_fight_statistics=["body_strikes_att_per_minute"],
             fight_parameters=[],
-            stat_fields=stat_fields,
-            stat_fields_f=stat_fields_f,
+            previous_fights_statistics=previous_fights_statistics,
+            previous_fights_parameters=previous_fights_parameters,
             state_size=2,
         )
 

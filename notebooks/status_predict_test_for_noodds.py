@@ -155,7 +155,7 @@ else:
         "ELO",
     ]
 
-stat_fields = [
+previous_fights_statistics = [
         "age",
         # "notice_days",
         # "body_strikes_att_opponent_per_minute",
@@ -290,7 +290,7 @@ from ufcpredictor.loss_functions import BettingLoss
 # %%
 status_array_size = 10
 fight_parameters = ["num_rounds", "weight"]
-stat_fields_f = ["num_rounds", "weight", "winner"]
+previous_fights_parameters = ["num_rounds", "weight", "winner"]
 
 # fight_parameters = []
 early_train_dataset = DatasetWithTimeEvolution(
@@ -298,8 +298,8 @@ early_train_dataset = DatasetWithTimeEvolution(
     early_train_fights,
     fighter_fight_statistics=fighter_fight_statistics,
     fight_parameters=fight_parameters,
-    stat_fields=stat_fields,
-    stat_fields_f=stat_fields_f,
+    previous_fights_statistics=previous_fights_statistics,
+    previous_fights_parameters=previous_fights_parameters,
     status_array_size=status_array_size,
 )
 
@@ -308,8 +308,8 @@ train_dataset = DatasetWithTimeEvolution(
     train_fights,
     fighter_fight_statistics=fighter_fight_statistics,
     fight_parameters=fight_parameters,
-    stat_fields=stat_fields,
-    stat_fields_f=stat_fields_f,
+    previous_fights_statistics=previous_fights_statistics,
+    previous_fights_parameters=previous_fights_parameters,
     status_array_size=status_array_size,
 )
 
@@ -318,8 +318,8 @@ test_dataset = DatasetWithTimeEvolution(
     test_fights,
     fighter_fight_statistics=fighter_fight_statistics,
     fight_parameters=fight_parameters,
-    stat_fields=stat_fields,
-    stat_fields_f=stat_fields_f,
+    previous_fights_statistics=previous_fights_statistics,
+    previous_fights_parameters=previous_fights_parameters,
     status_array_size=status_array_size,
 )
 
@@ -327,8 +327,8 @@ forecast_dataset = ForecastDatasetTimeEvolution(
     data_processor=data_processor,
     fighter_fight_statistics=fighter_fight_statistics,
     fight_parameters=fight_parameters,
-    stat_fields=stat_fields,
-    stat_fields_f=stat_fields_f,
+    previous_fights_statistics=previous_fights_statistics,
+    previous_fights_parameters=previous_fights_parameters,
     status_array_size=status_array_size,
 )
 
@@ -375,8 +375,8 @@ model = SimpleFightNetWithTimeEvolution(
     # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
     fighter_transformer_kwargs=dict(
         state_dim=status_array_size,  # 20,
-        stat_dim=len(stat_fields),
-        fight_parameters_size=len(stat_fields_f),
+        stat_dim=len(previous_fights_statistics),
+        fight_parameters_size=len(previous_fights_parameters),
         layer_sizes=[128, 64],
         # layer_sizes=[128, 64, 10], # This better(?)
         # layer_sizes=[128, 512, 256, 128, 64, 10], # This worked

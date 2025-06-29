@@ -416,6 +416,8 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
                 ff[:, -self.evolver.fight_parameters_size :],
             )
 
+            # @TODO: It is inconsistent using ff and then oo (for the last term)
+            # It should be equivalent, but the test fails...
             S2, _ = self.evolver(
                 S2,
                 oo[:, : self.state_size],

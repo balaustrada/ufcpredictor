@@ -352,48 +352,16 @@ class ForecastDataset(BaseDataset):
 
         return p1[0][0], p2[0][0]
 
-    def get_forecast_prediction(
+
+    def get_match_data_for_predictions(
         self,
-        fighter_names: List[str],
-        opponent_names: List[str],
+        fighter_ids: List[str],
+        opponent_ids: List[str],
         event_dates: List[str | datetime.date],
         fighter_odds: List[float],
         opponent_odds: List[float],
-        model: nn.Module,
         fight_parameters_values: List[List[float]] = [],
-        parse_ids: bool = False,
-        device: str | torch.device = "cpu",
-    ) -> Tuple[NDArray, NDArray]:
-        """
-        Make a prediction for a given list of matches. Either providing the names of
-        the fighters and their opponents, or providing the ids of the fighters and
-        their opponents.
-
-        Args:
-            fighters_names: The list of fighters names.
-            opponent_names: The list of opponent names.
-            event_dates: The list of event dates.
-            fighter_odds: The list of fighter odds.
-            opponent_odds: The list of opponent odds.
-            model: The model to make the prediction with.
-            parse_ids: Whether to parse the ids of the fighters and opponents. Ids
-                are parsed in fields "fighter_names" and "opponent_names"if True,
-                and names are parsed if False.
-            device: The device to use for the prediction.
-
-        Returns:
-            A tuple of two numpy arrays, each one evaluating the model switching
-            between the two fighters. For symmetric models, they should be the same.
-        """
-        if not parse_ids:
-            fighter_ids = [self.data_processor.get_fighter_id(x) for x in fighter_names]
-            opponent_ids = [
-                self.data_processor.get_fighter_id(x) for x in opponent_names
-            ]
-        else:
-            fighter_ids = fighter_names
-            opponent_ids = opponent_names
-
+    ) -> pd.DataFrame:
         # Start the match data with the ids and event dates
         match_data = pd.DataFrame(
             {
@@ -494,6 +462,70 @@ class ForecastDataset(BaseDataset):
             if field in self.data_processor.normalization_factors.keys():
                 match_data[field] /= self.data_processor.normalization_factors[field]
 
+       # Add fight parameters to both fighters. 
+        # TODO: Check that concatenate is the right choice (first fighters, then 
+        # opponents?)
+        # It is likely that I need to add a checker on the match_data merge
+        # to ensure that each fighter gets previous data.
+        for feature_name, stats in zip(
+            self.fight_parameters, np.asarray(fight_parameters_values).T
+        ):
+            match_data[feature_name] = np.concatenate((stats, stats))
+
+        
+        return match_data
+        
+    def get_forecast_prediction(
+        self,
+        fighter_names: List[str],
+        opponent_names: List[str],
+        event_dates: List[str | datetime.date],
+        fighter_odds: List[float],
+        opponent_odds: List[float],
+        model: nn.Module,
+        fight_parameters_values: List[List[float]] = [],
+        parse_ids: bool = False,
+        device: str | torch.device = "cpu",
+    ) -> Tuple[NDArray, NDArray]:
+        """
+        Make a prediction for a given list of matches. Either providing the names of
+        the fighters and their opponents, or providing the ids of the fighters and
+        their opponents.
+
+        Args:
+            fighters_names: The list of fighters names.
+            opponent_names: The list of opponent names.
+            event_dates: The list of event dates.
+            fighter_odds: The list of fighter odds.
+            opponent_odds: The list of opponent odds.
+            model: The model to make the prediction with.
+            parse_ids: Whether to parse the ids of the fighters and opponents. Ids
+                are parsed in fields "fighter_names" and "opponent_names"if True,
+                and names are parsed if False.
+            device: The device to use for the prediction.
+
+        Returns:
+            A tuple of two numpy arrays, each one evaluating the model switching
+            between the two fighters. For symmetric models, they should be the same.
+        """
+        if not parse_ids:
+            fighter_ids = [self.data_processor.get_fighter_id(x) for x in fighter_names]
+            opponent_ids = [
+                self.data_processor.get_fighter_id(x) for x in opponent_names
+            ]
+        else:
+            fighter_ids = fighter_names
+            opponent_ids = opponent_names
+
+        match_data = self.get_match_data_for_predictions(
+            fighter_ids=fighter_ids,
+            opponent_ids=opponent_ids,
+            event_dates=event_dates,
+            fighter_odds=fighter_odds,
+            opponent_odds=opponent_odds,
+            fight_parameters_values=fight_parameters_values,
+        )
+
         ###############################################################
         # Now we start building the tensor to input to the model
         ###############################################################
@@ -506,15 +538,6 @@ class ForecastDataset(BaseDataset):
             )
         }
 
-        # Add fight parameters to both fighters. 
-        # TODO: Check that concatenate is the right choice (first fighters, then 
-        # opponents?)
-        # It is likely that I need to add a checker on the match_data merge
-        # to ensure that each fighter gets previous data.
-        for feature_name, stats in zip(
-            self.fight_parameters, np.asarray(fight_parameters_values).T
-        ):
-            match_data[feature_name] = np.concatenate((stats, stats))
 
         # We add fight parameters to the arrays.
         if len(self.fight_parameters) > 0:
@@ -1188,9 +1211,9 @@ class DatasetWithTimeEvolution(BaseDataset):
             f_prev_o, o_prev_o = o_prev_o, f_prev_o
 
         fighter_prev_data = self.fighter_history_tensor[f_prev_f]
-        opponent_prev__data = self.fighter_history_tensor[o_prev_f]
+        opponent_prev_data = self.fighter_history_tensor[o_prev_f]
         fighter_prev_opponents_data = self.fighter_history_tensor[f_prev_o]
-        opponent_prev__opponents_data = self.fighter_history_tensor[o_prev_o]
+        opponent_prev_opponents_data = self.fighter_history_tensor[o_prev_o]
 
         return (
             (
@@ -1198,9 +1221,9 @@ class DatasetWithTimeEvolution(BaseDataset):
                 X2,
                 X3,
                 pad_or_truncate(fighter_prev_data, self.num_past_fights),
-                pad_or_truncate(opponent_prev__data, self.num_past_fights),
+                pad_or_truncate(opponent_prev_data, self.num_past_fights),
                 pad_or_truncate(fighter_prev_opponents_data, self.num_past_fights),
-                pad_or_truncate(opponent_prev__opponents_data, self.num_past_fights),
+                pad_or_truncate(opponent_prev_opponents_data, self.num_past_fights),
             ),
             winner.reshape(-1),
             (
@@ -1492,106 +1515,23 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             fighter_ids = fighter_names
             opponent_ids = opponent_names
 
-        # Start the match data with the ids and event dates.
-        match_data = pd.DataFrame(
-            {
-                "fighter_id": fighter_ids + opponent_ids,
-                "event_date_forecast": event_dates * 2,
-                "opening": np.concatenate((fighter_odds, opponent_odds)),
-            }
+        match_data = self.get_match_data_for_predictions(
+            fighter_ids=fighter_ids,
+            opponent_ids=opponent_ids,
+            event_dates=event_dates,
+            fighter_odds=fighter_odds,
+            opponent_odds=opponent_odds,
+            fight_parameters_values=fight_parameters_values,
         )
 
-        # If fight features are provided, we add them to the match data
-        for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_parameters_values).T):
-            match_data[feature_name] = np.concatenate((stats, stats))
+        previous_and_next_indices = self.get_indices_previous_and_next(include_current=True)
 
-        # We add the fighter normalized data to the match data.
         match_data = match_data.merge(
-            self.data_processor.data_normalized,
-            left_on="fighter_id",
-            right_on="fighter_id",
-        )
-
-        # We only consider statistics prior to the fight date.
-        match_data = match_data[
-            match_data["event_date"] < match_data["event_date_forecast"]
-        ]
-        match_data = match_data.sort_values(
-            by=["fighter_id", "event_date"],
-            ascending=[True, False],
-        )
-        # Keep more up to date statistics for each fighter
-        # (previous to the event_date_forecast)
-        match_data = match_data.drop_duplicates(
-            subset=["fighter_id", "event_date_forecast"],
-            keep="first",
-        )
-        match_data["id_"] = (
-            match_data["fighter_id"].astype(str)
-            + "_"
-            + match_data["event_date_forecast"].astype(str)
+            previous_and_next_indices[
+                ["fight_id", "fighter_id", "previous_fights", "previous_opponents"]
+            ]
         )
         
-        # Weight is the same for both fighters, so we use the first one
-        match_data = match_data.rename(
-            columns={
-                "weight_x": "weight",
-            }
-        )
-
-        ###############################################################
-        # Now we need to fix some fields to adapt them to the match to
-        # be predicted, since we are modifying the last line we are
-        # modifying on top of the last fight.
-        ###############################################################
-        # Add time_since_last_fight information
-        match_data["event_date_forecast"] = pd.to_datetime(
-            match_data["event_date_forecast"]
-        )
-        match_data["time_since_last_fight"] = (
-            match_data["event_date_forecast"] - match_data["event_date"]
-        ).dt.days
-
-        match_data["age"] = (
-            match_data["event_date_forecast"] - match_data["fighter_dob"]
-        ).dt.days / 365
-
-        # We add the number of fights (is the previous + 1)
-        match_data["num_fight"] = match_data["num_fight"] + 1
-
-        new_fields = ["age", "time_since_last_fight"] + self.fight_parameters
-        # Now we iterate over enhancers, in case it is a RankedField
-        # We need to pass the appropriate fields to rank them.
-        fields = []
-        exponents = []
-        for data_enhancer in self.data_processor.data_enhancers:
-            if isinstance(data_enhancer, RankedFields):
-                for field, exponent in zip(
-                    data_enhancer.fields, data_enhancer.exponents
-                ):
-                    if field in new_fields:
-                        exponents.append(exponent)
-                        fields.append(field)
-
-        # If there are fields to be ranked, we do so by going back to 
-        # the original data and ranking them again.
-        # @TODO: Revisit this and check it is working.
-        if len(fields) > 0:
-            ranked_fields = RankedFields(fields, exponents)
-
-            original_df = self.data_processor.data[
-                [field + "not_ranked" for field in fields]
-            ].rename(columns={field + "not_ranked": field for field in fields})
-
-            match_data[fields] = ranked_fields.add_data_fields(
-                pd.concat([original_df, match_data[fields]])
-            ).iloc[len(self.data_processor.data) :][fields]
-
-        # Now we will normalize the fields that need to be normalized.
-        for field in new_fields:
-            if field in self.data_processor.normalization_factors.keys():
-                match_data[field] /= self.data_processor.normalization_factors[field]
-
         ###############################################################
         # Now we start building the tensor to input to the model
         ###############################################################
@@ -1604,22 +1544,6 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             )
         }
 
-        fighter_history_tensor = self.get_indices_previous_and_next(include_current=True)
-
-        match_data = match_data.merge(
-            fighter_history_tensor[
-                ["fight_id", "fighter_id", "previous_fights", "previous_opponents"]
-            ]
-        )
-
-        # Add fight parameters to both fighters. 
-        # TODO: Check that concatenate is the right choice (first fighters, then 
-        # opponents?)
-        # It is likely that I need to add a checker on the match_data merge
-        # to ensure that each fighter gets previous data.
-        for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_parameters_values).T):
-            match_data[feature_name] = np.concatenate((stats, stats))
-
         if len(self.fight_parameters) > 0:
             fight_data_dict = {
                 id_: data
@@ -1631,7 +1555,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
         else:  # pragma: no cover
             fight_data_dict = {id_: [] for id_ in match_data["id_"].values}
 
-        fighter_history_f_dict = {
+        fighter_history_dict = {
             id_: data
             for id_, data in zip(
                 match_data["id_"].values,
@@ -1644,7 +1568,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             )
         }
 
-        fighter_history_o_dict = {
+        opponent_history_dict = {
             id_: data
             for id_, data in zip(
                 match_data["id_"].values,
@@ -1687,7 +1611,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             torch.FloatTensor(
                 np.asarray(
                     [
-                        fighter_history_f_dict[fighter_id + "_" + str(event_date)]
+                        fighter_history_dict[fighter_id + "_" + str(event_date)]
                         for fighter_id, event_date in zip(fighter_ids, event_dates)
                     ]
                 )
@@ -1695,7 +1619,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             torch.FloatTensor(
                 np.asarray(
                     [
-                        fighter_history_f_dict[fighter_id + "_" + str(event_date)]
+                        fighter_history_dict[fighter_id + "_" + str(event_date)]
                         for fighter_id, event_date in zip(opponent_ids, event_dates)
                     ]
                 )
@@ -1703,7 +1627,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             torch.FloatTensor(
                 np.asarray(
                     [
-                        fighter_history_o_dict[fighter_id + "_" + str(event_date)]
+                        opponent_history_dict[fighter_id + "_" + str(event_date)]
                         for fighter_id, event_date in zip(fighter_ids, event_dates)
                     ]
                 )
@@ -1711,29 +1635,25 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             torch.FloatTensor(
                 np.asarray(
                     [
-                        fighter_history_o_dict[fighter_id + "_" + str(event_date)]
+                        opponent_history_dict[fighter_id + "_" + str(event_date)]
                         for fighter_id, event_date in zip(opponent_ids, event_dates)
                     ]
                 )
             ),
         ]
 
-        X1, X2, X3, odds1, odds2, ff, of, fo, oo = data
-        X1, X2, X3, odds1, odds2, ff, of, fo, oo, model = (
-            X1.to(device),
-            X2.to(device),
-            X3.to(device),
-            odds1.to(device),
-            odds2.to(device),
-            ff.to(device),
-            of.to(device),
-            fo.to(device),
-            oo.to(device),
-            model.to(device),
-        )
+        X1, X2, X3, odds1, odds2, fighter_prev_data, opponent_prev_data, fighter_prev_opponents_data, opponent_prev_opponents_data = data
+        data = [x.to(device) for x in data]
+
         model.eval()
         with torch.no_grad():
-            predictions_1 = model(X1, X2, X3, ff, of, fo, oo, odds1, odds2)
-            predictions_2 = 1 - model(X2, X1, X3, of, ff, oo, fo, odds2, odds1)
+            predictions_1 = model(
+                X1, X2, X3, fighter_prev_data, opponent_prev_data, fighter_prev_opponents_data,
+                opponent_prev_opponents_data, odds1, odds2
+            )
+            predictions_2 = 1 - model(
+                X2, X1, X3, opponent_prev_data, fighter_prev_data, opponent_prev_opponents_data,
+                fighter_prev_opponents_data, odds2, odds1
+            )
 
         return predictions_1, predictions_2

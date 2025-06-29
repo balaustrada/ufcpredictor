@@ -546,7 +546,7 @@ len(fighter_names)
 len(opponent_names)
 
 # %%
-for f, o, fightfeat in zip(fighter_names, opponent_names, fight_features):
+for f, o, fightfeat in zip(fighter_names, opponent_names, fight_parameters_values):
     print(f"\t{f}\n\t{o}\n\t{fightfeat}\n")
 
 # %%
@@ -591,7 +591,7 @@ event_dates = [date(2024, 11, 6)] * len(fighter_names)
 fighter_odds = [1] * len(fighter_names)
 opponent_odds = [1] * len(opponent_names)
 model = trainer.model
-fight_features = [
+fight_parameters_values = [
     [3, 155],
     [5, 156],
     [5, 175],
@@ -629,7 +629,7 @@ match_data = pd.DataFrame(
 len(match_data)
 
 # %%
-for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_features).T):
+for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_parameters_values).T):
     match_data[feature_name] = np.concatenate((stats, stats))
 
 match_data = match_data.merge(
@@ -676,7 +676,7 @@ match_data = match_data.merge(
     trans_data[["fight_id", "fighter_id", "previous_fights", "previous_opponents"]]
 )
 
-for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_features).T):
+for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_parameters_values).T):
     match_data[feature_name] = np.concatenate((stats, stats))
 
 if len(self.fight_parameters) > 0:
@@ -805,7 +805,7 @@ with torch.no_grad():
 
 # %%
 for f, o, fightfeat, p1h, p2h in zip(
-    fighter_names, opponent_names, fight_features, p1, p2
+    fighter_names, opponent_names, fight_parameters_values, p1, p2
 ):
     print(
         f"\t{f}\n\t{o}\n\t{fightfeat}\n\t{(p1h[0] + p2h[0]) / 2:.3f}+-{abs(p1h[0]-p2h[0]):.3f}\n"
@@ -903,7 +903,7 @@ for i in range(len(names_f)):
         dataset=forecast_dataset,
         fighter_name=names_f[i],
         opponent_name=names_o[i],
-        fight_features=[],
+        fight_parameters_values=[],
         event_date="2024-11-22",
         odds1=convert_odds_to_decimal(1),
         odds2=convert_odds_to_decimal(1),
@@ -915,7 +915,7 @@ for i in range(len(names_f)):
         dataset=forecast_dataset,
         fighter_name=names_f[i],
         opponent_name=names_o[i],
-        fight_features=[],
+        fight_parameters_values=[],
         event_date="2024-11-22",
         odds1=convert_odds_to_decimal(odds_bfo_f[i]),
         odds2=convert_odds_to_decimal(odds_bfo_o[i]),
@@ -927,7 +927,7 @@ for i in range(len(names_f)):
         dataset=forecast_dataset,
         fighter_name=names_f[i],
         opponent_name=names_o[i],
-        fight_features=[],
+        fight_parameters_values=[],
         event_date="2024-11-22",
         odds1=convert_odds_to_decimal(odds_365_f[i]),
         odds2=convert_odds_to_decimal(odds_365_o[i]),
@@ -940,7 +940,7 @@ PredictionPlots.plot_single_prediction(
     dataset=forecast_dataset,
     fighter_name="Ming Shi",
     opponent_name="Feng Xiaocan",
-    fight_features=[],
+    fight_parameters_values=[],
     event_date="2024-11-22",
     odds1=convert_odds_to_decimal(205),
     odds2=convert_odds_to_decimal(-265),
@@ -952,7 +952,7 @@ PredictionPlots.plot_single_prediction(
     dataset=forecast_dataset,
     fighter_name="Petr Yan",
     opponent_name="Deiveson Figueiredo",
-    fight_features=[],
+    fight_parameters_values=[],
     event_date="2024-11-22",
     odds1=convert_odds_to_decimal(1),
     odds2=convert_odds_to_decimal(1),

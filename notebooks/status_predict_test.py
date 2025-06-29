@@ -288,7 +288,7 @@ from ufcpredictor.loss_functions import BettingLoss
 
 
 # %%
-status_array_size = 8
+state_size = 8
 fight_parameters = ["num_rounds", "weight"]
 stat_fields_f = ["num_rounds", "weight", "winner"]
 
@@ -300,7 +300,7 @@ early_train_dataset = DatasetWithTimeEvolution(
     fight_parameters=fight_parameters,
     stat_fields=stat_fields,
     stat_fields_f=stat_fields_f,
-    status_array_size=status_array_size,
+    state_size=state_size,
 )
 
 train_dataset = DatasetWithTimeEvolution(
@@ -310,7 +310,7 @@ train_dataset = DatasetWithTimeEvolution(
     fight_parameters=fight_parameters,
     stat_fields=stat_fields,
     stat_fields_f=stat_fields_f,
-    status_array_size=status_array_size,
+    state_size=state_size,
 )
 
 test_dataset = DatasetWithTimeEvolution(
@@ -320,7 +320,7 @@ test_dataset = DatasetWithTimeEvolution(
     fight_parameters=fight_parameters,
     stat_fields=stat_fields,
     stat_fields_f=stat_fields_f,
-    status_array_size=status_array_size,
+    state_size=state_size,
 )
 
 forecast_dataset = ForecastDatasetTimeEvolution(
@@ -329,7 +329,7 @@ forecast_dataset = ForecastDatasetTimeEvolution(
     fight_parameters=fight_parameters,
     stat_fields=stat_fields,
     stat_fields_f=stat_fields_f,
-    status_array_size=status_array_size,
+    state_size=state_size,
 )
 
 # %%
@@ -361,7 +361,7 @@ np.random.seed(seed)
 # %%
 dropout = 0.45  # 0.35 seemed to work good, but also 0.45 or even 0.5
 model = SimpleFightNetWithTimeEvolution(
-    input_size=2*len(fighter_fight_statistics)+ len(fight_parameters) + 2 + 2*status_array_size, # 2 are the odds,
+    input_size=2*len(fighter_fight_statistics)+ len(fight_parameters) + 2 + 2*state_size, # 2 are the odds,
     # input_size_f=len(fight_parameters),
     dropout_prob=dropout,
     # fighter_network_shape=[256, 512, 1024, 512],
@@ -371,13 +371,13 @@ model = SimpleFightNetWithTimeEvolution(
     # network_shape=[256, 512, 256, 128, 64, 1],  # This was the best one so far
     # network_shape=[512, 128, 64, 1],
     network_shape=[128, 64, 32, 1],
-    status_array_size=status_array_size,
+    state_size=state_size,
     # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
     fighter_transformer_kwargs=dict(
-        state_dim=status_array_size,  # 20,
-        stat_dim=len(stat_fields),
+        state_size=state_size,  # 20,
+        fighter_fight_statistics_size=len(stat_fields),
         fight_parameters_size=len(stat_fields_f),
-        layer_sizes=[128, 64],
+        network_shape=[128, 64],
         # layer_sizes=[128, 64, 10], # This better(?)
         # layer_sizes=[128, 512, 256, 128, 64, 10], # This worked
         dropout=dropout * 0.9,
@@ -610,7 +610,7 @@ opponent_odds = convert_odds_to_decimal([
     -190,
     150,
 ])
-fight_features = [
+fight_parameters_values = [
     [5, 155],
     [5, 125],
     [3, 125],
@@ -655,7 +655,7 @@ p1, p2 = forecast_dataset.get_forecast_prediction(
     fighter_odds,
     opponent_odds,
     model,
-    fight_features,
+    fight_parameters_values,
     parse_ids = False,
     device= device
 )
@@ -674,7 +674,7 @@ bet = bet.numpy().flatten().round(2)
 
 # %%
 for f, o, fightfeat, p1h, p2h, beth, fodds, oodds in zip(
-    fighter_names, opponent_names, fight_features, p1, p2, bet, fighter_odds, opponent_odds,
+    fighter_names, opponent_names, fight_parameters_values, p1, p2, bet, fighter_odds, opponent_odds,
 ):
     fodds = convert_odds_to_moneyline(fodds)
     oodds = convert_odds_to_moneyline(oodds)
@@ -731,7 +731,7 @@ for i in range(len(names_f)):
         dataset=forecast_dataset,
         fighter_name=names_f[i],
         opponent_name=names_o[i],
-        fight_features=[],
+        fight_parameters_values=[],
         event_date="2024-11-22",
         odds1=convert_odds_to_decimal(1),
         odds2=convert_odds_to_decimal(1),
@@ -743,7 +743,7 @@ for i in range(len(names_f)):
         dataset=forecast_dataset,
         fighter_name=names_f[i],
         opponent_name=names_o[i],
-        fight_features=[],
+        fight_parameters_values=[],
         event_date="2024-11-22",
         odds1=convert_odds_to_decimal(odds_bfo_f[i]),
         odds2=convert_odds_to_decimal(odds_bfo_o[i]),
@@ -755,7 +755,7 @@ for i in range(len(names_f)):
         dataset=forecast_dataset,
         fighter_name=names_f[i],
         opponent_name=names_o[i],
-        fight_features=[],
+        fight_parameters_values=[],
         event_date="2024-11-22",
         odds1=convert_odds_to_decimal(odds_365_f[i]),
         odds2=convert_odds_to_decimal(odds_365_o[i]),
@@ -768,7 +768,7 @@ PredictionPlots.plot_single_prediction(
     dataset=forecast_dataset,
     fighter_name="Ming Shi",
     opponent_name="Feng Xiaocan",
-    fight_features=[],
+    fight_parameters_values=[],
     event_date="2024-11-22",
     odds1=convert_odds_to_decimal(205),
     odds2=convert_odds_to_decimal(-265),
@@ -780,7 +780,7 @@ PredictionPlots.plot_single_prediction(
     dataset=forecast_dataset,
     fighter_name="Petr Yan",
     opponent_name="Deiveson Figueiredo",
-    fight_features=[],
+    fight_parameters_values=[],
     event_date="2024-11-22",
     odds1=convert_odds_to_decimal(1),
     odds2=convert_odds_to_decimal(1),

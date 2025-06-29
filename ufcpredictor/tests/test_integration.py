@@ -199,7 +199,7 @@ class TestSimpleModel(unittest.TestCase):
             odds1=1.1,
             odds2=1.2,
             model=model,
-            fight_features=[5, 140],
+            fight_parameters_values=[5, 140],
         )
 
         self.assertAlmostEqual(p1, 0.2658733, places=3)
@@ -478,7 +478,7 @@ class TestSimpleModel(unittest.TestCase):
             odds1=1.1,
             odds2=1.2,
             model=model,
-            fight_features=[5, 140],
+            fight_parameters_values=[5, 140],
         )
 
         self.assertAlmostEqual(float(p1), 0.4766078, places=3)

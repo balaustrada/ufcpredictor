@@ -609,7 +609,7 @@ opponent_odds = convert_odds_to_decimal([
     -190,
     150,
 ])
-fight_features = [
+fight_parameters_values = [
     [5, 155],
     [5, 125],
     [3, 125],
@@ -654,7 +654,7 @@ p1, p2 = forecast_dataset.get_forecast_prediction(
     fighter_odds,
     opponent_odds,
     model,
-    fight_features,
+    fight_parameters_values,
     parse_ids = False,
     device= device
 )
@@ -673,7 +673,7 @@ bet = bet.numpy().flatten().round(2)
 
 # %%
 for f, o, fightfeat, p1h, p2h, beth, fodds, oodds in zip(
-    fighter_names, opponent_names, fight_features, p1, p2, bet, fighter_odds, opponent_odds,
+    fighter_names, opponent_names, fight_parameters_values, p1, p2, bet, fighter_odds, opponent_odds,
 ):
     fodds = convert_odds_to_moneyline(fodds)
     oodds = convert_odds_to_moneyline(oodds)
@@ -730,7 +730,7 @@ for i in range(len(names_f)):
         dataset=forecast_dataset,
         fighter_name=names_f[i],
         opponent_name=names_o[i],
-        fight_features=[],
+        fight_parameters_values=[],
         event_date="2024-11-22",
         odds1=convert_odds_to_decimal(1),
         odds2=convert_odds_to_decimal(1),
@@ -742,7 +742,7 @@ for i in range(len(names_f)):
         dataset=forecast_dataset,
         fighter_name=names_f[i],
         opponent_name=names_o[i],
-        fight_features=[],
+        fight_parameters_values=[],
         event_date="2024-11-22",
         odds1=convert_odds_to_decimal(odds_bfo_f[i]),
         odds2=convert_odds_to_decimal(odds_bfo_o[i]),
@@ -754,7 +754,7 @@ for i in range(len(names_f)):
         dataset=forecast_dataset,
         fighter_name=names_f[i],
         opponent_name=names_o[i],
-        fight_features=[],
+        fight_parameters_values=[],
         event_date="2024-11-22",
         odds1=convert_odds_to_decimal(odds_365_f[i]),
         odds2=convert_odds_to_decimal(odds_365_o[i]),
@@ -767,7 +767,7 @@ PredictionPlots.plot_single_prediction(
     dataset=forecast_dataset,
     fighter_name="Ming Shi",
     opponent_name="Feng Xiaocan",
-    fight_features=[],
+    fight_parameters_values=[],
     event_date="2024-11-22",
     odds1=convert_odds_to_decimal(205),
     odds2=convert_odds_to_decimal(-265),
@@ -779,7 +779,7 @@ PredictionPlots.plot_single_prediction(
     dataset=forecast_dataset,
     fighter_name="Petr Yan",
     opponent_name="Deiveson Figueiredo",
-    fight_features=[],
+    fight_parameters_values=[],
     event_date="2024-11-22",
     odds1=convert_odds_to_decimal(1),
     odds2=convert_odds_to_decimal(1),

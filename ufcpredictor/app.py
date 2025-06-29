@@ -260,7 +260,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
             value=datetime.now().strftime("%Y-%m-%d"),
         )
 
-        fight_features = [gr.Number(label=label, value=0) for label in fight_parameters]
+        fight_parameters_values = [gr.Number(label=label, value=0) for label in fight_parameters]
 
         fighter_name = gr.Dropdown(
             label="Fighter Name",
@@ -288,7 +288,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
             event_date: float,
             odds1: int,
             odds2: int,
-            *fight_features: float,
+            *fight_parameters_values: float,
         ) -> plt.Figure:
             fig, ax = plt.subplots(figsize=(6.4, 1.7))
 
@@ -297,7 +297,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
                 dataset=dataset,
                 fighter_name=fighter_ids[show_names.index(fighter_name)],
                 opponent_name=fighter_ids[show_names.index(opponent_name)],
-                fight_features=list(fight_features),
+                fight_parameters_values=list(fight_parameters_values),
                 event_date=datetime.fromtimestamp(event_date).strftime("%Y-%m-%d"),
                 odds1=convert_odds_to_decimal(
                     [
@@ -327,7 +327,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
                 event_date,
                 odds1,
                 odds2,
-                *fight_features,
+                *fight_parameters_values,
             ],
             outputs=output,
         )

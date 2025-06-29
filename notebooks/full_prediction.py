@@ -335,7 +335,7 @@ for i, event_date in enumerate(sorted(event_dates[event_dates > starting_date]))
     num_rounds = fight_data["num_rounds_x"].values.tolist()
     weights = fight_data["weight_x"].values.tolist()
 
-    fight_features = list(np.asarray([num_rounds, weights]).T)
+    fight_parameters_values = list(np.asarray([num_rounds, weights]).T)
 
     event_dates = (
         fight_data["event_date_x"]
@@ -353,7 +353,7 @@ for i, event_date in enumerate(sorted(event_dates[event_dates > starting_date]))
         fighter_odds=fighter_odds,
         opponent_odds=opponent_odds,
         model=model,
-        fight_features=fight_features,
+        fight_parameters_values=fight_parameters_values,
         parse_ids=True,
     )
 

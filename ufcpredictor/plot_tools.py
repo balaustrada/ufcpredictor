@@ -218,7 +218,7 @@ class PredictionPlots:
         dataset: ForecastDataset,
         fighter_name: str,
         opponent_name: str,
-        fight_features: List[float],
+        fight_parameters_values: List[float],
         event_date: str | datetime.date,
         odds1: int,
         odds2: int,
@@ -247,7 +247,7 @@ class PredictionPlots:
             odds1,
             odds2,
             model,
-            fight_features,
+            fight_parameters_values,
             parse_id,
         )
 

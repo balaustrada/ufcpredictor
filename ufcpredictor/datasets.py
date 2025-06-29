@@ -41,9 +41,26 @@ class BaseDataset(Dataset):
     basic functionality to load and process the data, including fighter statistics,
     fight parameters, and fight ids. It also provides a method to load the data
     into torch tensors for training and testing.
+
+    Attributes
+        fighter_fight_statistics: A list of columns that contain fighter 
+            statistics for each fight. These statistics are used to train the model.
+        fight_parameters: A list of columns that contain fight parameters, such as
+            fight date, weight class, and location. These parameters are used to
+            train the model.
+        data_processor: An instance of DataProcessor that contains the data to be  
+            used.
+        fight_ids: A list of fight ids to include in the dataset. If None, all
+            fights are included.
+        data: A list of torch tensors containing the data for each fight. Each 
+            tensor contains the fighter statistics, fight parameters, and opening 
+            odds for each fighter in the fight.
+        fight_data: A pandas DataFrame containing the data for each fight, including
+            fighter statistics, fight parameters, and opening odds. This DataFrame
+            is used to retrieve the data for each fight when needed.
     """
 
-    fighter_fight_statistics = [
+    fighter_fight_statistics: List[str] = [
         "age",
         "body_strikes_att_opponent_per_minute",
         "body_strikes_att_per_minute",
@@ -275,7 +292,7 @@ class ForecastDataset(BaseDataset):
         odds1: int,
         odds2: int,
         model: nn.Module,
-        fight_features: List[float] = [],
+        fight_parameters_values: List[float] = [],
         parse_ids: bool = False,
     ) -> Tuple[float, float]:
         """
@@ -313,8 +330,8 @@ class ForecastDataset(BaseDataset):
                 odds2,
             ],
             model=model,
-            fight_features=[
-                fight_features,
+            fight_parameters_values=[
+                fight_parameters_values,
             ],
             parse_ids=parse_ids,
         )
@@ -329,7 +346,7 @@ class ForecastDataset(BaseDataset):
         fighter_odds: List[float],
         opponent_odds: List[float],
         model: nn.Module,
-        fight_features: List[List[float]] = [],
+        fight_parameters_values: List[List[float]] = [],
         parse_ids: bool = False,
         device: str | torch.device = "cpu",
     ) -> Tuple[NDArray, NDArray]:
@@ -351,8 +368,8 @@ class ForecastDataset(BaseDataset):
             device: The device to use for the prediction.
 
         Returns:
-            A tuple of two numpy arrays, each containing the predictions for one of the
-            fighters.
+            A tuple of two numpy arrays, each containing the predictions for one of 
+            the fighters.
         """
         if not parse_ids:
             fighter_ids = [self.data_processor.get_fighter_id(x) for x in fighter_names]
@@ -363,6 +380,7 @@ class ForecastDataset(BaseDataset):
             fighter_ids = fighter_names
             opponent_ids = opponent_names
 
+        # Start the match data with the ids and event dates
         match_data = pd.DataFrame(
             {
                 "fighter_id": fighter_ids + opponent_ids,
@@ -371,15 +389,18 @@ class ForecastDataset(BaseDataset):
             }
         )
 
-        for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_features).T):
+        # If fight features are provided, we add them to the match data
+        for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_parameters_values).T):
             match_data[feature_name] = np.concatenate((stats, stats))
 
+        # We add the fighter normalized data to the match data.
         match_data = match_data.merge(
             self.data_processor.data_normalized,
             left_on="fighter_id",
             right_on="fighter_id",
         )
 
+        # We only consider statistics prior to the fight date.
         match_data = match_data[
             match_data["event_date"] < match_data["event_date_forecast"]
         ]
@@ -387,6 +408,8 @@ class ForecastDataset(BaseDataset):
             by=["fighter_id", "event_date"],
             ascending=[True, False],
         )
+        # Keep more up to date statistics for each fighter
+        # (previous to the event_date_forecast)
         match_data = match_data.drop_duplicates(
             subset=["fighter_id", "event_date_forecast"],
             keep="first",
@@ -397,6 +420,7 @@ class ForecastDataset(BaseDataset):
             + match_data["event_date_forecast"].astype(str)
         )
 
+        # Weight is the same for both fighters, so we use the first one
         match_data = match_data.rename(
             columns={
                 "weight_x": "weight",
@@ -423,7 +447,7 @@ class ForecastDataset(BaseDataset):
 
         new_fields = ["age", "time_since_last_fight"] + self.fight_parameters
         # Now we iterate over enhancers, in case it is a RankedField
-        # We need to pass the appropriate fields to rank them.
+        # we need to pass the appropriate fields to rank them.
         fields = []
         exponents = []
         for data_enhancer in self.data_processor.data_enhancers:
@@ -435,7 +459,9 @@ class ForecastDataset(BaseDataset):
                         exponents.append(exponent)
                         fields.append(field)
 
-        # If there are fields to be ranked, we do so
+        # If there are fields to be ranked, we do so by going back to 
+        # the original data and ranking them again.
+        # @TODO: Revisit this and check it is working.
         if len(fields) > 0:
             ranked_fields = RankedFields(fields, exponents)
 
@@ -451,6 +477,7 @@ class ForecastDataset(BaseDataset):
         for field in new_fields:
             if field in self.data_processor.normalization_factors.keys():
                 match_data[field] /= self.data_processor.normalization_factors[field]
+
         ###############################################################
         # Now we start building the tensor to input to the model
         ###############################################################
@@ -463,7 +490,7 @@ class ForecastDataset(BaseDataset):
             )
         }
 
-        for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_features).T):
+        for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_parameters_values).T):
             match_data[feature_name] = np.concatenate((stats, stats))
 
         if len(self.fight_parameters) > 0:
@@ -1366,7 +1393,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
         odds1: int,
         odds2: int,
         model: nn.Module,
-        fight_features: List[float] = [],
+        fight_parameters_values: List[float] = [],
         parse_ids: bool = False,
     ) -> Tuple[float, float]:
         """
@@ -1404,8 +1431,8 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
                 odds2,
             ],
             model=model,
-            fight_features=[
-                fight_features,
+            fight_parameters_values=[
+                fight_parameters_values,
             ],
             parse_ids=parse_ids,
         )
@@ -1420,7 +1447,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
         fighter_odds: List[float],
         opponent_odds: List[float],
         model: nn.Module,
-        fight_features: List[List[float]] = [],
+        fight_parameters_values: List[List[float]] = [],
         parse_ids: bool = False,
         device: str | torch.device = "cpu",
     ) -> Tuple[NDArray, NDArray]:
@@ -1462,7 +1489,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             }
         )
 
-        for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_features).T):
+        for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_parameters_values).T):
             match_data[feature_name] = np.concatenate((stats, stats))
 
         match_data = match_data.merge(
@@ -1562,7 +1589,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             ]
         )
 
-        for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_features).T):
+        for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_parameters_values).T):
             match_data[feature_name] = np.concatenate((stats, stats))
 
         if len(self.fight_parameters) > 0:

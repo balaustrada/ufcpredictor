@@ -17,7 +17,7 @@ def mock_call_return_args(*args, **kwargs):
 
 
 class TestBasicDataset(unittest.TestCase):
-    fighter_fighter_statistics = ["knockdowns_per_minute"]
+    fighter_fight_statistics = ["knockdowns_per_minute"]
 
     def test_basic_dataset_initialization(self):
         # Mock data
@@ -45,7 +45,7 @@ class TestBasicDataset(unittest.TestCase):
 
         # Check initialization without errors
         dataset = BasicDataset(
-            data_processor=mock_processor, fight_ids=fight_ids, fighter_fighter_statistics=self.fighter_fighter_statistics
+            data_processor=mock_processor, fight_ids=fight_ids, fighter_fight_statistics=self.fighter_fight_statistics
         )
         assert len(dataset.data) == 6  # We expect 5 tensors in dataset.data
         assert isinstance(dataset.data[0], torch.FloatTensor)  # Check tensor type
@@ -56,7 +56,7 @@ class TestBasicDataset(unittest.TestCase):
             BasicDataset(
                 data_processor=mock_processor,
                 fight_ids=fight_ids,
-                fighter_fighter_statistics=["invalid_column"],
+                fighter_fight_statistics=["invalid_column"],
             )
 
     def test_basic_dataset_load_data(self):
@@ -85,7 +85,7 @@ class TestBasicDataset(unittest.TestCase):
 
         # Check data loading
         dataset = BasicDataset(
-            data_processor=mock_processor, fight_ids=fight_ids, fighter_fighter_statistics=self.fighter_fighter_statistics
+            data_processor=mock_processor, fight_ids=fight_ids, fighter_fight_statistics=self.fighter_fight_statistics
         )
         assert dataset.fight_data.shape[0] == 1  # Only one fight should be loaded
 
@@ -114,7 +114,7 @@ class TestBasicDataset(unittest.TestCase):
         fight_ids = ["fight1"]
 
         dataset = BasicDataset(
-            data_processor=mock_processor, fight_ids=fight_ids, fighter_fighter_statistics=self.fighter_fighter_statistics
+            data_processor=mock_processor, fight_ids=fight_ids, fighter_fight_statistics=self.fighter_fight_statistics
         )
 
         # Retrieve an item
@@ -151,7 +151,7 @@ class TestBasicDataset(unittest.TestCase):
         fight_ids = ["fight1", "fight2", "fight3"]
 
         dataset = BasicDataset(
-            data_processor=mock_processor, fight_ids=fight_ids, fighter_fighter_statistics=self.fighter_fighter_statistics
+            data_processor=mock_processor, fight_ids=fight_ids, fighter_fight_statistics=self.fighter_fight_statistics
         )
 
         # Retrieve an item multiple times to check for swapping
@@ -189,7 +189,7 @@ class TestBasicDataset(unittest.TestCase):
         dataset = BasicDataset(
             data_processor=mock_processor,
             fight_ids=["fight1", "fight2", "fight3"],
-            fighter_fighter_statistics=self.fighter_fighter_statistics,
+            fighter_fight_statistics=self.fighter_fight_statistics,
         )
 
         # Test retrieving specific fight data
@@ -226,7 +226,7 @@ class TestBasicDataset(unittest.TestCase):
         dataset = BasicDataset(
             data_processor=mock_processor,
             fight_ids=["fight1", "fight2", "fight3"],
-            fighter_fighter_statistics=self.fighter_fighter_statistics,
+            fighter_fight_statistics=self.fighter_fight_statistics,
         )
 
         # Test retrieving specific fight data
@@ -238,7 +238,7 @@ class TestBasicDataset(unittest.TestCase):
 
 
 class TestForecastDataset(unittest.TestCase):
-    fighter_fighter_statistics = ["knockdowns_per_minute"]
+    fighter_fight_statistics = ["knockdowns_per_minute"]
 
     def test_get_forecast_prediction(self):
         # Mock data
@@ -290,7 +290,7 @@ class TestForecastDataset(unittest.TestCase):
         mock_processor.data_normalized = mock_data
 
         forecast_dataset = ForecastDataset(
-            data_processor=mock_processor, fighter_fighter_statistics=self.fighter_fighter_statistics
+            data_processor=mock_processor, fighter_fight_statistics=self.fighter_fight_statistics
         )
 
         # Prepare mock input data
@@ -385,7 +385,7 @@ class TestForecastDataset(unittest.TestCase):
         )
 
         forecast_dataset = ForecastDataset(
-            data_processor=mock_processor, fighter_fighter_statistics=self.fighter_fighter_statistics
+            data_processor=mock_processor, fighter_fight_statistics=self.fighter_fight_statistics
         )
 
         # Prepare mock input data
@@ -455,7 +455,7 @@ class TestForecastDataset(unittest.TestCase):
         with self.assertRaises(ValueError) as e:
             forecast_dataset = ForecastDataset(
                 data_processor=mock_processor,
-                fighter_fighter_statistics=self.fighter_fighter_statistics
+                fighter_fight_statistics=self.fighter_fight_statistics
                 + [
                     "missing_column",
                 ],
@@ -467,7 +467,7 @@ class TestForecastDataset(unittest.TestCase):
 
 
 class TestDatasetWithTimeEvolution(unittest.TestCase):
-    fighter_fighter_statistics = ["knockdowns_per_minute"]
+    fighter_fight_statistics = ["knockdowns_per_minute"]
 
     def test_get_trans_stats_winner_binary(self):
         # Prepare mock data with winner and fighter_id columns
@@ -506,7 +506,7 @@ class TestDatasetWithTimeEvolution(unittest.TestCase):
 
         dataset = DatasetWithTimeEvolution(
             data_processor=mock_processor,
-            fighter_fighter_statistics=["body_strikes_att_per_minute"],
+            fighter_fight_statistics=["body_strikes_att_per_minute"],
             fight_parameters=[],
             stat_fields=stat_fields,
             stat_fields_f=stat_fields_f,
@@ -564,7 +564,7 @@ class TestDatasetWithTimeEvolution(unittest.TestCase):
 
         dataset = DatasetWithTimeEvolution(
             data_processor=mock_processor,
-            fighter_fighter_statistics=["body_strikes_att_per_minute"],
+            fighter_fight_statistics=["body_strikes_att_per_minute"],
             fight_parameters=[],
             stat_fields=stat_fields,
             stat_fields_f=stat_fields_f,

@@ -118,7 +118,7 @@ class Trainer:
                         data_enhancer, param
                     )
 
-            for set_ in "fighter_fighter_statistics", "fight_parameters":
+            for set_ in "fighter_fight_statistics", "fight_parameters":
                 if hasattr(self.train_loader.dataset, set_):
                     params[set_] = sorted(getattr(self.train_loader.dataset, set_))
 

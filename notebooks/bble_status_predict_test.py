@@ -82,7 +82,7 @@ data_processor = DataProcessor(
 
 # %%
 if True:
-    fighter_fighter_statistics = [
+    fighter_fight_statistics = [
         "age",
         # "body_strikes_att_opponent_per_minute",
         # "body_strikes_att_per_minute",
@@ -144,8 +144,8 @@ if True:
         "ELO",
     ]
 else:
-    fighter_fighter_statistics = None
-    fighter_fighter_statistics = BasicDataset.fighter_fighter_statistics + [
+    fighter_fight_statistics = None
+    fighter_fight_statistics = BasicDataset.fighter_fight_statistics + [
         "ELO",
     ]
 
@@ -212,14 +212,14 @@ stat_fields = [
 ]
 
 # %%
-len(fighter_fighter_statistics)
+len(fighter_fight_statistics)
 
 # %%
 data_processor.load_data()
 data_processor.aggregate_data()
 data_processor.add_per_minute_and_fight_stats()
 
-# for field in fighter_fighter_statistics:
+# for field in fighter_fight_statistics:
 #     if field in ["ELO", "age"]:
 #         continue
 #     self.data_aggregated[field] = (self.data_aggregated[field].rank(pct=True) * 100) ** 1.2
@@ -273,7 +273,7 @@ stat_fields_f = ["num_rounds", "weight", "winner"]
 early_train_dataset = BasicDataset(
     data_processor,
     early_train_fights,
-    fighter_fighter_statistics=fighter_fighter_statistics,
+    fighter_fight_statistics=fighter_fight_statistics,
     fight_parameters=fight_parameters,
     stat_fields=stat_fields,
     stat_fields_f=stat_fields_f,
@@ -283,7 +283,7 @@ early_train_dataset = BasicDataset(
 train_dataset = BasicDataset(
     data_processor,
     train_fights,
-    fighter_fighter_statistics=fighter_fighter_statistics,
+    fighter_fight_statistics=fighter_fight_statistics,
     fight_parameters=fight_parameters,
     stat_fields=stat_fields,
     stat_fields_f=stat_fields_f,
@@ -293,7 +293,7 @@ train_dataset = BasicDataset(
 test_dataset = BasicDataset(
     data_processor,
     test_fights,
-    fighter_fighter_statistics=fighter_fighter_statistics,
+    fighter_fight_statistics=fighter_fight_statistics,
     fight_parameters=fight_parameters,
     stat_fields=stat_fields,
     stat_fields_f=stat_fields_f,
@@ -302,7 +302,7 @@ test_dataset = BasicDataset(
 
 forecast_dataset = ForecastDataset(
     data_processor=data_processor,
-    fighter_fighter_statistics=fighter_fighter_statistics,
+    fighter_fight_statistics=fighter_fight_statistics,
     fight_parameters=fight_parameters,
     stat_fields=stat_fields,
     stat_fields_f=stat_fields_f,
@@ -669,7 +669,7 @@ data_dict = {
     id_: data
     for id_, data in zip(
         match_data["id_"].values,
-        np.asarray([match_data[x] for x in self.fighter_fighter_statistics]).T,
+        np.asarray([match_data[x] for x in self.fighter_fight_statistics]).T,
     )
 }
 match_data = match_data.merge(
@@ -1070,7 +1070,7 @@ odds1.grad.sum()
 # %%
 fig, ax = plt.subplots(figsize=(5, 12))
 
-labels = test_dataset.fighter_fighter_statistics + ["odds"]
+labels = test_dataset.fighter_fight_statistics + ["odds"]
 values = list(abs(X1.grad.sum(axis=0))) + [odds1.grad.sum(),]
 
 sorted_indices = sorted(range(len(values)), key=lambda i: values[i], reverse=True)

@@ -43,7 +43,7 @@ self.add_per_minute_and_fight_stats()
 self.normalize_data()
 
     # %%
-    fighter_fighter_statistics = [
+    fighter_fight_statistics = [
 'clinch_strikes_att_opponent_per_minute',
  'time_since_last_fight',
  'total_strikes_succ_opponent_per_minute',
@@ -95,13 +95,13 @@ test_fights = set(test_fights) - set(invalid_fights)
 train_dataset = BasicDataset(
     data_processor,
     train_fights,
-    fighter_fighter_statistics=fighter_fighter_statistics,
+    fighter_fight_statistics=fighter_fight_statistics,
 )
 
 test_dataset = BasicDataset(
     data_processor,
     test_fights,
-    fighter_fighter_statistics=fighter_fighter_statistics,
+    fighter_fight_statistics=fighter_fight_statistics,
 )
 
 # %%
@@ -310,7 +310,7 @@ def validation(model, val_dataloader, criterion, device):
 from ufcpredictor.models import SymmetricFightNet
 
 # %%
-model = SymmetricFightNet(input_size=len(fighter_fighter_statistics), dropout_prob=0.35)
+model = SymmetricFightNet(input_size=len(fighter_fight_statistics), dropout_prob=0.35)
 model.eval()
 
 optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3)
@@ -354,10 +354,10 @@ def get_fight_data(self, fight_ids):
     
     data = [
         torch.FloatTensor(
-            np.asarray([fight_data[x + "_x"].values for x in self.fighter_fighter_statistics]).T
+            np.asarray([fight_data[x + "_x"].values for x in self.fighter_fight_statistics]).T
         ),
         torch.FloatTensor(
-            np.asarray([fight_data[x + "_y"].values for x in self.fighter_fighter_statistics]).T
+            np.asarray([fight_data[x + "_y"].values for x in self.fighter_fight_statistics]).T
         ),
         torch.FloatTensor(
             (fight_data["winner_x"] != fight_data["fighter_id_x"]).values
@@ -390,10 +390,10 @@ def show_fight_prediction_detail(
     
     data = [
         torch.FloatTensor(
-            np.asarray([fight_data[x + "_x"].values for x in self.fighter_fighter_statistics]).T
+            np.asarray([fight_data[x + "_x"].values for x in self.fighter_fight_statistics]).T
         ),
         torch.FloatTensor(
-            np.asarray([fight_data[x + "_y"].values for x in self.fighter_fighter_statistics]).T
+            np.asarray([fight_data[x + "_y"].values for x in self.fighter_fight_statistics]).T
         ),
         torch.FloatTensor(
             (fight_data["winner_x"] != fight_data["fighter_id_x"]).values
@@ -506,7 +506,7 @@ output.sum().backward()
 # %%
 fig, ax = plt.subplots(figsize=(5, 12))
 
-labels = test_dataset.fighter_fighter_statistics + ["odds"]
+labels = test_dataset.fighter_fight_statistics + ["odds"]
 values = list(abs(X1.grad.sum(axis=0))) + [4.3132,]
 
 sorted_indices = sorted(range(len(values)), key=lambda i: values[i], reverse=True)

@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_model_parameters(
-    fighter_fighter_statistics: List[str],
+    fighter_fight_statistics: List[str],
     fight_parameters: List[str],
 ) -> tuple[
     torch.nn.Module, torch.optim.Optimizer, torch.optim.lr_scheduler.ReduceLROnPlateau
@@ -46,7 +46,7 @@ def get_model_parameters(
     np.random.seed(seed)
 
     model = SymmetricFightNet(
-        input_size=len(fighter_fighter_statistics),
+        input_size=len(fighter_fight_statistics),
         input_size_f=len(fight_parameters),
         dropout_prob=0.35,
         # fighter_network_shape=[256, 512, 1024, 512],
@@ -76,7 +76,7 @@ def get_data_parameters() -> Tuple[List[str], List[str], Dict[str, Any], int, in
     # fight_parameters = ["num_rounds", "weight"]
     fight_parameters: List[str] = []
 
-    fighter_fighter_statistics = [
+    fighter_fight_statistics = [
         "age",
         # "body_strikes_att_opponent_per_minute",
         # "body_strikes_att_per_minute",
@@ -139,7 +139,7 @@ def get_data_parameters() -> Tuple[List[str], List[str], Dict[str, Any], int, in
     ]
 
     return (
-        fighter_fighter_statistics,
+        fighter_fight_statistics,
         fight_parameters,
         data_processor_kwargs,
         days_to_early_split,
@@ -175,7 +175,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         )
 
     (
-        fighter_fighter_statistics,
+        fighter_fight_statistics,
         fight_parameters,
         data_processor_kwargs,
         days_to_early_split,
@@ -198,14 +198,14 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
     logger.info("Creating dataset from loaded data...")
     dataset = ForecastDataset(
         data_processor=data_processor,
-        fighter_fighter_statistics=fighter_fighter_statistics,
+        fighter_fight_statistics=fighter_fight_statistics,
         fight_parameters=fight_parameters,
     )
 
     logger.info("Training model (testing)...")
     model = train_model(
         data_processor=data_processor,
-        fighter_fighter_statistics=fighter_fighter_statistics,
+        fighter_fight_statistics=fighter_fight_statistics,
         fight_parameters=fight_parameters,
         days_to_early_split=days_to_early_split,
         batch_size=batch_size,
@@ -215,7 +215,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
     logger.info("Training model (final)...")
     model = train_model(
         data_processor=data_processor,
-        fighter_fighter_statistics=fighter_fighter_statistics,
+        fighter_fight_statistics=fighter_fight_statistics,
         fight_parameters=fight_parameters,
         days_to_early_split=days_to_early_split,
         batch_size=batch_size,
@@ -337,7 +337,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
 
 def train_model(
     data_processor: DataProcessor,
-    fighter_fighter_statistics: List[str],
+    fighter_fight_statistics: List[str],
     fight_parameters: List[str],
     days_to_early_split: int,
     batch_size: int,
@@ -372,14 +372,14 @@ def train_model(
     early_train_dataset = BasicDataset(
         data_processor,
         list(early_train_fights),
-        fighter_fighter_statistics=fighter_fighter_statistics,
+        fighter_fight_statistics=fighter_fight_statistics,
         fight_parameters=fight_parameters,
     )
 
     train_dataset = BasicDataset(
         data_processor,
         list(train_fights),
-        fighter_fighter_statistics=fighter_fighter_statistics,
+        fighter_fight_statistics=fighter_fight_statistics,
         fight_parameters=fight_parameters,
     )
 
@@ -387,7 +387,7 @@ def train_model(
         test_dataset = BasicDataset(
             data_processor,
             list(test_fights),
-            fighter_fighter_statistics=fighter_fighter_statistics,
+            fighter_fight_statistics=fighter_fight_statistics,
             fight_parameters=fight_parameters,
         )
         test_dataloader = torch.utils.data.DataLoader(
@@ -403,7 +403,7 @@ def train_model(
         train_dataset, batch_size=batch_size, shuffle=True
     )
 
-    model, optimizer, scheduler = get_model_parameters(fighter_fighter_statistics, fight_parameters)
+    model, optimizer, scheduler = get_model_parameters(fighter_fight_statistics, fight_parameters)
 
     trainer = Trainer(
         train_loader=train_dataloader,

@@ -73,19 +73,19 @@ test_fights =  [id_ for id_ in test_fights if id_ in predictor.data_processor.va
 # %%
 train_dataloader = predictor.data_processor.get_data_loader(
     fight_ids= train_fights, 
-    fighter_fighter_statistics = predictor.fighter_fighter_statistics,
+    fighter_fight_statistics = predictor.fighter_fight_statistics,
     batch_size=64,
 )
 
 # %%
 test_dataloader = predictor.data_processor.get_data_loader(
     fight_ids = test_fights,
-    fighter_fighter_statistics=predictor.fighter_fighter_statistics,
+    fighter_fight_statistics=predictor.fighter_fight_statistics,
     batch_size=64,
 )
 
 # %%
-model = SymmetricFightNet(input_size=len(predictor.fighter_fighter_statistics))
+model = SymmetricFightNet(input_size=len(predictor.fighter_fight_statistics))
 model.eval()
 
 optimizer = torch.optim.Adam(params=model.parameters(), lr=0.5e-3)
@@ -114,7 +114,7 @@ jupyter_black.load()
 # %%
 def compare_fighters_from_id(id_):
     x1, x2, y = predictor.data_processor.from_id_to_fight(
-        fighter_fighter_statistics=predictor.fighter_fighter_statistics,
+        fighter_fight_statistics=predictor.fighter_fight_statistics,
         id_=id_,
         print_info=True,
     )
@@ -158,8 +158,8 @@ def compare_fighters(
     ]
     f2p = f2p.iloc[f2p["event_date"].argmax()]
 
-    x1 = [f1p[x] for x in fighter_fighter_statistics]
-    x2 = [f2p[x] for x in fighter_fighter_statistics]
+    x1 = [f1p[x] for x in fighter_fight_statistics]
+    x2 = [f2p[x] for x in fighter_fight_statistics]
 
     x1 = torch.reshape(torch.FloatTensor(x1), (1, -1))
     x2 = torch.reshape(torch.FloatTensor(x2), (1, -1))
@@ -385,7 +385,7 @@ data = predictor.data_processor.data
 import datetime
 
 # %%
-fighter_fighter_statistics = predictor.fighter_fighter_statistics
+fighter_fight_statistics = predictor.fighter_fight_statistics
 
 # %%
 compare_fighters(
@@ -445,8 +445,8 @@ def compare_fighters(
     ]
     f2p = f2p.iloc[f2p["event_date"].argmax()]
 
-    x1 = [f1p[x] for x in fighter_fighter_statistics]
-    x2 = [f2p[x] for x in fighter_fighter_statistics]
+    x1 = [f1p[x] for x in fighter_fight_statistics]
+    x2 = [f2p[x] for x in fighter_fight_statistics]
 
     x1 = torch.reshape(torch.FloatTensor(x1), (1, -1))
     x2 = torch.reshape(torch.FloatTensor(x2), (1, -1))

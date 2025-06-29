@@ -219,7 +219,7 @@ for column in to_sum_columns:
 "knockdowns_per_min" in data_ag.columns
 
 # %%
-fighter_fighter_statistics = [
+fighter_fight_statistics = [
 	"knockdowns_per_min",
 	"strikes_att_per_min",
 	"strikes_succ_per_min",
@@ -250,17 +250,17 @@ fighter_fighter_statistics = [
 ]
 
 # %%
-for x in fighter_fighter_statistics:
+for x in fighter_fight_statistics:
     assert x in data_ag.columns
 
 # %%
-means = {f"{c}_mean": data_ag[c].mean() for c in fighter_fighter_statistics}
+means = {f"{c}_mean": data_ag[c].mean() for c in fighter_fight_statistics}
 
 # %%
 data_ag["num_fights_normalized"] = data_ag["num_fight"]
 
 # %%
-for column in fighter_fighter_statistics:
+for column in fighter_fight_statistics:
     mean_value = means[f"{column}_mean"]
     data_ag[column] = data_ag[column] / mean_value
 
@@ -315,8 +315,8 @@ def from_id_to_fight(id_, print_fighters=False):
     f2p = f2p.iloc[f2p["event_date"].argmax()]
 
 
-    x1 = [f1p[x] for x in fighter_fighter_statistics]
-    x2 = [f2p[x] for x in fighter_fighter_statistics]
+    x1 = [f1p[x] for x in fighter_fight_statistics]
+    x2 = [f2p[x] for x in fighter_fight_statistics]
 
 
     if print_fighters:
@@ -649,8 +649,8 @@ def compare_fighters(fighter1, fighter2, date):
     ]
     f2p = f2p.iloc[f2p["event_date"].argmax()]
 
-    x1 = [f1p[x] for x in fighter_fighter_statistics]
-    x2 = [f2p[x] for x in fighter_fighter_statistics]
+    x1 = [f1p[x] for x in fighter_fight_statistics]
+    x2 = [f2p[x] for x in fighter_fight_statistics]
 
     x1 = torch.reshape(torch.FloatTensor(x1), (1, -1))
     x2 = torch.reshape(torch.FloatTensor(x2), (1, -1))

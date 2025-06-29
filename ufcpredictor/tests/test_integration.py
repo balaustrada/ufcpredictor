@@ -39,7 +39,7 @@ class TestSimpleModel(unittest.TestCase):
 
         data_processor = DataProcessor(**data_processor_kwargs)
 
-        fighter_fighter_statistics = [
+        fighter_fight_statistics = [
             "age",
             # "body_strikes_att_opponent_per_minute",
             # "body_strikes_att_per_minute",
@@ -136,20 +136,20 @@ class TestSimpleModel(unittest.TestCase):
         early_train_dataset = BasicDataset(
             data_processor,
             early_train_fights,
-            fighter_fighter_statistics=fighter_fighter_statistics,
+            fighter_fight_statistics=fighter_fight_statistics,
             fight_parameters=fight_parameters,
         )
 
         train_dataset = BasicDataset(
             data_processor,
             train_fights,
-            fighter_fighter_statistics=fighter_fighter_statistics,
+            fighter_fight_statistics=fighter_fight_statistics,
             fight_parameters=fight_parameters,
         )
 
         forecast_dataset = ForecastDataset(
             data_processor=data_processor,
-            fighter_fighter_statistics=fighter_fighter_statistics,
+            fighter_fight_statistics=fighter_fight_statistics,
             fight_parameters=fight_parameters,
         )
 
@@ -169,7 +169,7 @@ class TestSimpleModel(unittest.TestCase):
         np.random.seed(seed)
 
         model = SimpleFightNet(
-            input_size=len(train_dataset.fighter_fighter_statistics) * 2 + len(train_dataset.fight_parameters) + 2,
+            input_size=len(train_dataset.fighter_fight_statistics) * 2 + len(train_dataset.fight_parameters) + 2,
             dropout_prob=0.05,  # 0.25
         )
 
@@ -223,7 +223,7 @@ class TestSimpleModel(unittest.TestCase):
 
         data_processor = DataProcessor(**data_processor_kwargs)
 
-        fighter_fighter_statistics = [
+        fighter_fight_statistics = [
             "age",
             # "notice_days",
             # "body_strikes_att_opponent_per_minute",
@@ -391,7 +391,7 @@ class TestSimpleModel(unittest.TestCase):
         early_train_dataset = DatasetWithTimeEvolution(
             data_processor,
             early_train_fights,
-            fighter_fighter_statistics=fighter_fighter_statistics,
+            fighter_fight_statistics=fighter_fight_statistics,
             fight_parameters=fight_parameters,
             stat_fields=stat_fields,
             stat_fields_f=stat_fields_f,
@@ -401,7 +401,7 @@ class TestSimpleModel(unittest.TestCase):
         train_dataset = DatasetWithTimeEvolution(
             data_processor,
             train_fights,
-            fighter_fighter_statistics=fighter_fighter_statistics,
+            fighter_fight_statistics=fighter_fight_statistics,
             fight_parameters=fight_parameters,
             stat_fields=stat_fields,
             stat_fields_f=stat_fields_f,
@@ -410,7 +410,7 @@ class TestSimpleModel(unittest.TestCase):
 
         forecast_dataset = ForecastDatasetTimeEvolution(
             data_processor=data_processor,
-            fighter_fighter_statistics=fighter_fighter_statistics,
+            fighter_fight_statistics=fighter_fight_statistics,
             fight_parameters=fight_parameters,
             stat_fields=stat_fields,
             stat_fields_f=stat_fields_f,
@@ -434,7 +434,7 @@ class TestSimpleModel(unittest.TestCase):
 
         dropout = 0.01
         model = SimpleFightNetWithTimeEvolution(
-            input_size=2 * len(fighter_fighter_statistics)
+            input_size=2 * len(fighter_fight_statistics)
             + len(fight_parameters)
             + 2
             + 2 * state_size,  # 2 are the odds,

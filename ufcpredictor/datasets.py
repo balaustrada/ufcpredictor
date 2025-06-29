@@ -368,8 +368,8 @@ class ForecastDataset(BaseDataset):
             device: The device to use for the prediction.
 
         Returns:
-            A tuple of two numpy arrays, each containing the predictions for one of 
-            the fighters.
+            A tuple of two numpy arrays, each one evaluating the model switching
+            between the two fighters. For symmetric models, they should be the same.
         """
         if not parse_ids:
             fighter_ids = [self.data_processor.get_fighter_id(x) for x in fighter_names]
@@ -443,6 +443,8 @@ class ForecastDataset(BaseDataset):
         match_data["age"] = (
             match_data["event_date_forecast"] - match_data["fighter_dob"]
         ).dt.days / 365
+
+        # We add the number of fights (is the previous + 1)
         match_data["num_fight"] = match_data["num_fight"] + 1
 
         new_fields = ["age", "time_since_last_fight"] + self.fight_parameters
@@ -490,9 +492,17 @@ class ForecastDataset(BaseDataset):
             )
         }
 
-        for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_parameters_values).T):
+        # Add fight parameters to both fighters. 
+        # TODO: Check that concatenate is the right choice (first fighters, then 
+        # opponents?)
+        # It is likely that I need to add a checker on the match_data merge
+        # to ensure that each fighter gets previous data.
+        for feature_name, stats in zip(
+            self.fight_parameters, np.asarray(fight_parameters_values).T
+        ):
             match_data[feature_name] = np.concatenate((stats, stats))
 
+        # We add fight parameters to the arrays.
         if len(self.fight_parameters) > 0:
             fight_data_dict = {
                 id_: data
@@ -504,6 +514,7 @@ class ForecastDataset(BaseDataset):
         else:
             fight_data_dict = {id_: [] for id_ in match_data["id_"].values}
 
+        # We convert the arrays into torch tensors.
         data = [
             torch.FloatTensor(
                 np.asarray(
@@ -551,25 +562,28 @@ class ForecastDataset(BaseDataset):
 
 
 class BasicDataset(BaseDataset):
+    """
+    A basic dataset class designed to that implements the basic functionality in
+    BaseDataset, but does not include any time evolution or forecasting functionality.
+    """
     def __getitem__(self, idx: int) -> Tuple[
         Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
         torch.Tensor,
         Tuple[torch.Tensor, torch.Tensor],
     ]:
         """
-        Returns a tuple of (X, Y, winner, odds_1, odds_2) for the given index.
+        Getter for the dataset. 
 
-        The data is randomly flipped to simulate the possibility of a fight being
-        between two fighters in either order.
+        Data is augmented by randomly switching the fighters position in the network.
 
         Args:
             idx: The index of the data to return.
 
         Returns:
-            A tuple of (X, Y, winner, odds_1, odds_2) where X and Y are the
-            input data for the two fighters, winner is a tensor of size 1
-            indicating which fighter won, and odds_1 and odds_2 are the opening
-            odds for the two fighters.
+            A tuple of ((X1, X2, X3), winner, (odds_1, odds_2)) where X1,X2 are the
+            input data for the two fighters, X3 are the fight parameters, winner is
+            the winner of the fight and (odds1, odds2) the odds for each of the 
+            fighters.
         """
         X1, X2, X3, winner, odds_1, odds_2 = [x[idx] for x in self.data]
 
@@ -599,21 +613,19 @@ class BasicDataset(BaseDataset):
         NDArray[np.str_],
     ]:
         """
-        Returns a tuple of (X, Y, winner, odds_1, odds_2, fighter_names, opponent_names)
-        for the given fight ids.
+        Get the fight information for the given fight ids. 
 
-        If fight_ids is None, returns all the data in the dataset.
 
         Args:
-            fight_ids: The list of fight ids to include in the dataset. If None,
+            fight_ids: The list of fight ids to include from the dataset. If None,
                 use all the data in the dataset.
 
         Returns:
-            A tuple of (X, Y, winner, odds_1, odds_2, fighter_names, opponent_names)
-            where X and Y are the input data for the two fighters, winner is a tensor
-            of size 1 indicating which fighter won, and odds_1 and odds_2 are the
-            opening odds for the two fighters. fighter_names and opponent_names are
-            the names of the fighters and their opponents.
+            Returns a tuple of ((X1, X2, X3), Y,  (odds_1, odds_2), fighter_names, 
+            opponent_names) where X1 and X2 are the input data for the two fighters, 
+            X3 are the fight parameters, Y is the winner of the fight, odds_1 and 
+            odds_2 are the opening odds for each fighter, and fighter_names and 
+            opponent_names are the names of the fighters and their opponents.
         """
         if fight_ids is not None:
             fight_data = self.fight_data[self.fight_data["fight_id"].isin(fight_ids)]
@@ -1489,15 +1501,18 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             }
         )
 
+        # Add fight parameters if needed (same for both fighters)
         for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_parameters_values).T):
             match_data[feature_name] = np.concatenate((stats, stats))
 
+        # We add the fighter normalized data to the match data.
         match_data = match_data.merge(
             self.data_processor.data_normalized,
             left_on="fighter_id",
             right_on="fighter_id",
         )
 
+        # We only consider statistics prior to the fight date.
         match_data = match_data[
             match_data["event_date"] < match_data["event_date_forecast"]
         ]

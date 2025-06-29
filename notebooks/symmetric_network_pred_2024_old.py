@@ -274,7 +274,7 @@ for column in to_sum_columns:
 "knockdowns_per_min" in data_ag.columns
 
 # %%
-X_set = [
+fighter_fighter_statistics = [
     "knockdowns_per_min",
     "strikes_att_per_min",
     "strikes_succ_per_min",
@@ -306,18 +306,18 @@ X_set = [
 ]
 
 # %%
-for x in X_set:
+for x in fighter_fighter_statistics:
     if x not in data_ag.columns:
         raise ValueError(f"Column {x} not in data_ag")
 
 # %%
-means = {f"{c}_mean": data_ag[c].mean() for c in X_set}
+means = {f"{c}_mean": data_ag[c].mean() for c in fighter_fighter_statistics}
 
 # %%
 data_ag["num_fights_normalized"] = data_ag["num_fight"]
 
 # %%
-for column in X_set:
+for column in fighter_fighter_statistics:
     mean_value = means[f"{column}_mean"]
     data_ag[column] = data_ag[column] / mean_value
 
@@ -365,8 +365,8 @@ def from_id_to_fight(id_, print_fighters=False, print_odds=False):
     f2p = data_ag[(data_ag["event_date"] < date) & (data_ag["fighter_id"] == f2)]
     f2p = f2p.iloc[f2p["event_date"].argmax()]
 
-    x1 = [f1p[x] for x in X_set]
-    x2 = [f2p[x] for x in X_set]
+    x1 = [f1p[x] for x in fighter_fighter_statistics]
+    x2 = [f2p[x] for x in fighter_fighter_statistics]
 
     if print_fighters:
         print(fight["UFC_names"], " vs ", fight["opponent_UFC_names"])
@@ -771,8 +771,8 @@ def compare_fighters(
     ]
     f2p = f2p.iloc[f2p["event_date"].argmax()]
 
-    x1 = [f1p[x] for x in X_set]
-    x2 = [f2p[x] for x in X_set]
+    x1 = [f1p[x] for x in fighter_fighter_statistics]
+    x2 = [f2p[x] for x in fighter_fighter_statistics]
 
     x1 = torch.reshape(torch.FloatTensor(x1), (1, -1))
     x2 = torch.reshape(torch.FloatTensor(x2), (1, -1))

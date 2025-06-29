@@ -847,8 +847,8 @@ def compare_fighters(
     ]
     f2p = f2p.iloc[f2p["event_date"].argmax()]
 
-    x1 = [f1p[x] for x in X_set]
-    x2 = [f2p[x] for x in X_set]
+    x1 = [f1p[x] for x in fighter_fighter_statistics]
+    x2 = [f2p[x] for x in fighter_fighter_statistics]
 
     x1 = torch.reshape(torch.FloatTensor(x1), (1, -1))
     x2 = torch.reshape(torch.FloatTensor(x2), (1, -1))

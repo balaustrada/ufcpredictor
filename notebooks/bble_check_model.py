@@ -77,7 +77,7 @@ data_processor = DataProcessor(
 
 # %%
 if True:
-    X_set = [
+    fighter_fighter_statistics = [
         "age",
         # "body_strikes_att_opponent_per_minute",
         # "body_strikes_att_per_minute",
@@ -139,14 +139,14 @@ if True:
         "ELO",
     ]
 else:
-    X_set = None
-    X_set = BasicDataset.X_set + [
+    fighter_fighter_statistics = None
+    fighter_fighter_statistics = BasicDataset.fighter_fighter_statistics + [
         "ELO",
     ]
 
 # %%
 if True:
-    X_set = [
+    fighter_fighter_statistics = [
         "age",
         "body_strikes_att_opponent_per_minute",
         "body_strikes_att_per_minute",
@@ -208,20 +208,20 @@ if True:
         "ELO",
     ]
 else:
-    X_set = None
-    X_set = BasicDataset.X_set + [
+    fighter_fighter_statistics = None
+    fighter_fighter_statistics = BasicDataset.fighter_fighter_statistics + [
         "ELO",
     ]
 
 # %%
-len(X_set)
+len(fighter_fighter_statistics)
 
 # %%
 data_processor.load_data()
 data_processor.aggregate_data()
 data_processor.add_per_minute_and_fight_stats()
 
-# for field in X_set:
+# for field in fighter_fighter_statistics:
 #     if field in ["ELO", "age"]:
 #         continue
 #     self.data_aggregated[field] = (self.data_aggregated[field].rank(pct=True) * 100) ** 1.2
@@ -304,7 +304,7 @@ reduced_data = data_processor.data_normalized.copy()
 
 # We shift stats because the input for the model should be the
 # stats prior to the fight
-for x in self.X_set:
+for x in self.fighter_fighter_statistics:
     if x not in ["age", "num_fight", "time_since_last_fight"]:
         reduced_data[x] = reduced_data.groupby("fighter_id")[x].shift(1)
 

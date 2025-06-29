@@ -121,7 +121,7 @@ pd.set_option("display.max_columns", None)
 logger = logging.getLogger(__name__)
 
 # %%
-X_set = [
+fighter_fighter_statistics = [
     "clinch_strikes_att_opponent_per_minute",
     "time_since_last_fight",
     "total_strikes_succ_opponent_per_minute",
@@ -235,12 +235,12 @@ for event_date in sorted(event_dates[event_dates > starting_date]):
     early_train_dataset = BasicDataset(
         data_processor=data_processor,
         fight_ids=early_train_fights,
-        X_set=X_set,
+        fighter_fighter_statistics=fighter_fighter_statistics,
     )
     train_dataset = BasicDataset(
         data_processor=data_processor,
         fight_ids=train_fights,
-        X_set=X_set,
+        fighter_fighter_statistics=fighter_fighter_statistics,
     )
 
     early_train_dataloader = torch.utils.data.DataLoader(
@@ -258,7 +258,7 @@ for event_date in sorted(event_dates[event_dates > starting_date]):
     np.random.seed(seed)
 
     model = OneOddNet(
-        input_size=len(train_dataset.X_set),
+        input_size=len(train_dataset.fighter_fighter_statistics),
         dropout_prob=0.35,
     )
     optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3)
@@ -293,7 +293,7 @@ for event_date in sorted(event_dates[event_dates > starting_date]):
     # Now the model is trained, let's load the ForecastDataset and predict
     predict_dataset = ForecastDataset(
         data_processor=data_processor,
-        X_set=train_dataset.X_set,
+        fighter_fighter_statistics=train_dataset.fighter_fighter_statistics,
     )
 
     # Iterate over the fights happening in the date.

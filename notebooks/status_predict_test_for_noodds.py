@@ -87,7 +87,7 @@ data_processor = DataProcessor(
 
 # %%
 if True:
-    X_set = [
+    fighter_fighter_statistics = [
         "age",
         # "notice_days",
         # "body_strikes_att_opponent_per_minute",
@@ -150,8 +150,8 @@ if True:
         "ELO",
     ]
 else:
-    X_set = None
-    X_set = BasicDataset.X_set + [
+    fighter_fighter_statistics = None
+    fighter_fighter_statistics = BasicDataset.fighter_fighter_statistics + [
         "ELO",
     ]
 
@@ -219,14 +219,14 @@ stat_fields = [
 ]
 
 # %%
-len(X_set)
+len(fighter_fighter_statistics)
 
 # %%
 data_processor.load_data()
 data_processor.aggregate_data()
 data_processor.add_per_minute_and_fight_stats()
 
-# for field in X_set:
+# for field in fighter_fighter_statistics:
 #     if field in ["ELO", "age"]:
 #         continue
 #     self.data_aggregated[field] = (self.data_aggregated[field].rank(pct=True) * 100) ** 1.2
@@ -289,15 +289,15 @@ from ufcpredictor.loss_functions import BettingLoss
 
 # %%
 status_array_size = 10
-Xf_set = ["num_rounds", "weight"]
+fight_parameters = ["num_rounds", "weight"]
 stat_fields_f = ["num_rounds", "weight", "winner"]
 
-# Xf_set = []
+# fight_parameters = []
 early_train_dataset = DatasetWithTimeEvolution(
     data_processor,
     early_train_fights,
-    X_set=X_set,
-    Xf_set=Xf_set,
+    fighter_fighter_statistics=fighter_fighter_statistics,
+    fight_parameters=fight_parameters,
     stat_fields=stat_fields,
     stat_fields_f=stat_fields_f,
     status_array_size=status_array_size,
@@ -306,8 +306,8 @@ early_train_dataset = DatasetWithTimeEvolution(
 train_dataset = DatasetWithTimeEvolution(
     data_processor,
     train_fights,
-    X_set=X_set,
-    Xf_set=Xf_set,
+    fighter_fighter_statistics=fighter_fighter_statistics,
+    fight_parameters=fight_parameters,
     stat_fields=stat_fields,
     stat_fields_f=stat_fields_f,
     status_array_size=status_array_size,
@@ -316,8 +316,8 @@ train_dataset = DatasetWithTimeEvolution(
 test_dataset = DatasetWithTimeEvolution(
     data_processor,
     test_fights,
-    X_set=X_set,
-    Xf_set=Xf_set,
+    fighter_fighter_statistics=fighter_fighter_statistics,
+    fight_parameters=fight_parameters,
     stat_fields=stat_fields,
     stat_fields_f=stat_fields_f,
     status_array_size=status_array_size,
@@ -325,8 +325,8 @@ test_dataset = DatasetWithTimeEvolution(
 
 forecast_dataset = ForecastDatasetTimeEvolution(
     data_processor=data_processor,
-    X_set=X_set,
-    Xf_set=Xf_set,
+    fighter_fighter_statistics=fighter_fighter_statistics,
+    fight_parameters=fight_parameters,
     stat_fields=stat_fields,
     stat_fields_f=stat_fields_f,
     status_array_size=status_array_size,
@@ -361,8 +361,8 @@ np.random.seed(seed)
 # %%
 dropout = 0.4  # 0.35 seemed to work good, but also 0.45 or even 0.5
 model = SimpleFightNetWithTimeEvolution(
-    input_size=2*len(X_set)+ len(Xf_set) + 2 + 2*status_array_size, # 2 are the odds,
-    # input_size_f=len(Xf_set),
+    input_size=2*len(fighter_fighter_statistics)+ len(fight_parameters) + 2 + 2*status_array_size, # 2 are the odds,
+    # input_size_f=len(fight_parameters),
     dropout_prob=dropout,
     # fighter_network_shape=[256, 512, 1024, 512],
     # network_shape=[2048, 1024, 512, 128, 64, 1],
@@ -897,7 +897,7 @@ odds1.grad.sum()
 # %%
 fig, ax = plt.subplots(figsize=(5, 12))
 
-labels = test_dataset.X_set + ["odds"]
+labels = test_dataset.fighter_fighter_statistics + ["odds"]
 values = list(abs(X1.grad.sum(axis=0))) + [odds1.grad.sum(),]
 
 sorted_indices = sorted(range(len(values)), key=lambda i: values[i], reverse=True)

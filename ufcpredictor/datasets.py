@@ -43,7 +43,7 @@ class BaseDataset(Dataset):
     SymmetricFightNet model and other UFC prediction models.
     """
 
-    X_set = [
+    fighter_fighter_statistics = [
         "age",
         "body_strikes_att_opponent_per_minute",
         "body_strikes_att_per_minute",
@@ -104,14 +104,14 @@ class BaseDataset(Dataset):
         "win_per_fight",
     ]
 
-    Xf_set: List[str] = []
+    fight_parameters: List[str] = []
 
     def __init__(
         self,
         data_processor: DataProcessor,
         fight_ids: Optional[List[str]] = None,
-        X_set: Optional[List[str]] = None,
-        Xf_set: Optional[List[str]] = None,
+        fighter_fighter_statistics: Optional[List[str]] = None,
+        fight_parameters: Optional[List[str]] = None,
     ) -> None:
         """
         Constructor for ForecastDataset.
@@ -119,7 +119,7 @@ class BaseDataset(Dataset):
         Args:
             data_processor: The DataProcessor instance that contains the data.
             fight_ids: The list of fight ids to include in the dataset.
-            X_set: The list of columns to include in the dataset. If None, use all
+            fighter_fighter_statistics: The list of columns to include in the dataset. If None, use all
             columns.
 
         Raises:
@@ -128,14 +128,14 @@ class BaseDataset(Dataset):
         self.data_processor = data_processor
         self.fight_ids = fight_ids
 
-        if X_set is not None:
-            self.X_set = X_set
+        if fighter_fighter_statistics is not None:
+            self.fighter_fighter_statistics = fighter_fighter_statistics
 
-        if Xf_set is not None:
-            self.Xf_set = Xf_set
+        if fight_parameters is not None:
+            self.fight_parameters = fight_parameters
 
         not_found = []
-        for column in self.X_set + self.Xf_set:  # pragma: no cover
+        for column in self.fighter_fighter_statistics + self.fight_parameters:  # pragma: no cover
             if column not in self.data_processor.data_normalized.columns:
                 not_found.append(column)
 
@@ -148,7 +148,7 @@ class BaseDataset(Dataset):
         """
         Loads the data into a format that can be used to train a model.
 
-        The data is first reduced to only include the columns specified in X_set.
+        The data is first reduced to only include the columns specified in fighter_fighter_statistics.
         Then, the stats are shifted to get the stats prior to each fight.
         The data is then merged with itself to get one row per match with the data
         from the two fighters.
@@ -160,7 +160,7 @@ class BaseDataset(Dataset):
 
         # We shift stats because the input for the model should be the
         # stats prior to the fight
-        for x in self.X_set:
+        for x in self.fighter_fighter_statistics:
             if x not in ["age", "num_fight", "time_since_last_fight"]:
                 reduced_data[x] = reduced_data.groupby("fighter_id")[x].shift(1)
 
@@ -191,13 +191,13 @@ class BaseDataset(Dataset):
         # of fights.
         self.data: List[torch.Tensor] = [
             torch.FloatTensor(
-                np.asarray([fight_data[x + "_x"].values for x in self.X_set]).T
+                np.asarray([fight_data[x + "_x"].values for x in self.fighter_fighter_statistics]).T
             ),
             torch.FloatTensor(
-                np.asarray([fight_data[x + "_y"].values for x in self.X_set]).T
+                np.asarray([fight_data[x + "_y"].values for x in self.fighter_fighter_statistics]).T
             ),
             torch.FloatTensor(
-                np.asarray([fight_data[xf + "_x"].values for xf in self.Xf_set]).T
+                np.asarray([fight_data[xf + "_x"].values for xf in self.fight_parameters]).T
             ),
             torch.FloatTensor(
                 (fight_data["winner_x"] != fight_data["fighter_id_x"]).values
@@ -206,7 +206,7 @@ class BaseDataset(Dataset):
             torch.FloatTensor(fight_data["opening_y"].values),
         ]
 
-        if len(self.Xf_set) == 0:
+        if len(self.fight_parameters) == 0:
             self.data[2] = torch.empty(len(fight_data["winner_x"]), 0)
 
         self.fight_data = fight_data
@@ -229,21 +229,21 @@ class ForecastDataset(BaseDataset):
     to prepare and normalize the data.
     """
 
-    X_set = BaseDataset.X_set
-    Xf_set = BaseDataset.Xf_set
+    fighter_fighter_statistics = BaseDataset.fighter_fighter_statistics
+    fight_parameters = BaseDataset.fight_parameters
 
     def __init__(
         self,
         data_processor: DataProcessor,
-        X_set: Optional[List[str]] = None,
-        Xf_set: Optional[List[str]] = None,
+        fighter_fighter_statistics: Optional[List[str]] = None,
+        fight_parameters: Optional[List[str]] = None,
     ) -> None:
         """
         Constructor for ForecastDataset.
 
         Args:
             data_processor: The DataProcessor instance that contains the data.
-            X_set: The list of columns to include in the dataset. If None, use all
+            fighter_fighter_statistics: The list of columns to include in the dataset. If None, use all
                 columns.
 
         Raises:
@@ -251,14 +251,14 @@ class ForecastDataset(BaseDataset):
         """
         self.data_processor = data_processor
 
-        if X_set is not None:
-            self.X_set = X_set
+        if fighter_fighter_statistics is not None:
+            self.fighter_fighter_statistics = fighter_fighter_statistics
 
-        if Xf_set is not None:
-            self.Xf_set = Xf_set
+        if fight_parameters is not None:
+            self.fight_parameters = fight_parameters
 
         not_found = []
-        for column in self.X_set + self.Xf_set:
+        for column in self.fighter_fighter_statistics + self.fight_parameters:
             if column not in self.data_processor.data_normalized.columns:
                 not_found.append(column)
 
@@ -372,7 +372,7 @@ class ForecastDataset(BaseDataset):
             }
         )
 
-        for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
+        for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_features).T):
             match_data[feature_name] = np.concatenate((stats, stats))
 
         match_data = match_data.merge(
@@ -422,7 +422,7 @@ class ForecastDataset(BaseDataset):
         ).dt.days / 365
         match_data["num_fight"] = match_data["num_fight"] + 1
 
-        new_fields = ["age", "time_since_last_fight"] + self.Xf_set
+        new_fields = ["age", "time_since_last_fight"] + self.fight_parameters
         # Now we iterate over enhancers, in case it is a RankedField
         # We need to pass the appropriate fields to rank them.
         fields = []
@@ -460,19 +460,19 @@ class ForecastDataset(BaseDataset):
             id_: data
             for id_, data in zip(
                 match_data["id_"].values,
-                np.asarray([match_data[x] for x in self.X_set]).T,
+                np.asarray([match_data[x] for x in self.fighter_fighter_statistics]).T,
             )
         }
 
-        for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
+        for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_features).T):
             match_data[feature_name] = np.concatenate((stats, stats))
 
-        if len(self.Xf_set) > 0:
+        if len(self.fight_parameters) > 0:
             fight_data_dict = {
                 id_: data
                 for id_, data in zip(
                     match_data["id_"].values,
-                    np.asarray([match_data[x] for x in self.Xf_set]).T,
+                    np.asarray([match_data[x] for x in self.fight_parameters]).T,
                 )
             }
         else:
@@ -596,13 +596,13 @@ class BasicDataset(BaseDataset):
 
         data = [
             torch.FloatTensor(
-                np.asarray([fight_data[x + "_x"].values for x in self.X_set]).T
+                np.asarray([fight_data[x + "_x"].values for x in self.fighter_fighter_statistics]).T
             ),
             torch.FloatTensor(
-                np.asarray([fight_data[x + "_y"].values for x in self.X_set]).T
+                np.asarray([fight_data[x + "_y"].values for x in self.fighter_fighter_statistics]).T
             ),
             torch.FloatTensor(
-                np.asarray([fight_data[x + "_x"].values for x in self.Xf_set]).T
+                np.asarray([fight_data[x + "_x"].values for x in self.fight_parameters]).T
             ),
             torch.FloatTensor(
                 (fight_data["winner_x"] != fight_data["fighter_id_x"]).values
@@ -651,8 +651,8 @@ class DatasetWithTimeEvolution(BaseDataset):
         self,
         data_processor: DataProcessor,
         fight_ids: Optional[List[str]] = None,
-        X_set: Optional[List[str]] = None,
-        Xf_set: Optional[List[str]] = None,
+        fighter_fighter_statistics: Optional[List[str]] = None,
+        fight_parameters: Optional[List[str]] = None,
         stat_fields: Optional[List[str]] = None,
         stat_fields_f: Optional[List[str]] = None,
         state_size: Optional[int] = None,
@@ -664,7 +664,7 @@ class DatasetWithTimeEvolution(BaseDataset):
         Args:
             data_processor: The DataProcessor instance that contains the data.
             fight_ids: The list of fight ids to include in the dataset.
-            X_set: The list of columns to include in the dataset. If None, use all
+            fighter_fighter_statistics: The list of columns to include in the dataset. If None, use all
             columns.
 
         Raises:
@@ -673,11 +673,11 @@ class DatasetWithTimeEvolution(BaseDataset):
         self.data_processor = data_processor
         self.fight_ids = fight_ids
 
-        if X_set is not None:
-            self.X_set = X_set
+        if fighter_fighter_statistics is not None:
+            self.fighter_fighter_statistics = fighter_fighter_statistics
 
-        if Xf_set is not None:
-            self.Xf_set = Xf_set
+        if fight_parameters is not None:
+            self.fight_parameters = fight_parameters
 
         if stat_fields is not None:
             self.stat_fields = stat_fields
@@ -692,7 +692,7 @@ class DatasetWithTimeEvolution(BaseDataset):
             self.num_past_fights = num_past_fights
 
         not_found = []
-        for column in self.X_set + self.Xf_set:
+        for column in self.fighter_fighter_statistics + self.fight_parameters:
             if (
                 column not in self.data_processor.data_normalized.columns
             ):  # pragma: no cover
@@ -910,7 +910,7 @@ class DatasetWithTimeEvolution(BaseDataset):
         """
         Loads the data into a format that can be used to train a model.
 
-        The data is first reduced to only include the columns specified in X_set.
+        The data is first reduced to only include the columns specified in fighter_fighter_statistics.
         Then, the stats are shifted to get the stats prior to each fight.
         The data is then merged with itself to get one row per match with the data
         from the two fighters.
@@ -922,7 +922,7 @@ class DatasetWithTimeEvolution(BaseDataset):
 
         # We shift stats because the input for the model should be the
         # stats prior to the fight
-        for x in self.X_set:
+        for x in self.fighter_fighter_statistics:
             if x not in ["age", "num_fight", "time_since_last_fight"]:
                 reduced_data[x] = reduced_data.groupby("fighter_id")[x].shift(1)
 
@@ -984,13 +984,13 @@ class DatasetWithTimeEvolution(BaseDataset):
         # of fights.
         self.data: List[torch.Tensor] = [
             torch.FloatTensor(
-                np.asarray([fight_data[x + "_x"].values for x in self.X_set]).T
+                np.asarray([fight_data[x + "_x"].values for x in self.fighter_fighter_statistics]).T
             ),
             torch.FloatTensor(
-                np.asarray([fight_data[x + "_y"].values for x in self.X_set]).T
+                np.asarray([fight_data[x + "_y"].values for x in self.fighter_fighter_statistics]).T
             ),
             torch.FloatTensor(
-                np.asarray([fight_data[xf + "_x"].values for xf in self.Xf_set]).T
+                np.asarray([fight_data[xf + "_x"].values for xf in self.fight_parameters]).T
             ),
             torch.FloatTensor(
                 (fight_data["winner_x"] != fight_data["fighter_id_x"]).values
@@ -1003,7 +1003,7 @@ class DatasetWithTimeEvolution(BaseDataset):
             fight_data["previous_opponents_y"].values,
         ]
 
-        if len(self.Xf_set) == 0:
+        if len(self.fight_parameters) == 0:
             self.data[2] = torch.empty(len(fight_data["winner_x"]), 0)
 
         self.fight_data = fight_data
@@ -1116,13 +1116,13 @@ class DatasetWithTimeEvolution(BaseDataset):
 
         data = [
             torch.FloatTensor(
-                np.asarray([fight_data[x + "_x"].values for x in self.X_set]).T
+                np.asarray([fight_data[x + "_x"].values for x in self.fighter_fighter_statistics]).T
             ),
             torch.FloatTensor(
-                np.asarray([fight_data[x + "_y"].values for x in self.X_set]).T
+                np.asarray([fight_data[x + "_y"].values for x in self.fighter_fighter_statistics]).T
             ),
             torch.FloatTensor(
-                np.asarray([fight_data[x + "_x"].values for x in self.Xf_set]).T
+                np.asarray([fight_data[x + "_x"].values for x in self.fight_parameters]).T
             ),
             torch.FloatTensor(
                 (fight_data["winner_x"] != fight_data["fighter_id_x"]).values
@@ -1198,16 +1198,16 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
     to prepare and normalize the data.
     """
 
-    X_set = DatasetWithTimeEvolution.X_set
-    Xf_set = DatasetWithTimeEvolution.Xf_set
+    fighter_fighter_statistics = DatasetWithTimeEvolution.fighter_fighter_statistics
+    fight_parameters = DatasetWithTimeEvolution.fight_parameters
     stat_fields = DatasetWithTimeEvolution.stat_fields
     stat_fields_f = DatasetWithTimeEvolution.stat_fields_f
 
     def __init__(
         self,
         data_processor: DataProcessor,
-        X_set: Optional[List[str]] = None,
-        Xf_set: Optional[List[str]] = None,
+        fighter_fighter_statistics: Optional[List[str]] = None,
+        fight_parameters: Optional[List[str]] = None,
         stat_fields: Optional[List[str]] = None,
         stat_fields_f: Optional[List[str]] = None,
         state_size: Optional[int] = None,
@@ -1217,7 +1217,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
 
         Args:
             data_processor: The DataProcessor instance that contains the data.
-            X_set: The list of columns to include in the dataset. If None, use all
+            fighter_fighter_statistics: The list of columns to include in the dataset. If None, use all
                 columns.
 
         Raises:
@@ -1225,11 +1225,11 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
         """
         self.data_processor = data_processor
 
-        if X_set is not None:
-            self.X_set = X_set
+        if fighter_fighter_statistics is not None:
+            self.fighter_fighter_statistics = fighter_fighter_statistics
 
-        if Xf_set is not None:
-            self.Xf_set = Xf_set
+        if fight_parameters is not None:
+            self.fight_parameters = fight_parameters
 
         if stat_fields is not None:
             self.stat_fields = stat_fields
@@ -1241,7 +1241,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             self.state_size = state_size
 
         not_found = []
-        for column in self.X_set + self.Xf_set:
+        for column in self.fighter_fighter_statistics + self.fight_parameters:
             if (
                 column not in self.data_processor.data_normalized.columns
             ):  # pragma: no cover
@@ -1463,7 +1463,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             }
         )
 
-        for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
+        for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_features).T):
             match_data[feature_name] = np.concatenate((stats, stats))
 
         match_data = match_data.merge(
@@ -1513,7 +1513,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
         ).dt.days / 365
         match_data["num_fight"] = match_data["num_fight"] + 1
 
-        new_fields = ["age", "time_since_last_fight"] + self.Xf_set
+        new_fields = ["age", "time_since_last_fight"] + self.fight_parameters
         # Now we iterate over enhancers, in case it is a RankedField
         # We need to pass the appropriate fields to rank them.
         fields = []
@@ -1551,7 +1551,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             id_: data
             for id_, data in zip(
                 match_data["id_"].values,
-                np.asarray([match_data[x] for x in self.X_set]).T,
+                np.asarray([match_data[x] for x in self.fighter_fighter_statistics]).T,
             )
         }
 
@@ -1563,15 +1563,15 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             ]
         )
 
-        for feature_name, stats in zip(self.Xf_set, np.asarray(fight_features).T):
+        for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_features).T):
             match_data[feature_name] = np.concatenate((stats, stats))
 
-        if len(self.Xf_set) > 0:
+        if len(self.fight_parameters) > 0:
             fight_data_dict = {
                 id_: data
                 for id_, data in zip(
                     match_data["id_"].values,
-                    np.asarray([match_data[x] for x in self.Xf_set]).T,
+                    np.asarray([match_data[x] for x in self.fight_parameters]).T,
                 )
             }
         else:  # pragma: no cover

@@ -39,7 +39,7 @@ class TestSimpleModel(unittest.TestCase):
 
         data_processor = DataProcessor(**data_processor_kwargs)
 
-        X_set = [
+        fighter_fighter_statistics = [
             "age",
             # "body_strikes_att_opponent_per_minute",
             # "body_strikes_att_per_minute",
@@ -100,7 +100,7 @@ class TestSimpleModel(unittest.TestCase):
             "win_per_fight",
             "ELO",
         ]
-        Xf_set = ["num_rounds", "weight"]
+        fight_parameters = ["num_rounds", "weight"]
 
         # build data processor
         data_processor.load_data()
@@ -136,21 +136,21 @@ class TestSimpleModel(unittest.TestCase):
         early_train_dataset = BasicDataset(
             data_processor,
             early_train_fights,
-            X_set=X_set,
-            Xf_set=Xf_set,
+            fighter_fighter_statistics=fighter_fighter_statistics,
+            fight_parameters=fight_parameters,
         )
 
         train_dataset = BasicDataset(
             data_processor,
             train_fights,
-            X_set=X_set,
-            Xf_set=Xf_set,
+            fighter_fighter_statistics=fighter_fighter_statistics,
+            fight_parameters=fight_parameters,
         )
 
         forecast_dataset = ForecastDataset(
             data_processor=data_processor,
-            X_set=X_set,
-            Xf_set=Xf_set,
+            fighter_fighter_statistics=fighter_fighter_statistics,
+            fight_parameters=fight_parameters,
         )
 
         batch_size = 64  # 2048
@@ -169,7 +169,7 @@ class TestSimpleModel(unittest.TestCase):
         np.random.seed(seed)
 
         model = SimpleFightNet(
-            input_size=len(train_dataset.X_set) * 2 + len(train_dataset.Xf_set) + 2,
+            input_size=len(train_dataset.fighter_fighter_statistics) * 2 + len(train_dataset.fight_parameters) + 2,
             dropout_prob=0.05,  # 0.25
         )
 
@@ -223,7 +223,7 @@ class TestSimpleModel(unittest.TestCase):
 
         data_processor = DataProcessor(**data_processor_kwargs)
 
-        X_set = [
+        fighter_fighter_statistics = [
             "age",
             # "notice_days",
             # "body_strikes_att_opponent_per_minute",
@@ -348,7 +348,7 @@ class TestSimpleModel(unittest.TestCase):
             "ELO",
         ]
         state_size = 8
-        Xf_set = ["num_rounds", "weight"]
+        fight_parameters = ["num_rounds", "weight"]
         stat_fields_f = ["num_rounds", "weight", "winner"]
 
         # build data processor
@@ -391,8 +391,8 @@ class TestSimpleModel(unittest.TestCase):
         early_train_dataset = DatasetWithTimeEvolution(
             data_processor,
             early_train_fights,
-            X_set=X_set,
-            Xf_set=Xf_set,
+            fighter_fighter_statistics=fighter_fighter_statistics,
+            fight_parameters=fight_parameters,
             stat_fields=stat_fields,
             stat_fields_f=stat_fields_f,
             state_size=state_size,
@@ -401,8 +401,8 @@ class TestSimpleModel(unittest.TestCase):
         train_dataset = DatasetWithTimeEvolution(
             data_processor,
             train_fights,
-            X_set=X_set,
-            Xf_set=Xf_set,
+            fighter_fighter_statistics=fighter_fighter_statistics,
+            fight_parameters=fight_parameters,
             stat_fields=stat_fields,
             stat_fields_f=stat_fields_f,
             state_size=state_size,
@@ -410,8 +410,8 @@ class TestSimpleModel(unittest.TestCase):
 
         forecast_dataset = ForecastDatasetTimeEvolution(
             data_processor=data_processor,
-            X_set=X_set,
-            Xf_set=Xf_set,
+            fighter_fighter_statistics=fighter_fighter_statistics,
+            fight_parameters=fight_parameters,
             stat_fields=stat_fields,
             stat_fields_f=stat_fields_f,
             state_size=state_size,
@@ -434,8 +434,8 @@ class TestSimpleModel(unittest.TestCase):
 
         dropout = 0.01
         model = SimpleFightNetWithTimeEvolution(
-            input_size=2 * len(X_set)
-            + len(Xf_set)
+            input_size=2 * len(fighter_fighter_statistics)
+            + len(fight_parameters)
             + 2
             + 2 * state_size,  # 2 are the odds,
             dropout_prob=dropout,

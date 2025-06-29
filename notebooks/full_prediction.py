@@ -81,7 +81,7 @@ data_processor = DataProcessor(**data_processor_kwargs)
 
 # %%
 if True:
-    X_set = [
+    fighter_fighter_statistics = [
         "age",
         "body_strikes_att_opponent_per_minute",
         "body_strikes_att_per_minute",
@@ -143,13 +143,13 @@ if True:
         "ELO",
     ]
 else:
-    X_set = None
-    X_set = BasicDataset.X_set + [
+    fighter_fighter_statistics = None
+    fighter_fighter_statistics = BasicDataset.fighter_fighter_statistics + [
         "ELO",
     ]
 
 # %%
-Xf_set = ["num_rounds", "weight"]
+fight_parameters = ["num_rounds", "weight"]
 
 # %%
 # Set the starting date for the process
@@ -160,7 +160,7 @@ data_processor.load_data()
 data_processor.aggregate_data()
 data_processor.add_per_minute_and_fight_stats()
 
-# for field in X_set:
+# for field in fighter_fighter_statistics:
 #     if field in ["ELO", "age"]:
 #         continue
 #     self.data_aggregated[field] = (self.data_aggregated[field].rank(pct=True) * 100) ** 1.2
@@ -239,14 +239,14 @@ for i, event_date in enumerate(sorted(event_dates[event_dates > starting_date]))
     early_train_dataset = BasicDataset(
         data_processor=data_processor,
         fight_ids=early_train_fights,
-        X_set=X_set,
-        Xf_set=Xf_set,
+        fighter_fighter_statistics=fighter_fighter_statistics,
+        fight_parameters=fight_parameters,
     )
     train_dataset = BasicDataset(
         data_processor=data_processor,
         fight_ids=train_fights,
-        X_set=X_set,
-        Xf_set=Xf_set,
+        fighter_fighter_statistics=fighter_fighter_statistics,
+        fight_parameters=fight_parameters,
     )
 
     early_train_dataloader = torch.utils.data.DataLoader(
@@ -264,8 +264,8 @@ for i, event_date in enumerate(sorted(event_dates[event_dates > starting_date]))
     np.random.seed(seed)
 
     model = SymmetricFightNet(
-        input_size=len(train_dataset.X_set),
-        input_size_f=len(train_dataset.Xf_set),
+        input_size=len(train_dataset.fighter_fighter_statistics),
+        input_size_f=len(train_dataset.fight_parameters),
         dropout_prob=0.35,
         fighter_network_shape=[256, 512, 1024, 512],
         network_shape=[2048, 1024, 512, 128, 64, 1],
@@ -303,8 +303,8 @@ for i, event_date in enumerate(sorted(event_dates[event_dates > starting_date]))
     # Now the model is trained, let's load the ForecastDataset and predict
     predict_dataset = ForecastDataset(
         data_processor=data_processor,
-        X_set=train_dataset.X_set,
-        Xf_set=train_dataset.Xf_set,
+        fighter_fighter_statistics=train_dataset.fighter_fighter_statistics,
+        fight_parameters=train_dataset.fight_parameters,
     )
 
     # Iterate over the fights happening in the date.

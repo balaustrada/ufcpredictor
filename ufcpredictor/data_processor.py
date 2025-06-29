@@ -160,6 +160,7 @@ class DataProcessor:
         round_data = self.scraper.fight_scraper.rounds_handler.data
         fighter_data = self.scraper.fighter_scraper.data
         event_data = self.scraper.event_scraper.data
+        replacement_data = self.scraper.replacement_scraper.data
 
         odds_data = self.bfo_scraper.data
 
@@ -209,6 +210,14 @@ class DataProcessor:
             how="left",
             suffixes=("", "_opponent"),
         )
+
+        # Also merging the replacement data if available
+        data = data.merge(
+            replacement_data,
+            on=["fight_id", "fighter_id"],
+            how="left",
+        )
+        data["notice_days"] = 1 / data["notice_days"].fillna(60)
 
         #############################################################
         # Add round data.
@@ -596,6 +605,7 @@ class DataProcessor:
             None
         """
         new_columns = {}
+        new_columns_data = {}
 
         for column in self.aggregated_fields:
             new_columns[column + "_per_minute"] = (
@@ -607,8 +617,17 @@ class DataProcessor:
                 / self.data_aggregated["weighted_num_fight"]
             )
 
+            # Also aggregate data per fight in data attribute
+            new_columns_data[column + "_per_minute"] = (
+                self.data[column] / self.data["total_time"]
+            )
+
         self.data_aggregated = pd.concat(
             [self.data_aggregated, pd.DataFrame(new_columns)], axis=1
+        ).copy()
+
+        self.data = pd.concat(
+            [self.data, pd.DataFrame(new_columns_data)], axis=1
         ).copy()
 
     def normalize_data(self) -> None:
@@ -635,3 +654,19 @@ class DataProcessor:
             self.normalization_factors[column] = mean
 
         self.data_normalized = data_normalized
+
+        data_normalized_nonagg = self.data.copy()
+
+        data_normalized_nonagg = data_normalized_nonagg.merge(
+            self.data_normalized[
+                ["fight_id", "fighter_id", "time_since_last_fight", "num_fight"]
+            ],
+            how="left",
+        )
+
+        for column in self.normalized_fields:
+            if "_per_fight" not in column:
+                mean = data_normalized_nonagg[column].mean()
+                data_normalized_nonagg[column] = data_normalized_nonagg[column] / mean
+
+        self.data_normalized_nonagg = data_normalized_nonagg

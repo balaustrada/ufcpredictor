@@ -14727,7 +14727,7 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
      <div class="CodeMirror cm-s-jupyter">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Selecting the set of attributes that we will use as features</span>
 <span class="c1"># for our model</span>
-<span class="n">X_set</span> <span class="o">=</span> <span class="p">[</span>
+<span class="n">fighter_fight_statistics</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;clinch_strikes_att_opponent_per_minute&quot;</span><span class="p">,</span>
     <span class="s2">&quot;time_since_last_fight&quot;</span><span class="p">,</span>
     <span class="s2">&quot;total_strikes_succ_opponent_per_minute&quot;</span><span class="p">,</span>
@@ -14909,12 +14909,12 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
     <span class="n">early_train_dataset</span> <span class="o">=</span> <span class="n">BasicDataset</span><span class="p">(</span>
         <span class="n">data_processor</span><span class="o">=</span><span class="n">data_processor</span><span class="p">,</span>
         <span class="n">fight_ids</span><span class="o">=</span><span class="n">early_train_fights</span><span class="p">,</span>
-        <span class="n">X_set</span><span class="o">=</span><span class="n">X_set</span><span class="p">,</span>
+        <span class="n">fighter_fight_statistics</span><span class="o">=</span><span class="n">fighter_fight_statistics</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">BasicDataset</span><span class="p">(</span>
         <span class="n">data_processor</span><span class="o">=</span><span class="n">data_processor</span><span class="p">,</span>
         <span class="n">fight_ids</span><span class="o">=</span><span class="n">train_fights</span><span class="p">,</span>
-        <span class="n">X_set</span><span class="o">=</span><span class="n">X_set</span><span class="p">,</span>
+        <span class="n">fighter_fight_statistics</span><span class="o">=</span><span class="n">fighter_fight_statistics</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="n">early_train_dataloader</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span>
@@ -14932,7 +14932,7 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
     <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
 
     <span class="n">model</span> <span class="o">=</span> <span class="n">SymmetricFightNet</span><span class="p">(</span>
-        <span class="n">input_size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">train_dataset</span><span class="o">.</span><span class="n">X_set</span><span class="p">),</span>
+        <span class="n">input_size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">train_dataset</span><span class="o">.</span><span class="n">fighter_fight_statistics</span><span class="p">),</span>
         <span class="n">dropout_prob</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">params</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
@@ -14962,7 +14962,7 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
     <span class="c1"># Now the model is trained, let&#39;s load the ForecastDataset and predict</span>
     <span class="n">predict_dataset</span> <span class="o">=</span> <span class="n">ForecastDataset</span><span class="p">(</span>
         <span class="n">data_processor</span><span class="o">=</span><span class="n">data_processor</span><span class="p">,</span>
-        <span class="n">X_set</span><span class="o">=</span><span class="n">train_dataset</span><span class="o">.</span><span class="n">X_set</span><span class="p">,</span>
+        <span class="n">fighter_fight_statistics</span><span class="o">=</span><span class="n">train_dataset</span><span class="o">.</span><span class="n">fighter_fight_statistics</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="c1"># Iterate over the fights happening in the date.</span>
@@ -15069,7 +15069,8 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain">
-<pre>2024-10-05 1760.35 1634.83 125.52 107.68</pre>
+<pre>2024-10-05 1760.35 1634.83 125.52 107.68
+</pre>
 </div>
 </div>
 

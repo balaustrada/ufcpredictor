@@ -17,10 +17,11 @@ pandas = "^2.2.3"
 scikit-learn = "^1.5.2"
 torch = "^2.5.1"
 tqdm = "^4.67.0"
-ufcscraper = "^0.1.2"
+ufcscraper = "^0.2.0"
 
 [tool.poetry.group.dev.dependencies]
 python-semantic-release = "^9.14.0"
+coverage = "^7.9.1"
 
 [tool.semantic_release]
 version_toml = [

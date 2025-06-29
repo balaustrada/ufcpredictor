@@ -143,13 +143,15 @@ class WeightedDataAggregator(DataAggregator):
             + data_processor.aggregated_fields
         ]
 
-        data_merged = data.drop(
-            columns=data_processor.aggregated_fields + ["total_time"]
-        ).merge(
-            data,
-            on="fighter_id",
-            suffixes=("", "_prev"),
-        ).drop(columns="num_fight_prev")
+        data_merged = (
+            data.drop(columns=data_processor.aggregated_fields + ["total_time"])
+            .merge(
+                data,
+                on="fighter_id",
+                suffixes=("", "_prev"),
+            )
+            .drop(columns="num_fight_prev")
+        )
 
         # Now only preserve combinations where the previous fight is
         # before the current fight.

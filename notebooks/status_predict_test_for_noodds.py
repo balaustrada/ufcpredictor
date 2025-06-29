@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.4
+#       jupytext_version: 1.16.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -14,7 +14,13 @@
 # ---
 
 # %%
+import logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# %%
 import os
+
 
 # %%
 import mlflow
@@ -24,8 +30,11 @@ import torch
 # Enable autologging for PyTorch
 # mlflow.pytorch.autolog()
 
-mlflow.set_tracking_uri("http://127.0.0.1:5000") 
-mlflow.set_experiment('Diferent tries')
+# mlflow.set_tracking_uri("http://127.0.0.1:5000") 
+# mlflow.set_experiment('Diferent tries')
+
+# %%
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # %%
 import pandas as pd
@@ -38,7 +47,7 @@ from ufcpredictor.utils import convert_odds_to_decimal
 from ufcpredictor.data_processor import DataProcessor
 from ufcpredictor.data_enhancers import SumFlexibleELO, RankedFields
 from ufcpredictor.data_aggregator import WeightedDataAggregator
-from ufcpredictor.datasets import BasicDataset, ForecastDataset
+from ufcpredictor.datasets import DatasetWithTimeEvolution, ForecastDatasetTimeEvolution
 from ufcpredictor.trainer import Trainer
 from ufcpredictor.plot_tools import PredictionPlots
 import torch
@@ -47,7 +56,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # %%
-# DataProcessor = ELODataProcessor
+# DataProcessor = ELODataProcebssor
 # data_processor_kwargs = {
 #     "data_folder": "/home/cramirpe/UFC/UFCfightdata",
 #     # "scaling_factor": 0.5,
@@ -56,6 +65,7 @@ import matplotlib.pyplot as plt
 # }
 
 data_processor_kwargs = {
+    # "data_folder": "/home/cramirez/kaggle/ufc_scraper/UFCfightdata",
     "data_folder": "/home/cramirpe/UFC/UFCfightdata",
     "data_aggregator": WeightedDataAggregator(alpha=-0.0001),
     "data_enhancers": [
@@ -79,6 +89,7 @@ data_processor = DataProcessor(
 if True:
     fighter_fight_statistics = [
         "age",
+        # "notice_days",
         # "body_strikes_att_opponent_per_minute",
         # "body_strikes_att_per_minute",
         "body_strikes_succ_opponent_per_minute",
@@ -144,74 +155,68 @@ else:
         "ELO",
     ]
 
-# %%
-if True:
-    fighter_fight_statistics = [
+previous_fights_statistics = [
         "age",
-        "body_strikes_att_opponent_per_minute",
-        "body_strikes_att_per_minute",
+        # "notice_days",
+        # "body_strikes_att_opponent_per_minute",
+        # "body_strikes_att_per_minute",
         "body_strikes_succ_opponent_per_minute",
         "body_strikes_succ_per_minute",
-        "clinch_strikes_att_opponent_per_minute",
-        "clinch_strikes_att_per_minute",
+        # "clinch_strikes_att_opponent_per_minute",
+        # "clinch_strikes_att_per_minute",
         "clinch_strikes_succ_opponent_per_minute",
         "clinch_strikes_succ_per_minute",
         "ctrl_time_opponent_per_minute",
         "ctrl_time_per_minute",
-        "distance_strikes_att_opponent_per_minute",
-        "distance_strikes_att_per_minute",
+        # "distance_strikes_att_opponent_per_minute",
+        # "distance_strikes_att_per_minute",
         "distance_strikes_succ_opponent_per_minute",
         "distance_strikes_succ_per_minute",
-        "fighter_height_cm",
-        "ground_strikes_att_opponent_per_minute",
-        "ground_strikes_att_per_minute",
+        # "fighter_height_cm",
+        # "ground_strikes_att_opponent_per_minute",
+        # "ground_strikes_att_per_minute",
         "ground_strikes_succ_opponent_per_minute",
         "ground_strikes_succ_per_minute",
-        "head_strikes_att_opponent_per_minute",
-        "head_strikes_att_per_minute",
+        # "head_strikes_att_opponent_per_minute",
+        # "head_strikes_att_per_minute",
         "head_strikes_succ_opponent_per_minute",
         "head_strikes_succ_per_minute",
         "knockdowns_opponent_per_minute",
         "knockdowns_per_minute",
-        "KO_opponent_per_fight",
+        # "KO_opponent_per_fight",
         "KO_opponent_per_minute",
-        "KO_per_fight",
+        # "KO_per_fight",
         "KO_per_minute",
-        "leg_strikes_att_opponent_per_minute",
-        "leg_strikes_att_per_minute",
+        # "leg_strikes_att_opponent_per_minute",
+        # "leg_strikes_att_per_minute",
         "leg_strikes_succ_opponent_per_minute",
         "leg_strikes_succ_per_minute",
         # "num_fight",
-        "reversals_opponent_per_minute",
-        "reversals_per_minute",
-        "strikes_att_opponent_per_minute",
-        "strikes_att_per_minute",
+        # "reversals_opponent_per_minute",
+        # "reversals_per_minute",
+        # "strikes_att_opponent_per_minute",
+        # "strikes_att_per_minute",
         "strikes_succ_opponent_per_minute",
         "strikes_succ_per_minute",
-        "Sub_opponent_per_fight",
+        # "Sub_opponent_per_fight",
         "Sub_opponent_per_minute",
-        "Sub_per_fight",
+        # "Sub_per_fight",
         "Sub_per_minute",
         "submission_att_opponent_per_minute",
         "submission_att_per_minute",
-        "takedown_att_opponent_per_minute",
-        "takedown_att_per_minute",
+        # "takedown_att_opponent_per_minute",
+        # "takedown_att_per_minute",
         "takedown_succ_opponent_per_minute",
         "takedown_succ_per_minute",
-        "time_since_last_fight",
-        "total_strikes_att_opponent_per_minute",
-        "total_strikes_att_per_minute",
+        "time_since_last_fight", # Adding this somehow slowed the convergence and is not as good (why?) maybe because of the default value used(?) it was the mean (~ 7months)
+        # "total_strikes_att_opponent_per_minute",
+        # "total_strikes_att_per_minute",
         "total_strikes_succ_opponent_per_minute",
         "total_strikes_succ_per_minute",
-        "win_opponent_per_fight",
-        "win_per_fight",
+        # "win_opponent_per_fight",
+        # "win_per_fight",
         "ELO",
-    ]
-else:
-    fighter_fight_statistics = None
-    fighter_fight_statistics = BasicDataset.fighter_fight_statistics + [
-        "ELO",
-    ]
+]
 
 # %%
 len(fighter_fight_statistics)
@@ -229,7 +234,12 @@ data_processor.add_per_minute_and_fight_stats()
 data_processor.normalize_data()
 
 # %% [markdown]
+# ___
+
+# %% [markdown]
 # ----
+
+# %%
 
 # %%
 fight_ids = data_processor.data["fight_id"].unique()
@@ -240,9 +250,22 @@ invalid_fights = set(data_processor.data[data_processor.data["num_fight"] < 5]["
 # invalid_fights |= set(self.data_aggregated[self.data_aggregated["event_date"] < "2013-01-01"]["fight_id"])
 
 # %%
-early_split_date = "2017-01-01"
-split_date = "2024-01-01"#"2023-08-01"
-max_date = "2024-11-11" 
+len(invalid_fights)
+
+# %%
+invalid_fights.update(
+    data_processor.data[
+        data_processor.data["notice_days"] != 1/60
+    ]["fight_id"]
+)
+
+# %%
+len(invalid_fights)
+
+# %%
+early_split_date = "2018-01-01"#"2017-01-01"
+split_date = "2023-08-01"#"2023-08-01"
+max_date = "2025-11-11" 
 
 early_train_fights = data_processor.data["fight_id"][data_processor.data["event_date"] < split_date]
 
@@ -260,101 +283,145 @@ train_fights = set(train_fights) - set(invalid_fights)
 test_fights = set(test_fights) - set(invalid_fights)
 
 # %%
-fight_parameters = ["num_rounds","weight"]
-# fight_parameters = []
-early_train_dataset = BasicDataset(
-    data_processor,
-    early_train_fights,
-    fighter_fight_statistics=fighter_fight_statistics,
-    fight_parameters = fight_parameters,
-)
-
-train_dataset = BasicDataset(
-    data_processor,
-    train_fights,
-    fighter_fight_statistics=fighter_fight_statistics,
-    fight_parameters = fight_parameters,
-)
-
-test_dataset = BasicDataset(
-    data_processor,
-    test_fights,
-    fighter_fight_statistics=fighter_fight_statistics,
-    fight_parameters = fight_parameters,
-)
-
-forecast_dataset = ForecastDataset(
-    data_processor=data_processor,
-    fighter_fight_statistics=fighter_fight_statistics,
-    fight_parameters = fight_parameters,
-)
-
-# %%
-batch_size = 64 # 2048
-early_train_dataloader = torch.utils.data.DataLoader(early_train_dataset, batch_size=batch_size, shuffle=True)
-train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-# %%
-from ufcpredictor.models import SymmetricFightNet
+from ufcpredictor.models import SimpleFightNetWithTimeEvolution
 from ufcpredictor.loss_functions import BettingLoss
 
 
 # %%
-seed = 21
+status_array_size = 10
+fight_parameters = ["num_rounds", "weight"]
+previous_fights_parameters = ["num_rounds", "weight", "winner"]
+
+# fight_parameters = []
+early_train_dataset = DatasetWithTimeEvolution(
+    data_processor,
+    early_train_fights,
+    fighter_fight_statistics=fighter_fight_statistics,
+    fight_parameters=fight_parameters,
+    previous_fights_statistics=previous_fights_statistics,
+    previous_fights_parameters=previous_fights_parameters,
+    status_array_size=status_array_size,
+)
+
+train_dataset = DatasetWithTimeEvolution(
+    data_processor,
+    train_fights,
+    fighter_fight_statistics=fighter_fight_statistics,
+    fight_parameters=fight_parameters,
+    previous_fights_statistics=previous_fights_statistics,
+    previous_fights_parameters=previous_fights_parameters,
+    status_array_size=status_array_size,
+)
+
+test_dataset = DatasetWithTimeEvolution(
+    data_processor,
+    test_fights,
+    fighter_fight_statistics=fighter_fight_statistics,
+    fight_parameters=fight_parameters,
+    previous_fights_statistics=previous_fights_statistics,
+    previous_fights_parameters=previous_fights_parameters,
+    status_array_size=status_array_size,
+)
+
+forecast_dataset = ForecastDatasetTimeEvolution(
+    data_processor=data_processor,
+    fighter_fight_statistics=fighter_fight_statistics,
+    fight_parameters=fight_parameters,
+    previous_fights_statistics=previous_fights_statistics,
+    previous_fights_parameters=previous_fights_parameters,
+    status_array_size=status_array_size,
+)
+
+# %%
+
+# %%
+batch_size = 32  # 64 # 2048
+early_train_dataloader = torch.utils.data.DataLoader(
+    early_train_dataset, batch_size=batch_size, shuffle=True
+)
+train_dataloader = torch.utils.data.DataLoader(
+    train_dataset, batch_size=batch_size, shuffle=True
+)
+test_dataloader = torch.utils.data.DataLoader(
+    test_dataset, batch_size=batch_size, shuffle=False
+)
+
+# %%
+
+# %%
+seed = 4
 torch.manual_seed(seed)
 import random
+
 random.seed(seed)
 np.random.seed(seed)
 
 # %%
-model = SymmetricFightNet(
-        input_size=len(train_dataset.fighter_fight_statistics),
-        input_size_f=len(fight_parameters),
-        dropout_prob=0.05, # 0.25
-        fighter_network_shape=[256, 512, 1024, 512],
-        # network_shape=[2048, 1024, 512, 128, 64, 1],
-        # network_shape=[122, 1024, 2048, 1024, 512, 256, 128, 64, 1],
-        network_shape=[76, 1024, 512, 256, 128, 64, 1],  # This was the best one so far
-        # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
-        
+
+# %%
+dropout = 0.4  # 0.35 seemed to work good, but also 0.45 or even 0.5
+model = SimpleFightNetWithTimeEvolution(
+    input_size=2*len(fighter_fight_statistics)+ len(fight_parameters) + 2 + 2*status_array_size, # 2 are the odds,
+    # input_size_f=len(fight_parameters),
+    dropout_prob=dropout,
+    # fighter_network_shape=[256, 512, 1024, 512],
+    # network_shape=[2048, 1024, 512, 128, 64, 1],
+    # network_shape=[122, 1024, 2048, 1024, 512, 256, 128, 64, 1],
+    # network_shape=[512,1024, 512, 256, 128, 64, 1],
+    # network_shape=[256, 512, 256, 128, 64, 1],  # This was the best one so far
+    # network_shape=[512, 128, 64, 1],
+    network_shape=[128, 64, 32, 1],
+    status_array_size=status_array_size,
+    # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
+    fighter_transformer_kwargs=dict(
+        state_dim=status_array_size,  # 20,
+        stat_dim=len(previous_fights_statistics),
+        fight_parameters_size=len(previous_fights_parameters),
+        layer_sizes=[128, 64],
+        # layer_sizes=[128, 64, 10], # This better(?)
+        # layer_sizes=[128, 512, 256, 128, 64, 10], # This worked
+        dropout=dropout * 0.9,
+    ),
 )
 # optimizer = torch.optim.Adam(params=model.parameters(), lr=2e-3, weight_decay=2e-5)
 # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
 #         optimizer, mode="min", factor=0.9, patience=4
 # )
-mlflow.end_run()
-mlflow.start_run()
+# mlflow.end_run()
+# mlflow.start_run()
 
-optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=2e-5)
+optimizer = torch.optim.Adam(
+    params=model.parameters(), lr=1.3e-3, weight_decay=1e-5#1e-5
+)  # , weight_decay=2e-5)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.7, patience=6
+    optimizer, mode="min", factor=0.7, patience=2
 )
 
 trainer = Trainer(
-    train_loader = train_dataloader,
-    test_loader = test_dataloader,
-    model = model,
-    optimizer = optimizer,
-    scheduler= scheduler,
-    loss_fn =BettingLoss(),
-    mlflow_tracking=True,
-)   
+    train_loader=train_dataloader,
+    test_loader=test_dataloader,
+    model=model,
+    optimizer=optimizer,
+    scheduler=scheduler,
+    loss_fn=BettingLoss(),
+    mlflow_tracking=False,
+    device=device,
+)
 
 # %%
 
 trainer.train(
-    epochs=15,
+    epochs=10,
     train_loader=early_train_dataloader,
     test_loader=test_dataloader,
 )
 
 # %%
-trainer.train(epochs=10) # ~8 is a good match if dropout to 0.35 
+trainer.train(epochs=10)  # ~8 is a good match if drÇopout to 0.35
 
 # %%
-# Save model dict
-#torch.save(model.state_dict(), 'model.pth')
+# Save modeÇdict
+# torch.save(model.state_dict(), 'model.pth')
 
 # %%
 fig, ax = plt.subplots()
@@ -368,7 +435,7 @@ stats = PredictionPlots.show_fight_prediction_detail_from_dataset(
     ax=ax,
 )
 
-ax.set_ylim(-10,30)
+ax.set_ylim(-10, 30)
 ax.grid()
 
 # %%
@@ -382,31 +449,42 @@ df = pd.DataFrame(
         "correct",
         "bet",
         "win",
-        "fight_id"
+        "fight_id",
     ],
 )
 
 df = df.merge(
-    data_processor.data[["fight_id", "fighter_id", "event_date", "event_id", "weight_class"]],
+    data_processor.data[
+        ["fight_id", "fighter_id", "event_date", "event_id", "weight_class"]
+    ],
     on="fight_id",
 )
 
-df["confidence"] = abs((df["Prediction"] - 0.5) *2)
+df["confidence"] = abs((df["Prediction"] - 0.5) * 2)
 
 # df = df[df["confidence"] > ]
 
-cash0 = 200
+cash0 = 100
 
 df = df.sort_values(by="event_date")
 
-cash = [cash0,]
-invest = [cash0,]
-dates = [None,]
+cash = [
+    cash0,
+]
+invest = [
+    cash0,
+]
+dates = [
+    None,
+]
+
+print("Max confidence: ", df["confidence"].max())
+print("Max bet: ", df["bet"].max())
 
 
-for date, group in df.groupby("event_date"):  
+for date, group in df.groupby("event_date"):
     # max_bet = max(cash[-1] * 0.5, 10)
-    
+
     # win = (group["confidence"]*group["win"]).sum() * max_bet / 10 / group["confidence"].sum()
     # bet = (group["confidence"]*group["bet"]).sum() * max_bet / 10 / group["confidence"].sum()
 
@@ -417,13 +495,12 @@ for date, group in df.groupby("event_date"):
     # cash.append(cash_i)
     # dates.append(date)
 
-    max_bet = max(cash[-1] * 0.2, 10)
-
-    win = (group["confidence"]*group["win"] * max_bet / 10).sum()
-    bet = (group["confidence"]*group["bet"] * max_bet / 10).sum()
+    max_bet = max(cash[-1] * 0.1, 20) / df["confidence"].max()
+    win = (group["confidence"] * group["win"] * max_bet / 10).sum()
+    bet = (group["confidence"] * group["bet"] * max_bet / 10).sum()
 
     if bet > max_bet:
-        win = win/bet * max_bet
+        win = win / bet * max_bet
         bet = max_bet
 
     extra_added = max(bet - cash[-1], 0)
@@ -433,8 +510,6 @@ for date, group in df.groupby("event_date"):
     cash.append(cash_i)
     dates.append(date)
 
-
-    
 
 cash = cash[1:]
 invest = invest[1:]
@@ -458,22 +533,178 @@ ax.plot(
 
 ax.plot(
     dates,
-    [x-y for x,y in zip(cash,invest)],
+    [x - y for x, y in zip(cash, invest)],
     label="profit",
 )
 
-ax.axhline(0, c='k')
+ax.axhline(0, c="k")
+ax.tick_params(axis="x", labelrotation=45)
+
 ax.legend()
 ax.grid()
 
 # %%
-import logging
-logger = logging.getLogger(__name__)
+
+# %%
+from datetime import date
+
+# %%
+self = forecast_dataset
+
+# %%
+forecast_dataset.update_data_trans(model.evolver)
+
+# %%
+from ufcpredictor.utils import pad_or_truncate, convert_odds_to_decimal, convert_odds_to_moneyline
+
+padding = 20
+
+# %%
+convert_odds_to_decimal([100,])
+
+# %%
+fighter_names = [
+    "Ilia Topuria",
+    "Alexandre Pantoja",
+    "Brandon Royval",
+    "Beneil Dariush",
+    "Payton Talbott",
+    "Jack Hermansson",
+    # "Hyder Amil",
+    # "Viviane Araujo",
+    "Terrance McKinney",
+    # "Sedriques Dumas",
+    # "Jhonata Diniz",
+    # "Niko Price",
+]
+fighter_odds = convert_odds_to_decimal([
+    -425,#-130,
+    -265,
+    -125,
+    136,
+    150,
+    160,
+    -185,
+])
+opponent_names = [
+    "Charles Oliveira",
+    "Kai Kara-France",
+    "Joshua Van",
+    "Renato Moicano",
+    "Felipe Lima",
+    "Gregory Rodrigues",
+    # "Jose Delgado",
+    # "Tracy Cortez",
+    "Viacheslav Borshchev",
+    # "Jackson McVey",
+    # "Alvin Hines",
+    # "Jacobe Smith"
+]
+opponent_odds = convert_odds_to_decimal([
+    330,
+    215,
+    105,
+    -162,
+    -185,
+    -190,
+    150,
+])
+fight_parameters_values = [
+    [5, 155],
+    [5, 125],
+    [3, 125],
+    [3, 155], 
+    [3, 135],
+    [3, 185],
+    # [3, 145],
+    # [3, 115],
+    [3, 155],
+    # [3, 185],
+    # [3, 265],
+    # [3, 170],
+]
+event_dates = [date(2025, 6, 20)] * len(fighter_names)
+# fighter_odds = [1] * len(fighter_names)
+# opponent_odds = [1] * len(opponent_names)
+model = trainer.model
+parse_ids: bool = False
+device: str = "cpu"
+if not parse_ids:
+    fighter_ids = [self.data_processor.get_fighter_id(x) for x in fighter_names]
+    opponent_ids = [self.data_processor.get_fighter_id(x) for x in opponent_names]
+else:
+    fighter_ids = fighter_names
+    opponent_ids = opponent_names
+
+match_data = pd.DataFrame(
+    {
+        "fighter_id": fighter_ids + opponent_ids,
+        "event_date_forecast": event_dates * 2,
+        "opening": np.concatenate((fighter_odds, opponent_odds)),
+    }
+)
 
 # %%
 
 # %%
-len(names_f)
+p1, p2 = forecast_dataset.get_forecast_prediction(
+    fighter_names,
+    opponent_names,
+    event_dates,
+    fighter_odds,
+    opponent_odds,
+    model,
+    fight_parameters_values,
+    parse_ids = False,
+    device= device
+)
+
+# %%
+
+# %%
+value = (p1 + p2)/2
+confidence = abs((value - 0.5)*2)
+
+# %%
+max_bet = 20
+confidence = abs(p1 + p2 -1)
+bet =  max_bet / 10 *confidence
+bet = bet.numpy().flatten().round(2)
+
+# %%
+for f, o, fightfeat, p1h, p2h, beth, fodds, oodds in zip(
+    fighter_names, opponent_names, fight_parameters_values, p1, p2, bet, fighter_odds, opponent_odds,
+):
+    fodds = convert_odds_to_moneyline(fodds)
+    oodds = convert_odds_to_moneyline(oodds)
+    
+    print(
+        f"\t{f}({fodds})\n\t{o}({oodds})\n\t{fightfeat}\n\t{(p1h[0] + p2h[0]) / 2:.5f}+-{abs(p1h[0]-p2h[0]):.5f}\n"
+        f"\tSuggested bet: {2*beth:.2f}\n"
+    )
+
+# %%
+bet.sum()
+
+# %%
+
+# %%
+
+# %%
+
+# %% [markdown]
+# ### El problema es como pasar los diferentes pasos...
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+len(forecast_dataset.data)
+
+# %%
 
 # %%
 names_f = ["Maheshate", "Nyamjargal Tumendemberel", "Shi ming", "Kiru Sahota", "Baergeng Jieleyisi","Volkan Oezdemir", "Song Kenan", "Petr Yan"]
@@ -758,5 +989,15 @@ group["win"].sum() - group["bet"].sum()
 group["bet"].count()
 
 # %%
+
+# %%
+forecast_dataset.get_forecast_prediction(
+    fighter_names = ["Ilia Topuria",],
+    opponent_names = ["Islam Makhachev",],
+    event_dates = ["20250808",],
+    fighter_odds = [100,],
+    opponent_odds = [100,],
+    model = model,
+)
 
 # %%

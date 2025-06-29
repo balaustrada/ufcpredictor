@@ -14,8 +14,9 @@ import numpy as np
 import torch
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import List, Optional, Tuple
+    from typing import List, Optional, Sequence, Tuple
 
+    import torch
     from numpy.typing import NDArray
     from torch import nn
 
@@ -39,19 +40,16 @@ class PredictionPlots:
     def show_fight_prediction_detail(
         model: nn.Module,
         data: Tuple[
+            Sequence[torch.Tensor],
             torch.Tensor,
-            torch.Tensor,
-            torch.Tensor,
-            torch.Tensor,
-            torch.Tensor,
-            torch.Tensor,
+            Sequence[torch.Tensor],
             NDArray[np.str_],
             NDArray[np.str_],
         ],
         print_info: bool = False,
         show_plot: bool = False,
         ax: Optional[plt.Axes] = None,
-        device: str = "cpu",
+        device: str | torch.device = "cpu",
     ) -> List[Tuple[float, int, float, float, bool, float, float]]:
         """
         Shows the prediction detail of a fight and the benefit of the model.
@@ -71,28 +69,18 @@ class PredictionPlots:
             ax : The axes to use to show the plot. If None, a new figure will be
                 created.
         """
-        X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names = data
-        X1, X2, X3, Y, odds1, odds2, model = (
-            X1.to(device),
-            X2.to(device),
-            X3.to(device),
-            Y.to(device),
-            odds1.to(device),
-            odds2.to(device),
-            model.to(device),
-        )
+        X, Y, odds, fighter_names, opponent_names = data
+        X = [Xi.to(device) for Xi in X]
+        Y = Y.to(device)
+        odds = [od.to(device) for od in odds]
+        model = model.to(device)
+
         stats = []
 
         with torch.no_grad():
-            predictions_1 = (
-                model(X1, X2, X3, odds1.reshape(-1, 1), odds2.reshape(-1, 1))
-                .detach()
-                .cpu()
-                .numpy()
-                .reshape(-1)
-            )
+            predictions_1 = model(*X, *odds).detach().cpu().numpy().reshape(-1)
             predictions_2 = 1 - model(
-                X2, X1, X3, odds2.reshape(-1, 1), odds1.reshape(-1, 1)
+                *X, *odds, invert=True
             ).detach().cpu().numpy().reshape(-1)
 
             predictions = 0.5 * (predictions_1 + predictions_2)
@@ -100,13 +88,15 @@ class PredictionPlots:
 
             corrects = predictions.round() == Y.cpu().numpy()
 
-            invested = 0
-            earnings = 0
+            invested = 0.0
+            earnings = 0.0
             fights = 0
             nbets = 0
 
             invest_progress = []
             earning_progress = []
+
+            odds1, odds2 = odds
 
             for fighter, opponent, prediction, shift, odd1, odd2, correct, Yi in zip(
                 fighter_names,
@@ -183,7 +173,7 @@ class PredictionPlots:
         print_info: bool = False,
         show_plot: bool = False,
         ax: Optional[plt.Axes] = None,
-        device: str = "cpu",
+        device: str | torch.device = "cpu",
     ) -> List[Tuple[float, int, float, float, bool, float, float, str]]:
         """
         Shows the prediction detail of a fight and the benefit of the model.
@@ -202,13 +192,13 @@ class PredictionPlots:
             ax : The axes to use to show the plot. If None, a new figure will be
                 created.
         """
-        X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names = (
-            dataset.get_fight_data_from_ids(fight_ids)
+        X, Y, odds, fighter_names, opponent_names = dataset.get_fight_data_from_ids(
+            fight_ids
         )
 
         stats = PredictionPlots.show_fight_prediction_detail(
             model,
-            (X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names),
+            (X, Y, odds, fighter_names, opponent_names),
             print_info,
             show_plot,
             ax,
@@ -228,7 +218,7 @@ class PredictionPlots:
         dataset: ForecastDataset,
         fighter_name: str,
         opponent_name: str,
-        fight_features: List[float],
+        fight_parameters_values: List[float],
         event_date: str | datetime.date,
         odds1: int,
         odds2: int,
@@ -251,7 +241,14 @@ class PredictionPlots:
             parse_id : If True, the id of the fighters is parsed instead of the name.
         """
         p1, p2 = dataset.get_single_forecast_prediction(
-            fighter_name, opponent_name, event_date, odds1, odds2, model, fight_features, parse_id
+            fighter_name,
+            opponent_name,
+            event_date,
+            odds1,
+            odds2,
+            model,
+            fight_parameters_values,
+            parse_id,
         )
 
         if parse_id:
@@ -260,10 +257,10 @@ class PredictionPlots:
 
             display_fighter_name = names[ids == fighter_name].values[0]
             display_opponent_name = names[ids == opponent_name].values[0]
-        else:
+        else:  # pragma: no cover
             display_fighter_name = fighter_name
             display_opponent_name = opponent_name
-            
+
         if ax is None:  # pragma: no cover
             fig, ax = plt.subplots()
 

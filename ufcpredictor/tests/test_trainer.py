@@ -2,7 +2,7 @@ import unittest
 
 import torch
 from torch import nn
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, Dataset
 
 from ufcpredictor.loss_functions import BettingLoss
 from ufcpredictor.trainer import Trainer
@@ -18,6 +18,30 @@ class SimpleNet(nn.Module):
         return torch.sigmoid(self.fc1(X1) + self.fc1(X2))
 
 
+from torch.utils.data import Dataset
+import torch
+
+
+class CustomFightDataset(Dataset):
+    def __init__(self, X1, X2, X3, Y, odds1, odds2):
+        self.X1 = X1
+        self.X2 = X2
+        self.X3 = X3
+        self.Y = Y
+        self.odds1 = odds1
+        self.odds2 = odds2
+
+    def __len__(self):
+        return len(self.Y)
+
+    def __getitem__(self, idx):
+        return (
+            (self.X1[idx], self.X2[idx], self.X3[idx]),
+            self.Y[idx],
+            (self.odds1[idx], self.odds2[idx]),
+        )
+
+
 class TestTrainer(unittest.TestCase):
     def setUp(self):
         # Create some dummy data
@@ -28,7 +52,7 @@ class TestTrainer(unittest.TestCase):
         odds1 = torch.rand(100, 1)
         odds2 = torch.rand(100, 1)
 
-        dataset = TensorDataset(X1, X2, X3, Y, odds1, odds2)
+        dataset = CustomFightDataset(X1, X2, X3, Y, odds1, odds2)
         self.train_loader = DataLoader(dataset, batch_size=10)
         self.test_loader = DataLoader(dataset, batch_size=10)
 
@@ -87,7 +111,7 @@ class TestTrainerWithScheduler(unittest.TestCase):
         odds1 = torch.rand(100, 1)
         odds2 = torch.rand(100, 1)
 
-        dataset = TensorDataset(X1, X2, X3, Y, odds1, odds2)
+        dataset = CustomFightDataset(X1, X2, X3, Y, odds1, odds2)
         self.train_loader = DataLoader(dataset, batch_size=10)
         self.test_loader = DataLoader(dataset, batch_size=10)
 

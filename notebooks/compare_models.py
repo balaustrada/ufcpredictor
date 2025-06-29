@@ -68,7 +68,7 @@ self.normalize_data()
 
 # %%
 if True:
-    X_set = [
+    fighter_fight_statistics = [
         "clinch_strikes_att_opponent_per_minute",
         "time_since_last_fight",
         "total_strikes_succ_opponent_per_minute",
@@ -99,8 +99,8 @@ if True:
         "weight",
     ]
 else:
-    X_set = None
-    X_set = BasicDataset.X_set + [
+    fighter_fight_statistics = None
+    fighter_fight_statistics = BasicDataset.fighter_fight_statistics + [
         "ELO",
     ]
 
@@ -160,19 +160,19 @@ train_data_processor.normalize_data()
 early_train_dataset = BasicDataset(
     train_data_processor,
     early_train_fights,
-    X_set=X_set,
+    fighter_fight_statistics=fighter_fight_statistics,
 )
 
 train_dataset = BasicDataset(
     train_data_processor,
     train_fights,
-    X_set=X_set,
+    fighter_fight_statistics=fighter_fight_statistics,
 )
 
 test_dataset = BasicDataset(
     data_processor,
     test_fights,
-    X_set=X_set,
+    fighter_fight_statistics=fighter_fight_statistics,
 )
 
 # %%
@@ -330,7 +330,7 @@ np.random.seed(seed)
 #     }
 # )
 model = SymmetricFightNet(
-    input_size=len(train_dataset.X_set) - 1,
+    input_size=len(train_dataset.fighter_fight_statistics) - 1,
     dropout_prob=0.35,  # 0.35
 )
 optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=2e-5)
@@ -492,7 +492,7 @@ odds1.grad.sum()
 # %%
 fig, ax = plt.subplots(figsize=(5, 12))
 
-labels = test_dataset.X_set + ["odds"]
+labels = test_dataset.fighter_fight_statistics + ["odds"]
 values = list(abs(X1.grad.sum(axis=0))) + [
     odds1.grad.sum(),
 ]

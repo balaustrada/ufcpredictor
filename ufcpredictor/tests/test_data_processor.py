@@ -83,11 +83,26 @@ class BaseTestDataProcessor(object):
             }
         )
 
+        self.mock_replacement_data = pd.DataFrame(
+            {
+                "fight_id": [
+                    1,
+                ],
+                "fighter_id": [
+                    "f1",
+                ],
+                "notice_days": [
+                    20,
+                ],
+            }
+        )
+
         # Attach mock data to the scrapers
         self.processor.scraper.fight_scraper.data = self.mock_fight_data
         self.processor.scraper.fight_scraper.rounds_handler.data = self.mock_round_data
         self.processor.scraper.fighter_scraper.data = self.mock_fighter_data
         self.processor.scraper.event_scraper.data = self.mock_event_data
+        self.processor.scraper.replacement_scraper.data = self.mock_replacement_data
         self.processor.bfo_scraper.data = self.mock_odds_data
 
     def test_get_fighter_name_and_id(self):
@@ -776,11 +791,11 @@ class TestWOSRDataProcessor(BaseTestDataProcessor, unittest.TestCase):
     #     })
 
     #     # Define the input set of stats to fetch
-    #     X_set = ['some_stat', 'other_stat']
+    #     fighter_fight_statistics = ['some_stat', 'other_stat']
     #     fight_id = 'fight1'
 
     #     # Call the method
-    #     x1, x2, outcome = self.processor.from_id_to_fight(X_set, fight_id)
+    #     x1, x2, outcome = self.processor.from_id_to_fight(fighter_fight_statistics, fight_id)
 
     #     # Check the values of the returned tensors
     #     expected_x1 = [1, 4]  # fighter 'f1' stats
@@ -816,13 +831,13 @@ class TestWOSRDataProcessor(BaseTestDataProcessor, unittest.TestCase):
     #     })
 
     #     # Define the input set of stats to fetch
-    #     X_set = ['some_stat', 'other_stat']
+    #     fighter_fight_statistics = ['some_stat', 'other_stat']
     #     fight_id = 'fight2'
 
     #     # Mock print function to check print output
     #     with unittest.mock.patch('builtins.print') as mock_print:
     #         # Call the method with print_info set to True
-    #         self.processor.from_id_to_fight(X_set, fight_id, print_info=True)
+    #         self.processor.from_id_to_fight(fighter_fight_statistics, fight_id, print_info=True)
 
     #         # Check if the print function was called with the correct information
     #         mock_print.assert_any_call('Fighter Two', ' vs ', 'Opponent Two')

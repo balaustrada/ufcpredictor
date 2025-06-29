@@ -5,7 +5,11 @@ import numpy as np
 import pandas as pd
 import torch
 
-from ufcpredictor.datasets import BasicDataset, ForecastDataset
+from ufcpredictor.datasets import (
+    BasicDataset,
+    ForecastDataset,
+    DatasetWithTimeEvolution,
+)
 
 
 def mock_call_return_args(*args, **kwargs):
@@ -13,7 +17,7 @@ def mock_call_return_args(*args, **kwargs):
 
 
 class TestBasicDataset(unittest.TestCase):
-    X_set = ["knockdowns_per_minute"]
+    fighter_fight_statistics = ["knockdowns_per_minute"]
 
     def test_basic_dataset_initialization(self):
         # Mock data
@@ -41,7 +45,7 @@ class TestBasicDataset(unittest.TestCase):
 
         # Check initialization without errors
         dataset = BasicDataset(
-            data_processor=mock_processor, fight_ids=fight_ids, X_set=self.X_set
+            data_processor=mock_processor, fight_ids=fight_ids, fighter_fight_statistics=self.fighter_fight_statistics
         )
         assert len(dataset.data) == 6  # We expect 5 tensors in dataset.data
         assert isinstance(dataset.data[0], torch.FloatTensor)  # Check tensor type
@@ -52,7 +56,7 @@ class TestBasicDataset(unittest.TestCase):
             BasicDataset(
                 data_processor=mock_processor,
                 fight_ids=fight_ids,
-                X_set=["invalid_column"],
+                fighter_fight_statistics=["invalid_column"],
             )
 
     def test_basic_dataset_load_data(self):
@@ -81,7 +85,7 @@ class TestBasicDataset(unittest.TestCase):
 
         # Check data loading
         dataset = BasicDataset(
-            data_processor=mock_processor, fight_ids=fight_ids, X_set=self.X_set
+            data_processor=mock_processor, fight_ids=fight_ids, fighter_fight_statistics=self.fighter_fight_statistics
         )
         assert dataset.fight_data.shape[0] == 1  # Only one fight should be loaded
 
@@ -110,11 +114,11 @@ class TestBasicDataset(unittest.TestCase):
         fight_ids = ["fight1"]
 
         dataset = BasicDataset(
-            data_processor=mock_processor, fight_ids=fight_ids, X_set=self.X_set
+            data_processor=mock_processor, fight_ids=fight_ids, fighter_fight_statistics=self.fighter_fight_statistics
         )
-    
+
         # Retrieve an item
-        X1, X2, X3, winner, odds_1, odds_2 = dataset[0]
+        (X1, X2, X3), winner, (odds_1, odds_2) = dataset[0]
 
         assert isinstance(
             X1, torch.FloatTensor
@@ -144,22 +148,20 @@ class TestBasicDataset(unittest.TestCase):
         mock_processor = MagicMock()
         mock_processor.data_normalized = mock_data
 
-        fight_ids = ["fight1"]
+        fight_ids = ["fight1", "fight2", "fight3"]
 
         dataset = BasicDataset(
-            data_processor=mock_processor, fight_ids=fight_ids, X_set=self.X_set
+            data_processor=mock_processor, fight_ids=fight_ids, fighter_fight_statistics=self.fighter_fight_statistics
         )
 
         # Retrieve an item multiple times to check for swapping
         with patch("numpy.random.random", side_effect=[0.1, 0.8]):
-            original = dataset[0]
-            swapped = dataset[0]
+            original = dataset[2]
+            swapped = dataset[2]
 
-        assert not torch.equal(
-            original[0], swapped[0]
-        )  # X should be different after swap
+        assert original[0][0] == swapped[0][1]
         assert not torch.equal(original[1], swapped[1])  # Y should be swapped as well
-        assert not torch.equal(original[3], swapped[3])  # Winner should be swapped
+        assert original[2] == swapped[2][::-1]  # Winner should be swapped
 
     def test_get_fight_data_from_ids(self):
         # Mock data
@@ -187,11 +189,11 @@ class TestBasicDataset(unittest.TestCase):
         dataset = BasicDataset(
             data_processor=mock_processor,
             fight_ids=["fight1", "fight2", "fight3"],
-            X_set=self.X_set,
+            fighter_fight_statistics=self.fighter_fight_statistics,
         )
 
         # Test retrieving specific fight data
-        X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names = (
+        (X1, X2, X3), Y, (odds1, odds2), fighter_names, opponent_names = (
             dataset.get_fight_data_from_ids(fight_ids=["fight1"])
         )
 
@@ -224,11 +226,11 @@ class TestBasicDataset(unittest.TestCase):
         dataset = BasicDataset(
             data_processor=mock_processor,
             fight_ids=["fight1", "fight2", "fight3"],
-            X_set=self.X_set,
+            fighter_fight_statistics=self.fighter_fight_statistics,
         )
 
         # Test retrieving specific fight data
-        X1, X2, X3, Y, odds1, odds2, fighter_names, opponent_names = (
+        (X1, X2, X3), Y, (odds1, odds2), fighter_names, opponent_names = (
             dataset.get_fight_data_from_ids(fight_ids=None)
         )
 
@@ -236,7 +238,7 @@ class TestBasicDataset(unittest.TestCase):
 
 
 class TestForecastDataset(unittest.TestCase):
-    X_set = ["knockdowns_per_minute"]
+    fighter_fight_statistics = ["knockdowns_per_minute"]
 
     def test_get_forecast_prediction(self):
         # Mock data
@@ -278,7 +280,7 @@ class TestForecastDataset(unittest.TestCase):
                     2,
                     3,
                     3,
-                ]
+                ],
             }
         )
         mock_data["event_date"] = pd.to_datetime(mock_data["event_date"])
@@ -288,7 +290,7 @@ class TestForecastDataset(unittest.TestCase):
         mock_processor.data_normalized = mock_data
 
         forecast_dataset = ForecastDataset(
-            data_processor=mock_processor, X_set=self.X_set
+            data_processor=mock_processor, fighter_fight_statistics=self.fighter_fight_statistics
         )
 
         # Prepare mock input data
@@ -349,7 +351,8 @@ class TestForecastDataset(unittest.TestCase):
                     "2023-01-02",
                     "2023-01-03",
                     "2023-01-03",
-                ],                "fighter_dob": [
+                ],
+                "fighter_dob": [
                     "1990-01-01",
                     "1990-01-01",
                     "1990-01-02",
@@ -382,7 +385,7 @@ class TestForecastDataset(unittest.TestCase):
         )
 
         forecast_dataset = ForecastDataset(
-            data_processor=mock_processor, X_set=self.X_set
+            data_processor=mock_processor, fighter_fight_statistics=self.fighter_fight_statistics
         )
 
         # Prepare mock input data
@@ -452,7 +455,7 @@ class TestForecastDataset(unittest.TestCase):
         with self.assertRaises(ValueError) as e:
             forecast_dataset = ForecastDataset(
                 data_processor=mock_processor,
-                X_set=self.X_set
+                fighter_fight_statistics=self.fighter_fight_statistics
                 + [
                     "missing_column",
                 ],
@@ -463,5 +466,123 @@ class TestForecastDataset(unittest.TestCase):
         )
 
 
-if __name__ == "__main__":  # pragma: no cover
+class TestDatasetWithTimeEvolution(unittest.TestCase):
+    fighter_fight_statistics = ["knockdowns_per_minute"]
+
+    def test_get_indices_previous_and_next_winner_binary(self):
+        # Prepare mock data with winner and fighter_id columns
+        mock_data = pd.DataFrame(
+            {
+                "fight_id": ["fight1", "fight1", "fight2", "fight2"],
+                "fighter_id": ["f1", "f2", "f3", "f4"],
+                "event_date": pd.to_datetime(
+                    ["2023-01-01", "2023-01-01", "2023-01-02", "2023-01-02"]
+                ),
+                "num_fight": [1, 1, 2, 2],
+                "opponent_id": ["f2", "f1", "f4", "f3"],
+                "body_strikes_att_per_minute": [1.0, 2.0, 3.0, 4.0],
+                "clinch_strikes_att_per_minute": [1.1, 2.1, 3.1, 4.1],
+                "knockdowns_per_minute": [0.5, 0.6, 0.7, 0.8],
+                "ELO": [1000, 1100, 1200, 1300],
+                "opening": [1.5, 2.0, 1.8, 2.2],  # Add this line
+                "winner": ["f1", "f2", "f3", "f4"],
+            }
+        )
+
+        # Patch DataProcessor to provide this DataFrame for both normalized and nonagg
+        mock_processor = MagicMock()
+        mock_processor.data_normalized_nonagg = mock_data.copy()
+        mock_processor.data_normalized = mock_data.copy()
+        # previous_fights_statistics and previous_fights_parameters must match the columns above
+
+        previous_fights_statistics = [
+            "body_strikes_att_per_minute",
+            "clinch_strikes_att_per_minute",
+            "knockdowns_per_minute",
+            "ELO",
+            "opening",  # Add this line
+        ]
+        previous_fights_parameters = ["winner"]
+
+        dataset = DatasetWithTimeEvolution(
+            data_processor=mock_processor,
+            fighter_fight_statistics=["body_strikes_att_per_minute"],
+            fight_parameters=[],
+            previous_fights_statistics=previous_fights_statistics,
+            previous_fights_parameters=previous_fights_parameters,
+            state_size=2,
+        )
+
+        # Call get_indices_previous_and_next directly to check the winner column
+        previous_and_next_indices = dataset.get_indices_previous_and_next()
+        # The winner column should be 1 for all rows, since winner == fighter_id
+        assert (previous_and_next_indices["winner"] == 1).all()
+
+        # Now, set winner to something else and check for 0s
+        mock_data2 = mock_data.copy()
+        mock_data2.loc[0, "winner"] = "not_f1"
+        mock_processor.data_normalized_nonagg = mock_data2
+        mock_processor.data_normalized = mock_data2
+        previous_and_next_indices2 = dataset.get_indices_previous_and_next()
+        assert previous_and_next_indices2.loc[0, "winner"] == 0
+        assert (previous_and_next_indices2.loc[1:, "winner"] == 1).all()
+
+    def test_get_fight_data_from_ids_with_fight_ids(self):
+        # Prepare mock data
+        mock_data = pd.DataFrame(
+            {
+                "fight_id": ["fight1", "fight1", "fight2", "fight2"],
+                "fighter_id": ["f1", "f2", "f3", "f4"],
+                "event_date": pd.to_datetime(
+                    ["2023-01-01", "2023-01-01", "2023-01-02", "2023-01-02"]
+                ),
+                "num_fight": [1, 1, 2, 2],
+                "opponent_id": ["f2", "f1", "f4", "f3"],
+                "body_strikes_att_per_minute": [1.0, 2.0, 3.0, 4.0],
+                "clinch_strikes_att_per_minute": [1.1, 2.1, 3.1, 4.1],
+                "knockdowns_per_minute": [0.5, 0.6, 0.7, 0.8],
+                "ELO": [1000, 1100, 1200, 1300],
+                "winner": ["f1", "f2", "f3", "f4"],
+                "opening": [1.5, 2.0, 1.8, 2.2],
+                "fighter_name": ["A", "B", "C", "D"],
+            }
+        )
+
+        mock_processor = MagicMock()
+        mock_processor.data_normalized_nonagg = mock_data.copy()
+        mock_processor.data_normalized = mock_data.copy()
+        mock_processor.data_enhancers = []
+        mock_processor.normalization_factors = {}
+
+        previous_fights_statistics = [
+            "body_strikes_att_per_minute",
+            "clinch_strikes_att_per_minute",
+            "knockdowns_per_minute",
+            "ELO",
+        ]
+        previous_fights_parameters = ["winner"]
+
+        dataset = DatasetWithTimeEvolution(
+            data_processor=mock_processor,
+            fighter_fight_statistics=["body_strikes_att_per_minute"],
+            fight_parameters=[],
+            previous_fights_statistics=previous_fights_statistics,
+            previous_fights_parameters=previous_fights_parameters,
+            state_size=2,
+        )
+
+        # Use only fight1 for test
+        fight_ids = ["fight1"]
+        result = dataset.get_fight_data_from_ids(fight_ids=fight_ids)
+        # Check that the returned data only contains fight1
+        # result[6] and result[7] are fighter_names and opponent_names
+        fighter_names = result[-2]
+        opponent_names = result[-1]
+        self.assertTrue(all(f in ["A", "B"] for f in fighter_names))
+        self.assertTrue(all(o in ["A", "B"] for o in opponent_names))
+        # Check that the shapes match the number of fights (should be 1 row)
+        self.assertEqual(result[0][0].shape[0], 1)
+
+
+if __name__ == "__main__":  # pragma: no cover    unittest.main()
     unittest.main()

@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.4
+#       jupytext_version: 1.16.3
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: ufc
 #     language: python
-#     name: python3
+#     name: ufc
 # ---
 
 # %%
@@ -24,8 +24,8 @@ import torch
 # Enable autologging for PyTorch
 # mlflow.pytorch.autolog()
 
-mlflow.set_tracking_uri("http://127.0.0.1:5000") 
-mlflow.set_experiment('Diferent tries')
+# mlflow.set_tracking_uri("http://127.0.0.1:5000") 
+# mlflow.set_experiment('Diferent tries')
 
 # %%
 import pandas as pd
@@ -40,6 +40,7 @@ from ufcpredictor.data_enhancers import SumFlexibleELO, RankedFields
 from ufcpredictor.data_aggregator import WeightedDataAggregator
 from ufcpredictor.datasets import BasicDataset, ForecastDataset
 from ufcpredictor.trainer import Trainer
+from ufcpredictor.models import FighterTransformer
 from ufcpredictor.plot_tools import PredictionPlots
 import torch
 import numpy as np
@@ -56,7 +57,8 @@ import matplotlib.pyplot as plt
 # }
 
 data_processor_kwargs = {
-    "data_folder": "/home/cramirpe/UFC/UFCfightdata",
+    #"data_folder": "/home/cramirpe/UFC/UFCfightdata",
+    "data_folder": "/home/cramirez/kaggle/ufc_scraper/UFCfightdata",
     "data_aggregator": WeightedDataAggregator(alpha=-0.0001),
     "data_enhancers": [
         SumFlexibleELO(
@@ -288,6 +290,429 @@ forecast_dataset = ForecastDataset(
     fighter_fight_statistics=fighter_fight_statistics,
     fight_parameters = fight_parameters,
 )
+
+# %%
+dataset=  early_train_dataset
+
+# %%
+
+# %%
+
+# %%
+previous_and_next_indices = dataset.get_indices_previous_and_next()
+
+# %%
+
+# %%
+fighter_transformer = FighterTransformer(
+    state_dim=5, 
+    stat_dim=3, 
+    fight_parameters_size=1,
+    hidden_dim=64,
+    num_heads=2,
+    num_layers=2,
+    dropout=0.1,
+)
+
+# %%
+dataset.update_data_trans(fighter_transformer)
+
+# %%
+dataset[4][-1].shape
+
+# %%
+dataset[4][-2].shape
+
+# %%
+dataset[4][-3].shape
+
+# %%
+dataset[4][-4].shape
+
+# %%
+
+import torch.nn.functional as F
+
+def pad_or_truncate(tensor, desired_size):
+    """
+    Pads or truncates the first axis of a tensor to match the desired size.
+
+    Args:
+        tensor (torch.Tensor): The input tensor.
+        desired_size (int): The desired size for the first axis.
+
+    Returns:
+        torch.Tensor: Tensor with the first axis adjusted to the desired size.
+    """
+    current_size = tensor.size(0)
+
+    if current_size < desired_size:
+        # Calculate padding (add zeros to the left)
+        padding = desired_size - current_size
+        padded_tensor = F.pad(tensor, (0, 0, padding, 0), mode='constant', value=0)
+        return padded_tensor
+    elif current_size > desired_size:
+        # Truncate the tensor to the desired size
+        truncated_tensor = tensor[-desired_size:]  # Keep the last `desired_size` rows
+        return truncated_tensor
+    else:
+        # No adjustment needed
+        return tensor
+
+
+
+# %%
+pad_or_truncate(dataset[5][-1], 3)
+
+# %%
+dataset[5][-1]
+
+# %%
+dataset.fighter_history_tensor
+
+# %%
+
+# %%
+
+# %%
+dataset.compute_position_data(
+
+# %%
+x = previous_and_next_indices
+x[x["fighter_id"] == "484acc7b0f856ce9"]
+
+# %%
+preserved_fields = ["fight_id", "fighter_id", "num_fight", "next_fight"]
+fight_data_nonag = previous_and_next_indices[preserved_fields].merge(
+    previous_and_next_indices[preserved_fields],
+    left_on="fight_id",
+    right_on="fight_id",
+    how="inner",
+    suffixes=("_x", "_y"),
+)
+
+fight_data_nonag = fight_data_nonag[
+    fight_data_nonag["fighter_id_x"] != fight_data_nonag["fighter_id_y"]
+]
+fight_data_nonag = fight_data_nonag.drop_duplicates(subset=["fight_id"], keep="first")
+
+# %%
+fight_data_nonag["max_num_fight"] = fight_data_nonag[["num_fight_x", "num_fight_y"]].max(axis=1)
+
+# %%
+assert len(fight_data_nonag) == len(previous_and_next_indices)/2 # Check that we haven't lost any record.
+
+# %%
+fight_data_nonag
+
+# %%
+previous_and_next_indices = previous_and_next_indices.reset_index(drop=True)
+previous_and_next_indices['Index'] = previous_and_next_indices.index
+previous_and_next_indices
+
+# %%
+fight_data_nonag
+
+# %%
+previous_and_next_indices
+
+# %%
+X = fight_data_nonag.merge(
+    previous_and_next_indices[["fight_id", "fighter_id", "Index"]],
+    left_on=["fight_id", "fighter_id_x"],
+    right_on=["fight_id", "fighter_id"],
+).rename(columns={"Index": "Index_x"}).drop(columns="fighter_id").merge(
+    previous_and_next_indices[["fight_id", "fighter_id", "Index"]],
+    left_on=["fight_id", "fighter_id_y"],
+    right_on=["fight_id", "fighter_id"],
+).rename(columns={"Index": "Index_y"}).drop(columns="fighter_id")   
+
+
+
+
+# %%
+X
+
+# %%
+f1_positions = []
+f2_positions = []
+next_f1_positions = []
+next_f2_positions = []
+
+for max_fight in sorted(X["max_num_fight"].unique()):
+    # Filter rows for the current max_fight value
+    filtered_rows = X[X["max_num_fight"] == max_fight]
+
+    f1_positions.append(filtered_rows["Index_x"].values)
+    f2_positions.append(filtered_rows["Index_y"].values)
+    next_f1_positions.append(filtered_rows["next_fight_x"].values)
+    next_f2_positions.append(filtered_rows["next_fight_y"].values)
+
+# %% [markdown]
+# Now I need to learn how to update this values:, but I am still missing the tarnsformer(?)
+
+# %%
+f1_position = f1_positions[0]
+f2_position = f2_positions[0]
+next_f1_position = next_f1_positions[0]
+next_f2_position = next_f2_positions[0]
+
+# %%
+fighter_transformer = FighterTransformer(
+    state_dim=3, 
+    stat_dim=3, 
+    fight_parameters_size=1,
+    hidden_dim=32,
+    num_heads=2,
+    num_layers=2,
+    dropout=0.1,
+)
+
+# %%
+for i, (f1_position, f2_position, next_f1_position, next_f2_position) in enumerate(
+  zip(f1_positions, f2_positions, next_f1_positions, next_f2_positions)
+):
+    X1 = dataset.fighter_history_tensor[f1_position][:, :3]
+    X2 = dataset.fighter_history_tensor[f2_position][:, :3]
+    s1 = dataset.fighter_history_tensor[f1_position][:, 5:]
+    s2 = dataset.fighter_history_tensor[f2_position][:, 5:]
+    m = dataset.fighter_history_tensor[f1_position][:, 0].reshape(-1, 1)
+
+    X1, X2 = fighter_transformer(X1, X2, s1, s2, m)
+
+
+    msk = next_f1_position > 0
+    dataset.fighter_history_tensor[next_f1_position[msk],:3] = X1[msk]
+    
+    msk = next_f2_position > 0
+    dataset.fighter_history_tensor[next_f2_position[msk], :3] = X2[msk]
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+dataset.fighter_history_tensor[dataset.data[-1][0]]
+
+# %%
+dataset.data[-1]
+
+# %%
+for x in dataset.data_processor.data, dataset.data_processor.data_normalized:
+    print(len(x) - len(x["fight_id"].unique()) * 2)
+
+# %%
+self = dataset
+
+        # %%
+        previous_and_next_indices = self.data_processor.data_normalized.copy()
+
+        # We shift stats because the input for the model should be the
+        # stats prior to the fight
+        for x in self.fighter_fight_statistics:
+            if x not in ["age", "num_fight", "time_since_last_fight"]:
+                previous_and_next_indices[x] = previous_and_next_indices.groupby("fighter_id")[x].shift(1)
+
+        # We remove invalid fights
+        previous_and_next_indices = previous_and_next_indices[previous_and_next_indices["fight_id"].isin(self.fight_ids)]
+
+        # We now merge stats with itself to get one row per match with the data
+        # from the two fighters
+        fight_data = previous_and_next_indices.merge(
+            previous_and_next_indices,
+            left_on="fight_id",
+            right_on="fight_id",
+            how="inner",
+            suffixes=("_x", "_y"),
+        )
+
+
+        # Remove matchings of the fighter with itself and also only keep
+        # one row per match (fighter1 vs fighter2 is the same as fighter 2 vs fighter 1)
+        fight_data = fight_data[
+            fight_data["fighter_id_x"] != fight_data["fighter_id_y"]
+        ]
+        fight_data = fight_data.drop_duplicates(subset=["fight_id"], keep="first")
+
+# %%
+previous_fights_statistics = [
+    "body_strikes_att_per_minute",
+    "clinch_strikes_att_per_minute",
+    "knockdowns_per_minute",
+]
+
+        # %%
+        previous_and_next_indices_nonag = self.data_processor.data_normalized_nonagg.copy()
+
+        previous_and_next_indices_nonag = previous_and_next_indices_nonag[["fight_id", "fighter_id", "event_date", "fighter_name"] + previous_fights_statistics]
+
+        fight_counts = previous_and_next_indices_nonag.groupby('fight_id')['fighter_id'].nunique()
+
+        invalid_fights = fight_counts[fight_counts != 2]
+
+        assert invalid_fights.empty
+
+# %%
+previous_and_next_indices_nonag = previous_and_next_indices_nonag.sort_values(by=["event_date","fight_id"]).reset_index()
+x = previous_and_next_indices_nonag
+x
+
+
+# %%
+# Step 1: Add opponent_row
+def add_opponent_row(df):
+    # Create a mapping of fight_id to indices
+    fight_to_indices = df.groupby('fight_id').apply(lambda x: list(x.index), include_groups=False)
+    
+    # Map opponent rows for each row
+    df['opponent_row'] = df.index.to_series().apply(
+        lambda idx: [i for i in fight_to_indices[df.loc[idx, 'fight_id']] if i != idx][0],
+    )
+    return df
+
+
+
+# %%
+x = add_opponent_row(x)
+
+
+# %%
+# Step 2: Add previous_fights and previous_opponents
+def add_previous_fights(group):
+    group = group.sort_values('event_date')
+    group['previous_fights'] = group.index.to_series().apply(
+        lambda idx: group.index[group.index < idx].tolist()
+    )
+    group['previous_opponents'] = group['previous_fights'].apply(
+        lambda prev_fights: [x.loc[i, 'opponent_row'] for i in prev_fights]
+    )
+    return group
+
+
+# %%
+x = x.groupby("fighter_id", group_keys=False).apply(
+              lambda group: add_previous_fights(group).assign(fighter_id=group.name),
+              include_groups=False
+             )
+
+# %%
+stipe_fights = x[x["fighter_name"].str.contains('Topuria')]["previous_fights"].iloc[-1]
+stipe_opponents = x[x["fighter_name"].str.contains("Topuria")]["previous_opponents"].iloc[-1]
+x.loc[stipe_fights]
+
+# %%
+fight_id = "bec3154a11df3299" # Volkanovski topuria"
+fighter_id = "54f64b5e283b0ce7" # Ilia
+
+# %%
+row = x[(x["fight_id"] == fight_id) & (x["fighter_id"] == fighter_id)]
+row
+
+# %%
+data = [
+    x["fight_id"].values,
+    x["fighter_id"].values,
+    torch.FloatTensor([
+        x["body_strikes_att_per_minute"],
+        x["clinch_strikes_att_per_minute"],
+        x["knockdowns_per_minute"],
+    ]),
+    x["previous_fights"].values,
+    x["previous_opponents"].values,
+]
+        
+    
+    
+
+# %%
+pfights = np.asarray(row["previous_fights"].values[0])
+pfightso = np.asarray(row["previous_opponents"].values[0])
+
+# %%
+np.asarray(pfights[0])
+
+# %%
+data[2].T[pfights]
+
+# %%
+data
+
+
+# %%
+
+# %%
+
+# %%
+def get_previous_fights(group):
+    # Sort the group by event_date
+    group = group.sort_values('event_date')
+    # Generate a list of indices of previous fights for each row
+    group['previous_fights'] = group.index.to_series().apply(
+        lambda idx: group.index[group.index < idx].tolist()
+    )
+    return group
+
+
+
+# %%
+previous_and_next_indices_nonag = previous_and_next_indices_nonag.groupby(
+    "fighter_id", 
+    group_keys=False,
+).apply(
+    get_previous_fights,
+    include_groups=False,
+)
+
+# %%
+x = previous_and_next_indices_nonag 
+stipe_fights = x[x["fighter_name"].str.contains('Stipe')]["previous_fights"].iloc[-1]
+
+# %%
+x.loc[stipe_fights]
+
+# %%
+x = previous_and_next_indices_nonag
+
+# %%
+fight_to_indices = x.groupby("fight_id").apply(
+    lambda x: list(x.index),
+    include_groups=False,
+)
+
+x["previous_opponents"] = x.index.to_series().apply(
+    lambda idx: [i for i in fight_to_indices[x.loc[idx, 'fight_id']] if i != idx]
+)
+
+# %%
+x.loc[11748]
+
+# %%
+stipe_fights = x[x["fighter_name"].str.contains('Stipe')]["previous_fights"].iloc[-1]
+x.loc[stipe_fights]
+
+# %%
+x.loc[8808]
+
+# %%
+
+# %%
+x = previous_and_next_indices_nonag
+len_ = len(x)
+print(len(x) - len(x["fight_id"].unique()) * 2)
+
+# %%
+len(fight_data["fight_id"].unique())
+
+
+# %%
+
+# %%
+
+# %%
 
 # %%
 batch_size = 64 # 2048

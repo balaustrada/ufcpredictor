@@ -42,7 +42,7 @@ self.add_per_minute_and_fight_stats()
 self.normalize_data()
 
     # %%
-    X_set = [
+    fighter_fight_statistics = [
 'clinch_strikes_att_opponent_per_minute',
  'time_since_last_fight',
  'total_strikes_succ_opponent_per_minute',
@@ -90,13 +90,13 @@ test_fights = set(test_fights) - set(invalid_fights)
 train_dataset = BasicDataset(
     data_processor,
     train_fights,
-    X_set=X_set,
+    fighter_fight_statistics=fighter_fight_statistics,
 )
 
 test_dataset = BasicDataset(
     data_processor,
     test_fights,
-    X_set=X_set,
+    fighter_fight_statistics=fighter_fight_statistics,
 )
 
 # %%
@@ -110,7 +110,7 @@ from ufcpredictor.loss_functions import BettingLoss
 
 # %%
 model = SymmetricFightNet(
-        input_size=len(X_set),
+        input_size=len(fighter_fight_statistics),
         dropout_prob=0.35,
 )
 optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3)
@@ -163,7 +163,7 @@ output.sum().backward()
 # %%
 fig, ax = plt.subplots(figsize=(5, 12))
 
-labels = test_dataset.X_set + ["odds"]
+labels = test_dataset.fighter_fight_statistics + ["odds"]
 values = list(abs(X1.grad.sum(axis=0))) + [4.3132,]
 
 sorted_indices = sorted(range(len(values)), key=lambda i: values[i], reverse=True)

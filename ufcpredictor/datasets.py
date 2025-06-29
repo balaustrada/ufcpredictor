@@ -750,8 +750,8 @@ class DatasetWithTimeEvolution(BaseDataset):
     num_past_fights: int = 20
     f1_positions: List[List[int]]
     f2_positions: List[List[int]]
-    next_f1_positions: List[int]
-    next_f2_positions: List[int]
+    next_f1_positions: List[List[int]]
+    next_f2_positions: List[List[int]]
 
 
     def __init__(
@@ -1052,10 +1052,10 @@ class DatasetWithTimeEvolution(BaseDataset):
 
             X1, X2 = transformer(X1, X2, s1, s2, m)
 
-            msk = next_f1_position > 0
+            msk = np.asarray(next_f1_position) > 0
             self.fighter_history_tensor[next_f1_position[msk], : self.state_size] = X1[msk]
 
-            msk = next_f2_position > 0
+            msk = np.asarray(next_f2_position) > 0
             self.fighter_history_tensor[next_f2_position[msk], : self.state_size] = X2[msk]
 
     def load_data(self) -> None:

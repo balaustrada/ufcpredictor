@@ -359,10 +359,10 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
         X1: torch.Tensor,
         X2: torch.Tensor,
         X3: torch.Tensor,
-        ff_data: torch.Tensor,
-        of_data: torch.Tensor,
-        fo_data: torch.Tensor,
-        oo_data: torch.Tensor,
+        fighter_prev_data: torch.Tensor,
+        opponent_prev_data: torch.Tensor,
+        fighter_prev_opponents_data: torch.Tensor,
+        opponent_prev_opponents_data: torch.Tensor,
         odds1: torch.Tensor,
         odds2: torch.Tensor,
         invert: bool = False,
@@ -374,6 +374,14 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
             X1: Fighter 1 stats tensor of shape (batch_size, _).
             X2: Fighter 2 stats tensor of shape (batch_size, _).
             X3: Fight parameters tensor of shape (batch_size, _).
+            fighter_prev_data: Fighter 1 previous fights data tensor of shape
+                (batch_size, num_past_fights, _).
+            opponents_prev_data: Fighter2 previous fights data tensor of shape
+                (batch_size, num_past_fights, _).
+            fighter_prev_opponents_data: Fighter 1 previous opponents data tensor of
+                shape (batch_size, num_past_fights, _).
+            opponent_prev_opponents_data: Fighter 2 previous opponents data tensor of
+                shape (batch_size, num_past_fights, _).
             odds1: Odds for Fighter 1 tensor of shape (batch_size, 1).
             odds2: Odds for Fighter 2 tensor of shape (batch_size, 1).
             invert: If True, invert the input order. Used in non-symmetric
@@ -385,7 +393,7 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
         if invert:  # pragma: no cover
             X1, X2 = X2, X1
             odds1, odds2 = odds2, odds1
-            ff_data, of_data, fo_data, oo_data = (of_data, ff_data, oo_data, fo_data)
+            fighter_prev_data, opponent_prev_data, fighter_prev_opponents_data, opponent_prev_opponents_data = (opponent_prev_data, fighter_prev_data, opponent_prev_opponents_data, fighter_prev_opponents_data)
 
         # odds1 = odds1 / odds1
         # odds2 = odds2 / odds2
@@ -395,25 +403,25 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
         S2 = torch.zeros(X2.shape[0], self.state_size).to(X1.device)
 
         for i in range(self.num_past_fights):
-            ff_data_i = ff_data[:, i, :]
-            of_data_i = of_data[:, i, :]
-            fo_data_i = fo_data[:, i, :]
-            oo_data_i = oo_data[:, i, :]
+            ff = fighter_prev_data[:, i, :]    
+            of = opponent_prev_data[:, i, :]
+            fo = fighter_prev_opponents_data[:, i, :]
+            oo = opponent_prev_opponents_data[:, i, :]
 
             S1, _ = self.evolver(
                 S1,
-                fo_data_i[:, : self.state_size],
-                ff_data_i[:, self.state_size : -self.evolver.fight_parameters_size],
-                fo_data_i[:, self.state_size : -self.evolver.fight_parameters_size],
-                ff_data_i[:, -self.evolver.fight_parameters_size :],
+                fo[:, : self.state_size],
+                ff[:, self.state_size : -self.evolver.fight_parameters_size],
+                fo[:, self.state_size : -self.evolver.fight_parameters_size],
+                ff[:, -self.evolver.fight_parameters_size :],
             )
 
             S2, _ = self.evolver(
                 S2,
-                oo_data_i[:, : self.state_size],
-                of_data_i[:, self.state_size : -self.evolver.fight_parameters_size],
-                oo_data_i[:, self.state_size : -self.evolver.fight_parameters_size],
-                oo_data_i[:, -self.evolver.fight_parameters_size :],
+                oo[:, : self.state_size],
+                of[:, self.state_size : -self.evolver.fight_parameters_size],
+                oo[:, self.state_size : -self.evolver.fight_parameters_size],
+                oo[:, -self.evolver.fight_parameters_size :],
             )
 
         # x = torch.cat((X1, X2, X3, odds1, odds2, S1-S2, S2-S1), dim=1)
@@ -518,3 +526,4 @@ class FighterStateEvolver(nn.Module):
         X2_new = self.output_X2(hidden_output)
 
         return X1_new, X2_new
+ 

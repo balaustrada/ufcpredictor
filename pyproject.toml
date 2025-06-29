@@ -21,6 +21,7 @@ ufcscraper = "^0.2.0"
 
 [tool.poetry.group.dev.dependencies]
 python-semantic-release = "^9.14.0"
+coverage = "^7.9.1"
 
 [tool.semantic_release]
 version_toml = [

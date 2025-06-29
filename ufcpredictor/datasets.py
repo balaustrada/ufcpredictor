@@ -271,6 +271,8 @@ class ForecastDataset(BaseDataset):
             data_processor: The DataProcessor instance that contains the data.
             fighter_fight_statistics: The list of columns to include in the dataset. If None, use all
                 columns.
+            fight_parameters: The list of fight parameters to include in the
+                model. If None, use an empty list.
 
         Raises:
             ValueError: If some columns are not found in the normalized data.
@@ -321,7 +323,9 @@ class ForecastDataset(BaseDataset):
                 are parsed in fields "fighter_name" and "opponent_name"if True,
                 and names are parsed if False.
 
-        Returns: The predicted odds for the first and second fighters.
+        Returns: 
+            A tuple of two numpy arrays, each one evaluating the model switching
+            between the two fighters. For symmetric models, they should be the same.
         """
         p1, p2 = self.get_forecast_prediction(
             [
@@ -798,9 +802,13 @@ class DatasetWithTimeEvolution(BaseDataset):
 
         self.load_data()
 
-    def get_indices_previous_and_next(self) -> pd.DataFrame:
+    def get_indices_previous_and_next(self, include_current: bool = False) -> pd.DataFrame:
         """
         Get the indices of the previous and next fights for each fighter in the dataset.
+
+        Args:
+            include_current: Whether to include the current fight in the previous 
+            fights. This is only used in forecasting.
 
         Returns:
             A pandas DataFrame containing the indices of the previous and next fights
@@ -868,7 +876,11 @@ class DatasetWithTimeEvolution(BaseDataset):
         # After that, we need to aggregate all of them in a list, this will
         # define all previous fights of a given fight.
         # If there are no previous fights, we just insert an empty list
-        previous_indices_df = indices_df[indices_df["index_x"] > indices_df["index_y"]]
+        if include_current:
+            previous_indices_df = indices_df[indices_df["index_x"] >= indices_df["index_y"]]
+        else:
+            previous_indices_df = indices_df[indices_df["index_x"] > indices_df["index_y"]]
+        
         previous_indices_df = (
             previous_indices_df.groupby("index_x")
             .agg(
@@ -1223,7 +1235,7 @@ class DatasetWithTimeEvolution(BaseDataset):
 
         Returns:
             A tuple of ((X1, X2, X3, fighter_prev_data, opponent_prev_data, 
-            fighter_prev_opponents_data, opponent_prev  _opponents_data), winner, 
+            fighter_prev_opponents_data, opponent_prev_opponents_data), winner, 
             (odds_1, odds_2)) where X1 and X2 are the statistics for the two 
             fighters, X3 are the fight parameters, winner is the winner of the fight 
             and (odds1, odds2) the odds for each of the fighters.
@@ -1314,11 +1326,9 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
     """
     A dataset class designed to handle forecasting data for UFC fight predictions.
 
-    This class provides a structured way to store and retrieve data for training and
-    testing neural network models. It is designed to work with the DataProcessor class
-    to prepare and normalize the data.
+    This class extends ForecastDataset to perform forecasting on models with time 
+    evolution.
     """
-
     fighter_fight_statistics = DatasetWithTimeEvolution.fighter_fight_statistics
     fight_parameters = DatasetWithTimeEvolution.fight_parameters
     previous_fights_statistics = DatasetWithTimeEvolution.previous_fights_statistics
@@ -1340,6 +1350,16 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             data_processor: The DataProcessor instance that contains the data.
             fighter_fight_statistics: The list of columns to include in the dataset. If None, use all
                 columns.
+            fight_parameters: The list of fight parameters to include in the
+                model. If None, use an empty list.
+            previous_fights_statistics: The list of columns to use for previous
+                fights statistics. If None, use default columns defined in
+                cls.previous_fights_statistics.
+            previous_fights_parameters: The list of columns to use for previous
+                fights parameters. If None, use default columns defined in
+                cls.previous_fights_parameters.
+            state_size: The size of the state vector for each fighter. If None,
+                use the default value defined in cls.state_size.
 
         Raises:
             ValueError: If some columns are not found in the normalized data.
@@ -1374,112 +1394,6 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
         self.fight_ids = None
         self.load_data()
 
-    def get_indices_previous_and_next(self) -> pd.DataFrame:
-        # We first retrieve the non aggregated data,
-        # only keeping the relevant fields
-        previous_and_next_indices = (
-            self.data_processor.data_normalized_nonagg.copy()
-            .sort_values(by=["event_date", "fight_id"])
-            .reset_index(drop=True)[
-                ["fight_id", "fighter_id", "event_date", "num_fight", "opponent_id"]
-                + self.previous_fights_statistics
-                + self.previous_fights_parameters
-            ]
-        )
-
-        # We now add the index of the fighter
-        previous_and_next_indices["index"] = previous_and_next_indices.index
-        previous_and_next_indices["winner"] = (
-            previous_and_next_indices["winner"] == previous_and_next_indices["fighter_id"]
-        ).astype(int)
-        if "time_since_last_fight" in previous_and_next_indices.columns:
-            previous_and_next_indices["time_since_last_fight"] = previous_and_next_indices[
-                "time_since_last_fight"
-            ].fillna(previous_and_next_indices["time_since_last_fight"].mean())
-
-        # To find the index of the opponent, we merge the data with itself
-        # but matching fighter_id with opponent_id
-        previous_and_next_indices = (
-            previous_and_next_indices.merge(
-                previous_and_next_indices[["fight_id", "opponent_id", "index"]],
-                left_on=["fight_id", "fighter_id"],
-                right_on=["fight_id", "opponent_id"],
-            )
-            .rename(
-                columns={
-                    "opponent_id_x": "opponent_id",
-                    "index_x": "index",
-                    "index_y": "opponent_row",
-                }
-            )
-            .drop(columns=["opponent_id_y", "opponent_id"])
-        )
-
-        # Now we need to see which are the previous fights of each row
-        # And also the next fight of each row, we start by defining a
-        # simplified dataframe
-        indices_df = previous_and_next_indices[["fighter_id", "index", "opponent_row"]]
-
-        # Then we merge with the original dataframe to match
-        # each fighter's fight to all past and future fights
-        indices_df = indices_df.merge(
-            indices_df,
-            on="fighter_id",
-        )
-
-        # We preselect the previous fights (and current) by looking at index_y <= index_x
-        # After that, we need to aggregate all of them in a list, this will
-        # define all previous fights of a given fight.
-        # If there are no previous fights, we just insert an empty list
-        previous_indices_df = indices_df[indices_df["index_x"] >= indices_df["index_y"]]
-        previous_indices_df = (
-            previous_indices_df.groupby("index_x")
-            .agg(
-                previous_fights=("index_y", list),
-                previous_opponents=("opponent_row_y", list),
-            )
-            .reset_index()
-            .set_index("index_x")
-            .reindex(range(0, len(previous_and_next_indices)), fill_value=pd.NA)
-            .reset_index()
-        )
-        # Fill missing lists with empty lists
-        previous_indices_df["previous_fights"] = previous_indices_df[
-            "previous_fights"
-        ].apply(lambda x: x if isinstance(x, list) else [])
-        previous_indices_df["previous_opponents"] = previous_indices_df[
-            "previous_opponents"
-        ].apply(lambda x: x if isinstance(x, list) else [])
-
-        previous_and_next_indices = previous_and_next_indices.merge(
-            previous_indices_df,
-            left_on="index",
-            right_on="index_x",
-        )
-
-        # We similarly preselect the future fights by looking at index_y > index_x
-        # After that, we group by fight/fighter (index_x) and only will keep
-        # the inmediately next fight.
-        # If there are no future fights, we just set this value to -1.
-        next_indices_df = indices_df[indices_df["index_x"] < indices_df["index_y"]]
-        next_indices_df = (
-            next_indices_df.sort_values(by=["index_x", "index_y"])
-            .drop_duplicates(
-                subset="index_x",
-                keep="first",
-            )[["index_x", "index_y"]]
-            .set_index("index_x")
-            .reindex(range(0, len(previous_and_next_indices)), fill_value=-1)
-            .rename(columns={"index_y": "next_fight"})
-        )
-        previous_and_next_indices = previous_and_next_indices.merge(
-            next_indices_df,
-            left_on="index",
-            right_on="index_x",
-        )
-
-        return previous_and_next_indices
-
     def get_single_forecast_prediction(
         self,
         fighter_name: str,
@@ -1507,7 +1421,9 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
                 are parsed in fields "fighter_name" and "opponent_name"if True,
                 and names are parsed if False.
 
-        Returns: The predicted odds for the first and second fighters.
+        Returns:
+            A tuple of two numpy arrays, each one evaluating the model switching
+            between the two fighters. For symmetric models, they should be the same.
         """
         p1, p2 = self.get_forecast_prediction(
             [
@@ -1564,8 +1480,8 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             device: The device to use for the prediction.
 
         Returns:
-            A tuple of two numpy arrays, each containing the predictions for one of the
-            fighters.
+            A tuple of two numpy arrays, each one evaluating the model switching
+            between the two fighters. For symmetric models, they should be the same.
         """
         if not parse_ids:
             fighter_ids = [self.data_processor.get_fighter_id(x) for x in fighter_names]
@@ -1576,6 +1492,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             fighter_ids = fighter_names
             opponent_ids = opponent_names
 
+        # Start the match data with the ids and event dates.
         match_data = pd.DataFrame(
             {
                 "fighter_id": fighter_ids + opponent_ids,
@@ -1584,7 +1501,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             }
         )
 
-        # Add fight parameters if needed (same for both fighters)
+        # If fight features are provided, we add them to the match data
         for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_parameters_values).T):
             match_data[feature_name] = np.concatenate((stats, stats))
 
@@ -1603,6 +1520,8 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             by=["fighter_id", "event_date"],
             ascending=[True, False],
         )
+        # Keep more up to date statistics for each fighter
+        # (previous to the event_date_forecast)
         match_data = match_data.drop_duplicates(
             subset=["fighter_id", "event_date_forecast"],
             keep="first",
@@ -1612,7 +1531,8 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             + "_"
             + match_data["event_date_forecast"].astype(str)
         )
-
+        
+        # Weight is the same for both fighters, so we use the first one
         match_data = match_data.rename(
             columns={
                 "weight_x": "weight",
@@ -1635,6 +1555,8 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
         match_data["age"] = (
             match_data["event_date_forecast"] - match_data["fighter_dob"]
         ).dt.days / 365
+
+        # We add the number of fights (is the previous + 1)
         match_data["num_fight"] = match_data["num_fight"] + 1
 
         new_fields = ["age", "time_since_last_fight"] + self.fight_parameters
@@ -1651,7 +1573,9 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
                         exponents.append(exponent)
                         fields.append(field)
 
-        # If there are fields to be ranked, we do so
+        # If there are fields to be ranked, we do so by going back to 
+        # the original data and ranking them again.
+        # @TODO: Revisit this and check it is working.
         if len(fields) > 0:
             ranked_fields = RankedFields(fields, exponents)
 
@@ -1667,6 +1591,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
         for field in new_fields:
             if field in self.data_processor.normalization_factors.keys():
                 match_data[field] /= self.data_processor.normalization_factors[field]
+
         ###############################################################
         # Now we start building the tensor to input to the model
         ###############################################################
@@ -1679,7 +1604,7 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             )
         }
 
-        fighter_history_tensor = self.get_indices_previous_and_next()
+        fighter_history_tensor = self.get_indices_previous_and_next(include_current=True)
 
         match_data = match_data.merge(
             fighter_history_tensor[
@@ -1687,6 +1612,11 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             ]
         )
 
+        # Add fight parameters to both fighters. 
+        # TODO: Check that concatenate is the right choice (first fighters, then 
+        # opponents?)
+        # It is likely that I need to add a checker on the match_data merge
+        # to ensure that each fighter gets previous data.
         for feature_name, stats in zip(self.fight_parameters, np.asarray(fight_parameters_values).T):
             match_data[feature_name] = np.concatenate((stats, stats))
 

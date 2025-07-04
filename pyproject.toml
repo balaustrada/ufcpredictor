@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "ufcpredictor"
 readme = "README.md"
-version = "1.0.0"
+version = "1.1.0"
 description = "A simple predictor for UFC fights"
 authors = ["César Ramírez-Pérez"]
 

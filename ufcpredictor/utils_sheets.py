@@ -90,7 +90,7 @@ def read_fights_sheet(
     spreadsheet_id: str,
     creds_file: Path,
     fields_to_read: list[str],
-    dtypes_: Optional[List[type]] = None,
+    dtypes_: Optional[list[type]] = None,
 ) -> list[NDArray]:
     """Reads the fights sheet from the specified Google Sheets document.
 

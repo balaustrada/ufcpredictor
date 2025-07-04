@@ -2,3 +2,4 @@
 omit = 
     ufcpredictor/tests/*
     ufcpredictor/scripts/*
+    ufcpredictor/utils_sheets.py

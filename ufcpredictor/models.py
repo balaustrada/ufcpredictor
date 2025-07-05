@@ -302,7 +302,8 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
 
     def __init__(
         self,
-        input_size: int,
+        fighter_fight_statistics: list[str],
+        fight_parameters: list[str],
         dropout_prob: float = 0.0,
         network_shape: List[int] = [1024, 512, 256, 128, 64, 1],
         fighter_transformer_kwargs: Dict = dict(),
@@ -314,10 +315,8 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
         probability.
 
         Args:
-            input_size: The size of the input to the model. This is
-                (X1 + X2 + X3 + 2) meaning the input stats for the first fighter,
-                the second fighter, the fight parameters and the odds for both
-                fighters.
+            fighter_fight_statistics: Statistics of the fighters for the fight.
+            fight_parameters: Fight parameters for the fight, such as weight class,
             dropout_prob: The probability of dropout.
             network_shape: Shape of the network layers (except input layer).
             fighter_transformer_kwargs: Keyword arguments for the
@@ -332,7 +331,7 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
         self.state_size = state_size
 
         self.network_shape = [
-            input_size,
+            2*len(fighter_fight_statistics) + 2 * len(fight_parameters) + 2 * state_size,
         ] + network_shape
 
         self.num_past_fights = num_past_fights

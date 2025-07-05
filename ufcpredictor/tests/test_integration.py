@@ -434,10 +434,8 @@ class TestSimpleModel(unittest.TestCase):
 
         dropout = 0.01
         model = SimpleFightNetWithTimeEvolution(
-            input_size=2 * len(fighter_fight_statistics)
-            + len(fight_parameters)
-            + 2
-            + 2 * state_size,  # 2 are the odds,
+            fighter_fight_statistics=fighter_fight_statistics,
+            fight_parameters=fight_parameters,
             dropout_prob=dropout,
             network_shape=[128, 64, 32, 1],
             state_size=state_size,

@@ -444,8 +444,8 @@ class TestSimpleModel(unittest.TestCase):
             # network_shape=[122, 1024, 512, 1024, 512, 256, 128, 64, 1],
             fighter_transformer_kwargs=dict(
                 state_size=state_size,  # 20,
-                fighter_fight_statistics_size=len(previous_fights_statistics),
-                fight_parameters_size=len(previous_fights_parameters),
+                fighter_fight_statistics=previous_fights_statistics,
+                fight_parameters=previous_fights_parameters,
                 network_shape=[128, 64],
                 dropout=dropout * 0.9,
             ),

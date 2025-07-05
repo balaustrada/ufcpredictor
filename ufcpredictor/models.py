@@ -411,9 +411,9 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
             S1, _ = self.evolver(
                 S1,
                 fo[:, : self.state_size],
-                ff[:, self.state_size : -self.evolver.fight_parameters_size],
-                fo[:, self.state_size : -self.evolver.fight_parameters_size],
-                ff[:, -self.evolver.fight_parameters_size :],
+                ff[:, self.state_size : -len(self.evolver.fight_parameters)],
+                fo[:, self.state_size : -len(self.evolver.fight_parameters)],
+                ff[:, -len(self.evolver.fight_parameters) :],
             )
 
             # @TODO: It is inconsistent using ff and then oo (for the last term)
@@ -421,9 +421,9 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
             S2, _ = self.evolver(
                 S2,
                 oo[:, : self.state_size],
-                of[:, self.state_size : -self.evolver.fight_parameters_size],
-                oo[:, self.state_size : -self.evolver.fight_parameters_size],
-                oo[:, -self.evolver.fight_parameters_size :],
+                of[:, self.state_size : -len(self.evolver.fight_parameters)],
+                oo[:, self.state_size : -len(self.evolver.fight_parameters)],
+                oo[:, -len(self.evolver.fight_parameters) :],
             )
 
         # x = torch.cat((X1, X2, X3, odds1, odds2, S1-S2, S2-S1), dim=1)
@@ -449,8 +449,8 @@ class FighterStateEvolver(nn.Module):
     def __init__(
         self,
         state_size: int,
-        fighter_fight_statistics_size: int,
-        fight_parameters_size: int,
+        fighter_fight_statistics: list[str],
+        fight_parameters: list[str],
         network_shape: List[int],
         dropout: float = 0.1,
     ):
@@ -458,21 +458,21 @@ class FighterStateEvolver(nn.Module):
         Initialize the FighterStateEvolver model.
 
         Args:
-            state_size (int): Size of the fighters state tensor.
-            fighter_fight_statistics_size (int): Size of the fighters statistics tensor.
-            fight_parameters_size (int): Size of the fight parameters tensor.
-            network_shape (list of int): List specifying the sizes of hidden
+            state_size: Size of the fighters state tensor.
+            fighter_fight_statistics: Statistics of the fighters for the fight
+            fight_parameters: Fight parameters for the fight, such as weight class,
+            network_shape: List specifying the sizes of hidden
                 layers.
             dropout (float): Dropout probability.
         """
         super().__init__()
 
         # Calculate the input dimension
-        input_dim = 2 * state_size + 2 * fighter_fight_statistics_size + fight_parameters_size
+        input_dim = 2 * state_size + 2 * len(fighter_fight_statistics) + len(fight_parameters)
 
         self.state_size = state_size
-        self.fighter_fight_statistics_size = fighter_fight_statistics_size
-        self.fight_parameters_size = fight_parameters_size
+        self.fighter_fight_statistics = fighter_fight_statistics
+        self.fight_parameters = fight_parameters
 
         # Create the layers of the feedforward network
         layers: List[nn.Module] = []

@@ -14,6 +14,10 @@
 # ---
 
 # %%
+from ufcpredictor import UFCPredictor
+predictor = UFCPredictor("/home/cramirpe/UFC/ufcpredictor/config.yaml")
+
+# %%
 import jupyter_black
 
 jupyter_black.load()
@@ -43,201 +47,172 @@ config = yaml.safe_load(Path("/home/cramirpe/UFC/ufcpredictor/config.yaml").read
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # %%
-# Initialize data aggregator
-data_aggregator_cfg = config.get("data processor", {}).get("data aggregator", {})
+from ufcpredictor import UFCPredictor
 
-if data_aggregator_cfg.get("class") is not None:
-    data_aggregator = getattr(
-        ufcpredictor.data_aggregator, data_aggregator_cfg.get("class")
-    )(**data_aggregator_cfg.get("args", {}))
-else:
-    raise Exception("Missing data_aggregator class")
+predictor = UFCPredictor("/home/cramirpe/UFC/ufcpredictor/config.yaml")
 
-# Initialize data enhancers
-data_enhancers = []
-for data_enhancer_cfg in config.get("data processor", {}).get("data enhancers", []):
-    data_enhancers.append(
-        getattr(ufcpredictor.data_enhancers, data_enhancer_cfg.get("class"))(
-            **data_enhancer_cfg.get("args", {})
+data_processor = predictor.data_processor
+
+
+# %%
+def load_trainer(self) -> None:
+    """
+    Loads the trainer with the datasets, model, optimizer, scheduler, and loss function.
+    """
+    fight_ids = self.data_processor.data["fight_id"].unique()
+
+    if self.config.get("filters", {}).get("minimum fight number", 0) > 0:
+        invalid_fights = set(
+            self.data_processor.data[self.data_processor.data["num_fight"] < 5][
+                "fight_id"
+            ]
         )
+    else:
+        invalid_fights = set()
+
+    # TODO check this, because we are using the inverse and naming it the same.
+    # Consider creating an inverse, or whatever, maybe introduce it inside
+    # of data_enhancer. with factor -1 (?)
+    # minimum_notice_days = self.config.get("filters", {}).get("minimum notice days", 0)
+    # if minimum_notice_days > 0:
+    #     invalid_fights.update(
+    #         self.data_processor.data[
+    #             self.data_processor.data["notice_days"] > 1 / minimum_notice_days
+    #         ]["fight_id"]
+    #     )
+    invalid_fights.update(
+        self.data_processor.data[self.data_processor.data["notice_days"] != 1 / 60][
+            "fight_id"
+        ]
     )
 
-
-# Initialize data processor
-data_processor_cfg = config.get("data processor", {})
-
-if data_processor_cfg.get("class") is not None:
-    data_processor = getattr(
-        ufcpredictor.data_processor, data_processor_cfg.get("class")
-    )(
-        data_aggregator=data_aggregator,
-        data_enhancers=data_enhancers,
-        **data_processor_cfg.get("args", {}),
+    early_split_date = pd.to_datetime(
+        self.config.get("filters", {}).get("early split date", None)
     )
-else:
-    raise Exception("Missing data_processor class")
-
-
-# Load data in data processor
-data_processor.load_data()
-data_processor.aggregate_data()
-data_processor.add_per_minute_and_fight_stats()
-data_processor.normalize_data()
-
-# %%
-fight_ids = data_processor.data["fight_id"].unique()
-
-
-if config.get("filters", {}).get("minimum fight number", 0) > 0:
-    invalid_fights = set(
-        data_processor.data[data_processor.data["num_fight"] < 5]["fight_id"]
+    split_date = pd.to_datetime(self.config["filters"]["split date"])
+    max_date = self.config.get("filters", {}).get(
+        "max_date", datetime.now().strftime("%Y-%m-%d")
     )
-else:
-    invalid_fights = set()
 
+    if early_split_date is not None:
+        early_train_fights = self.data_processor.data["fight_id"][
+            self.data_processor.data["event_date"] < split_date
+        ]
+        train_fights = self.data_processor.data["fight_id"][
+            (self.data_processor.data["event_date"] < split_date)
+            & (self.data_processor.data["event_date"] >= early_split_date)
+        ]
+    else:
+        train_fights = self.data_processor.data["fight_id"][
+            self.data_processor.data["event_date"] < split_date
+        ]
+        early_train_fights = set()
 
-# TODO check this, because we are using the inverse and naming it the same.
-# Consider creating an inverse, or whatever, maybe introduce it inside
-# of data_enhancer. with factor -1 (?)
-# minimum_notice_days = config.get("filters", {}).get("minimum notice days", 0)
-# if minimum_notice_days > 0:
-#     invalid_fights.update(
-#         data_processor.data[
-#             data_processor.data["notice_days"] > 1 / minimum_notice_days
-#         ]["fight_id"]
-#     )
-invalid_fights.update(
-    data_processor.data[data_processor.data["notice_days"] != 1 / 60]["fight_id"]
-)
-
-# %%
-early_split_date = pd.to_datetime(
-    config.get("filters", {}).get("early split date", None)
-)
-split_date = pd.to_datetime(config["filters"]["split date"])
-max_date = config.get("filters", {}).get(
-    "max_date", datetime.now().strftime("%Y-%m-%d")
-)
-
-
-if early_split_date is not None:
-    early_train_fights = data_processor.data["fight_id"][
-        data_processor.data["event_date"] < split_date
+    test_fights = self.data_processor.data["fight_id"][
+        (self.data_processor.data["event_date"] >= split_date)
+        & (self.data_processor.data["event_date"] <= max_date)
     ]
-    train_fights = data_processor.data["fight_id"][
-        (data_processor.data["event_date"] < split_date)
-        & (data_processor.data["event_date"] >= early_split_date)
-    ]
-else:
-    train_fights = data_processor.data["fight_id"][
-        data_processor.data["event_date"] < split_date
-    ]
-    early_train_fights = set()
 
-test_fights = data_processor.data["fight_id"][
-    (data_processor.data["event_date"] >= split_date)
-    & (data_processor.data["event_date"] <= max_date)
-]
+    early_train_fights = set(early_train_fights) - set(invalid_fights)
+    train_fights = set(train_fights) - set(invalid_fights)
+    test_fights = set(test_fights) - set(invalid_fights)
 
-early_train_fights = set(early_train_fights) - set(invalid_fights)
-train_fights = set(train_fights) - set(invalid_fights)
-test_fights = set(test_fights) - set(invalid_fights)
+    self.early_train = len(early_train_fights) > 0
 
-early_train = len(early_train_fights) > 0
+    # Loading datasets
+    dataset_cfg = self.config.get("dataset", {})
 
-# %%
-# Loading datasets
-dataset_cfg = config.get("dataset", {})
+    if dataset_cfg.get("class") is not None:
+        Dataset = getattr(ufcpredictor.datasets, dataset_cfg.get("class"))
+    else:
+        raise ValueError("No dataset specified in self.config file")
 
-if dataset_cfg.get("class") is not None:
-    Dataset = getattr(ufcpredictor.datasets, dataset_cfg.get("class"))
-else:
-    raise ValueError("No dataset specified in config file")
+    if self.early_train:
+        self.early_train_dataset = early_train_dataset = Dataset(
+            data_processor=self.data_processor,
+            fight_ids=early_train_fights,
+            **dataset_cfg.get("args", {}),
+        )
 
-
-if early_train:
-    early_train_dataset = Dataset(
-        data_processor=data_processor,
-        fight_ids=early_train_fights,
+    self.train_dataset = train_dataset = Dataset(
+        data_processor=self.data_processor,
+        fight_ids=train_fights,
         **dataset_cfg.get("args", {}),
     )
 
-train_dataset = Dataset(
-    data_processor=data_processor,
-    fight_ids=train_fights,
-    **dataset_cfg.get("args", {}),
-)
-
-test_dataset = Dataset(
-    data_processor=data_processor,
-    fight_ids=test_fights,
-    **dataset_cfg.get("args", {}),
-)
-
-# Loading forecast dataset
-
-forecast_dataset_cfg = config.get("forecast dataset", {})
-
-if forecast_dataset_cfg.get("class") is not None:
-    Dataset = getattr(ufcpredictor.datasets, forecast_dataset_cfg.get("class"))
-else:
-    raise ValueError("No dataset specified in config file")
-
-forecast_dataset = Dataset(
-    data_processor=data_processor,
-    **dataset_cfg.get("args", {}),
-)
-
-# %%
-# Initialize dataloaders
-
-batch_size = config["training"]["batch size"]
-
-if early_train:
-    early_train_dataloader = torch.utils.data.DataLoader(
-        early_train_dataset, batch_size=batch_size, shuffle=True
+    self.test_dataset = test_dataset = Dataset(
+        data_processor=self.data_processor,
+        fight_ids=test_fights,
+        **dataset_cfg.get("args", {}),
     )
 
-train_dataloader = torch.utils.data.DataLoader(
-    train_dataset, batch_size=batch_size, shuffle=True
-)
+    # Initialize dataloaders
 
-test_dataloader = torch.utils.data.DataLoader(
-    test_dataset, batch_size=batch_size, shuffle=False
-)
+    batch_size = self.config["training"]["batch size"]
+
+    if self.early_train:
+        self.early_train_dataloader = torch.utils.data.DataLoader(
+            early_train_dataset, batch_size=batch_size, shuffle=True
+        )
+
+    self.train_dataloader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=batch_size, shuffle=True
+    )
+
+    self.test_dataloader = torch.utils.data.DataLoader(
+        test_dataset, batch_size=batch_size, shuffle=False
+    )
+
+    # Setting random seed for reproducibility
+    seed = self.config["training"]["seed"]
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+
+    # Loading model
+
 
 # %%
-seed = config["training"]["seed"]
-torch.manual_seed(seed)
 
-random.seed(seed)
-np.random.seed(seed)
+# %%
+load_trainer(predictor)
+early_train_dataset = predictor.early_train_dataset
+train_dataset = predictor.train_dataset
+test_dataset = predictor.test_dataset
+
+early_train = True
+
+early_train_dataloader = predictor.early_train_dataloader
+train_dataloader = predictor.train_dataloader
+test_dataloader = predictor.test_dataloader
 
 # %%
 # Loading model
 
+self = predictor
+
 model_cfg = config.get("model", {})
 
 if model_cfg.get("class") is not None:
-    model = getattr(ufcpredictor.models, model_cfg["class"])(
+    self.model = getattr(ufcpredictor.models, model_cfg["class"])(
         **model_cfg.get("args", {}),
     )
 else:
     raise ValueError("Model class not defined")
 
 # Loading optimimzer
-optimizer_cfg = config.get("optimizer", {})
+optimizer_cfg = self.config.get("optimizer", {})
 
 if optimizer_cfg.get("class") is not None:
     optimizer = getattr(ufcpredictor.optimizers, optimizer_cfg["class"])(
-        model.parameters(),
+        self.model.parameters(),
         **optimizer_cfg.get("args", {}),
     )
 else:
     raise ValueError("Optimizer class not defined")
 
 # Loading scheduler
-scheduler_cfg = config.get("scheduler", {})
+scheduler_cfg = self.config.get("scheduler", {})
 
 if scheduler_cfg.get("class") is not None:
     scheduler = getattr(ufcpredictor.schedulers, scheduler_cfg["class"])(
@@ -248,7 +223,7 @@ else:
     raise ValueError("Scheduler class not defined")
 
 # Loading loss
-loss_cfg = config.get("loss", {})
+loss_cfg = self.config.get("loss", {})
 
 if loss_cfg.get("class") is not None:
     loss = getattr(ufcpredictor.loss_functions, loss_cfg["class"])(
@@ -257,16 +232,97 @@ if loss_cfg.get("class") is not None:
 else:
     raise ValueError("Loss class not defined")
 
-trainer = Trainer(
+trainer = trainer = Trainer(
     train_dataloader=train_dataloader,
     test_dataloader=test_dataloader,
-    model=model,
+    model=self.model,
     optimizer=optimizer,
     scheduler=scheduler,
     loss_fn=loss,
     mlflow_tracking=False,
     device=device,
 )
+
+
+# %%
+def load_models(self):
+
+    # Setting random seed for reproducibility
+    seed = predictor.config["training"]["seed"]
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+
+    model_cfg = self.config.get("model", {})
+
+    if model_cfg.get("class") is not None:
+        self.model = getattr(ufcpredictor.models, model_cfg["class"])(
+            **model_cfg.get("args", {}),
+        )
+    else:
+        raise ValueError("Model class not defined")
+
+    # Loading optimimzer
+    optimizer_cfg = self.config.get("optimizer", {})
+
+    if optimizer_cfg.get("class") is not None:
+        optimizer = getattr(ufcpredictor.optimizers, optimizer_cfg["class"])(
+            self.model.parameters(),
+            **optimizer_cfg.get("args", {}),
+        )
+    else:
+        raise ValueError("Optimizer class not defined")
+
+    # Loading scheduler
+    scheduler_cfg = self.config.get("scheduler", {})
+
+    if scheduler_cfg.get("class") is not None:
+        scheduler = getattr(ufcpredictor.schedulers, scheduler_cfg["class"])(
+            optimizer,
+            **scheduler_cfg.get("args", {}),
+        )
+    else:
+        scheduler = None
+
+    # Loading loss
+    loss_cfg = self.config.get("loss", {})
+
+    if loss_cfg.get("class") is not None:
+        loss = getattr(ufcpredictor.loss_functions, loss_cfg["class"])(
+            **loss_cfg.get("args", {}),
+        )
+    else:
+        raise ValueError("Loss class not defined")
+
+    self.trainer = Trainer(
+        train_dataloader=self.train_dataloader,
+        test_dataloader=self.test_dataloader,
+        model=self.model,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        loss_fn=loss,
+        mlflow_tracking=False,
+        device=self.device,
+    )
+
+
+# load_models(predictor)
+# trainer = predictor.trainer
+
+# %%
+
+# %%
+
+# %%
+trainer.train(
+    epochs=1,
+    train_dataloader=early_train_dataloader,
+    test_dataloader=test_dataloader,
+)
+
+# %%
+
+# %%
 
 # %%
 if early_train:

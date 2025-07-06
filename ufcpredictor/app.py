@@ -406,8 +406,8 @@ def train_model(
     model, optimizer, scheduler = get_model_parameters(fighter_fight_statistics, fight_parameters)
 
     trainer = Trainer(
-        train_loader=train_dataloader,
-        test_loader=test_dataloader,
+        train_dataloader=train_dataloader,
+        test_dataloader=test_dataloader,
         model=model,
         optimizer=optimizer,
         scheduler=scheduler,
@@ -416,8 +416,8 @@ def train_model(
 
     trainer.train(
         epochs=5,
-        train_loader=early_train_dataloader,
-        test_loader=test_dataloader,
+        train_dataloader=early_train_dataloader,
+        test_dataloader=test_dataloader,
     )
 
     trainer.train(epochs=30)

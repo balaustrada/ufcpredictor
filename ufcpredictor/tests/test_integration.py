@@ -181,15 +181,15 @@ class TestSimpleModel(unittest.TestCase):
         )
 
         trainer = Trainer(
-            train_loader=train_dataloader,
-            test_loader=None,
+            train_dataloader=train_dataloader,
+            test_dataloader=None,
             model=model,
             optimizer=optimizer,
             scheduler=scheduler,
             loss_fn=BettingLoss(),
         )
 
-        trainer.train(epochs=1, train_loader=early_train_dataloader)
+        trainer.train(epochs=1, train_dataloader=early_train_dataloader)
         trainer.train(epochs=10)
 
         p1, p2 = forecast_dataset.get_single_forecast_prediction(
@@ -457,8 +457,8 @@ class TestSimpleModel(unittest.TestCase):
         )
 
         trainer = Trainer(
-            train_loader=train_dataloader,
-            test_loader=None,
+            train_dataloader=train_dataloader,
+            test_dataloader=None,
             model=model,
             optimizer=optimizer,
             scheduler=scheduler,
@@ -466,7 +466,7 @@ class TestSimpleModel(unittest.TestCase):
             mlflow_tracking=False,
         )
 
-        trainer.train(epochs=1, train_loader=early_train_dataloader)
+        trainer.train(epochs=1, train_dataloader=early_train_dataloader)
         trainer.train(epochs=10)
 
         p1, p2 = forecast_dataset.get_single_forecast_prediction(

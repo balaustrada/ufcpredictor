@@ -9,19 +9,34 @@ to calculate the benefit of a bet.
 
 from __future__ import annotations
 
+from abc import ABC
 from typing import TYPE_CHECKING
-
-from ufcpredictor.datasets import DatasetWithTimeEvolution
 
 import torch
 import torch.nn.functional as F
 from torch import nn
 
+from ufcpredictor.datasets import DatasetWithTimeEvolution
+
 if TYPE_CHECKING:  # pragma: no cover
     from typing import Any, Dict, List, Optional, Tuple
 
+class Model(nn.Module, ABC):
+    """
+    Base class for all models in the ufcpredictor package.
 
-class FighterNet(nn.Module):
+    This class inherits from torch.(Model) and serves as a base class for all
+    models in the ufcpredictor package. It can be extended to create custom models
+    for predicting fight outcomes.
+    """
+    # shouldn't be instantiated directly, should raise error
+    def __init__(self) -> None:
+        """
+        Initialize the Model class.
+        """
+        super(Model, self).__init__()
+
+class FighterNet(Model):
     """
     A neural network model designed to predict the outcome of a fight based on a single
     fighter's characteristics.
@@ -80,7 +95,7 @@ class FighterNet(nn.Module):
         return x
 
 
-class SymmetricFightNet(nn.Module):
+class SymmetricFightNet(Model):
     """
     A neural network model designed to predict the outcome of a fight between two
     fighters.
@@ -196,7 +211,7 @@ class SymmetricFightNet(nn.Module):
         return x
 
 
-class SimpleFightNet(nn.Module):
+class SimpleFightNet(Model):
     """
     A neural network model designed to predict the outcome of a fight between two
     fighters.
@@ -290,7 +305,7 @@ class SimpleFightNet(nn.Module):
         return x
 
 
-class SimpleFightNetWithTimeEvolution(nn.Module):
+class SimpleFightNetWithTimeEvolution(Model):
     """
     A neural network model designed to predict the outcome of a fight between
     two fighters.
@@ -437,7 +452,7 @@ class SimpleFightNetWithTimeEvolution(nn.Module):
         return x
 
 
-class FighterStateEvolver(nn.Module):
+class FighterStateEvolver(Model):
     """
     A neural network model designed to predict the evolution of a fighter's state after a fight.
 

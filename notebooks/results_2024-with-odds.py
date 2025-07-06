@@ -212,8 +212,8 @@ for event_date in sorted(event_dates[event_dates > starting_date]):
     )
 
     trainer = Trainer(
-        train_loader=train_dataloader,
-        test_loader=None,
+        train_dataloader=train_dataloader,
+        test_dataloader=None,
         model=model,
         optimizer=optimizer,
         scheduler=scheduler,
@@ -223,12 +223,12 @@ for event_date in sorted(event_dates[event_dates > starting_date]):
     # First train
     trainer.train(
         epochs=5,
-        train_loader=early_train_dataloader,
+        train_dataloader=early_train_dataloader,
         silent=True,
     )
 
     # Second quality train
-    trainer.train(epochs=3, train_loader=train_dataloader, silent=True)
+    trainer.train(epochs=3, train_dataloader=train_dataloader, silent=True)
 
     # Now the model is trained, let's load the ForecastDataset and predict
     predict_dataset = ForecastDataset(

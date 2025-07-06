@@ -1,16 +1,19 @@
+import shutil
 import unittest
 from pathlib import Path
 
 import numpy as np
+import re
 import torch
 
+from ufcpredictor import UFCPredictor
 from ufcpredictor.data_aggregator import WeightedDataAggregator
 from ufcpredictor.data_enhancers import RankedFields, SumFlexibleELO
 from ufcpredictor.data_processor import DataProcessor
 from ufcpredictor.datasets import (
     BasicDataset,
-    ForecastDataset,
     DatasetWithTimeEvolution,
+    ForecastDataset,
     ForecastDatasetTimeEvolution,
 )
 from ufcpredictor.loss_functions import BettingLoss
@@ -482,6 +485,128 @@ class TestSimpleModel(unittest.TestCase):
 
         self.assertAlmostEqual(float(p1), 0.4766078, places=3)
         self.assertAlmostEqual(float(p2), 0.5271908, places=3)
+
+
+class TestModelUsingConfig(unittest.TestCase):
+    def setUp(self):
+        # Config file is under THIS_DIR / "test_files" / "config_simple.yaml"
+        # I need to copy this file, and change inside of it the data_folder to point
+        # to THIS_DIR / "test_files" it appears twice in the file
+
+        config_file = THIS_DIR / "test_files" / "config_simple.yaml"
+        # copy file into /tmp and edit it to modify lines
+
+        self.temp_config_file = Path("/tmp/config_simple.yaml")
+        shutil.copy(config_file, self.temp_config_file)
+
+        # use read the file as read fieldata = file.read() then use
+        # .replace(pattern, replacement) then save
+        with open(self.temp_config_file, "r") as file:
+            filedata = file.read()
+
+        # Replace the data_folder line
+        filedata = filedata.replace("data_folder_replace", f"{THIS_DIR / 'test_files'}")
+
+        with open(self.temp_config_file, "w") as file:
+            file.write(filedata)
+
+    def tearDown(self):
+        # Remove the temporary config file if it exists
+        if self.temp_config_file.exists():
+            self.temp_config_file.unlink()
+
+    def test_it_with_module(self):
+        predictor = UFCPredictor(
+            config="/tmp/config_simple.yaml",
+            device="cpu",
+        )
+        predictor.load_trainer()
+        predictor.train_model()
+        predictor.load_forecast_dataset()
+
+        p1, p2 = predictor.forecast_dataset.get_single_forecast_prediction(
+            fighter_name="47ffb45b4bac 6156bda3868d",
+            opponent_name="5e228b7c95fd f1140f24a3a9",
+            event_date="2024-11-11",
+            odds1=1.1,
+            odds2=1.2,
+            model=predictor.model,
+            fight_parameters_values=[5, 140],
+        )
+
+        self.assertAlmostEqual(p1, 0.5602599, places=3)
+        self.assertAlmostEqual(p2, 0.4389913, places=3)
+
+    def test_save_model(self):
+        with open(self.temp_config_file, "r") as file:
+            filedata = file.read()
+
+        # I want to replace the full line that contains simple_fighter_network.pt into
+        # /tmp/simple_fighter_network.pt
+        # The full line, not just the matching
+        filedata = re.sub(
+            r"model filename: .+",
+            "model filename: /tmp/simple_fighter_network.pt",
+            filedata,
+        )
+
+        with open(self.temp_config_file, "w") as file:
+            file.write(filedata)
+
+        predictor = UFCPredictor(
+            config="/tmp/config_simple.yaml",
+            device="cpu",
+        )
+        predictor.load_trainer()
+        predictor.train_model()
+
+        predictor.save_model()
+
+        # Check that the saved model matches the one in test files
+        saved_model_path = Path("/tmp/simple_fighter_network.pt")
+        expected_model_path = THIS_DIR / "test_files" / "simple_fighter_network.pt"
+
+        self.assertTrue(saved_model_path.exists(), "Saved model file does not exist")
+        self.assertTrue(
+            expected_model_path.exists(), "Expected model file does not exist"
+        )
+
+        # Load both models and compare their state_dicts
+        saved_model = torch.load(saved_model_path, map_location="cpu")
+        expected_model = torch.load(expected_model_path, map_location="cpu")
+
+        # Compare the tensors using torch
+        # This will check if the tensors are equal
+        for key in saved_model:
+            self.assertTrue(
+                torch.equal(
+                    saved_model[key], expected_model[key]
+                ),
+                f"Tensor mismatch for key: {key}",
+            )
+
+    def test_load_model(self):
+        predictor = UFCPredictor(
+            config="/tmp/config_simple.yaml",
+            device="cpu",
+        )
+
+        predictor.load_model()
+
+        predictor.load_forecast_dataset()
+
+        p1, p2 = predictor.forecast_dataset.get_single_forecast_prediction(
+            fighter_name="47ffb45b4bac 6156bda3868d",
+            opponent_name="5e228b7c95fd f1140f24a3a9",
+            event_date="2024-11-11",
+            odds1=1.1,
+            odds2=1.2,
+            model=predictor.model,
+            fight_parameters_values=[5, 140],
+        )
+
+        self.assertAlmostEqual(p1, 0.5602599, places=3)
+        self.assertAlmostEqual(p2, 0.4389913, places=3)
 
 
 if __name__ == "__main__":  # pragma: no cover

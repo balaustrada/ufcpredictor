@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 class UFCPredictor:
     config: Path | str
-    device: torch.device | str
+    device: torch.device
     early_train: bool = False
 
     data_processor: ufcpredictor.data_processor.DataProcessor | None = None
@@ -43,7 +43,9 @@ class UFCPredictor:
         self.config = yaml.safe_load(Path(config).read_text())
 
         self.device = torch.device(device)
-        if self.device.type == "cuda" and not torch.cuda.is_available():
+        if (
+            self.device.type == "cuda" and not torch.cuda.is_available()
+        ):  # pragma: no cover
             raise ValueError("CUDA is not available on this device.")
 
         self.load_data_processor()
@@ -60,7 +62,7 @@ class UFCPredictor:
                     "fight_id"
                 ]
             )
-        else:
+        else:  # pragma: no cover
             invalid_fights = set()
 
         # TODO check this, because we are using the inverse and naming it the same.
@@ -76,19 +78,24 @@ class UFCPredictor:
         minimum_notice_days = self.config.get("filters", {}).get(
             "minimum notice days", 1
         )
-        invalid_fights.update(
-            self.data_processor.data[
-                self.data_processor.data["notice_days"] > 1 / minimum_notice_days
-            ]["fight_id"]
-        )
+        if minimum_notice_days > 0:  # pragma: no cover
+            invalid_fights.update(
+                self.data_processor.data[
+                    self.data_processor.data["notice_days"] > 1 / minimum_notice_days
+                ]["fight_id"]
+            )
 
         early_split_date = pd.to_datetime(
             self.config.get("filters", {}).get("early split date", None)
         )
         split_date = pd.to_datetime(self.config["filters"]["split date"])
-        max_date = self.config.get("filters", {}).get(
-            "max_date", datetime.now().strftime("%Y-%m-%d")
+        max_date = pd.to_datetime(
+            self.config.get("filters", {}).get(
+                "max date", datetime.now().strftime("%Y-%m-%d")
+            )
         )
+
+        include_test = split_date != max_date
 
         if early_split_date is not None:
             early_train_fights = self.data_processor.data["fight_id"][
@@ -98,20 +105,21 @@ class UFCPredictor:
                 (self.data_processor.data["event_date"] < split_date)
                 & (self.data_processor.data["event_date"] >= early_split_date)
             ]
-        else:
+        else:  # pragma: no cover
             train_fights = self.data_processor.data["fight_id"][
                 self.data_processor.data["event_date"] < split_date
             ]
             early_train_fights = set()
 
-        test_fights = self.data_processor.data["fight_id"][
-            (self.data_processor.data["event_date"] >= split_date)
-            & (self.data_processor.data["event_date"] <= max_date)
-        ]
-
         early_train_fights = set(early_train_fights) - set(invalid_fights)
         train_fights = set(train_fights) - set(invalid_fights)
-        test_fights = set(test_fights) - set(invalid_fights)
+
+        if include_test:
+            test_fights = self.data_processor.data["fight_id"][
+                (self.data_processor.data["event_date"] >= split_date)
+                & (self.data_processor.data["event_date"] <= max_date)
+            ]
+            test_fights = set(test_fights) - set(invalid_fights)
 
         self.early_train = len(early_train_fights) > 0
 
@@ -120,7 +128,7 @@ class UFCPredictor:
 
         if dataset_cfg.get("class") is not None:
             Dataset = getattr(ufcpredictor.datasets, dataset_cfg.get("class"))
-        else:
+        else:  # pragma: no cover
             raise ValueError("No dataset specified in self.config file")
 
         if self.early_train:
@@ -136,11 +144,12 @@ class UFCPredictor:
             **dataset_cfg.get("args", {}),
         )
 
-        self.test_dataset = Dataset(
-            data_processor=self.data_processor,
-            fight_ids=test_fights,
-            **dataset_cfg.get("args", {}),
-        )
+        if include_test:
+            self.test_dataset = Dataset(
+                data_processor=self.data_processor,
+                fight_ids=test_fights,
+                **dataset_cfg.get("args", {}),
+            )
 
         # Initialize dataloaders
 
@@ -155,9 +164,12 @@ class UFCPredictor:
             self.train_dataset, batch_size=batch_size, shuffle=True
         )
 
-        self.test_dataloader = torch.utils.data.DataLoader(
-            self.test_dataset, batch_size=batch_size, shuffle=False
-        )
+        if include_test:
+            self.test_dataloader = torch.utils.data.DataLoader(
+                self.test_dataset, batch_size=batch_size, shuffle=False
+            )
+        else:  # pragma: no cover
+            self.test_dataloader = None
 
         # Setting random seed for reproducibility
         seed = self.config["training"]["seed"]
@@ -173,7 +185,7 @@ class UFCPredictor:
             self.model = getattr(ufcpredictor.models, model_cfg["class"])(
                 **model_cfg.get("args", {}),
             )
-        else:
+        else:  # pragma: no cover
             raise ValueError("Model class not defined")
 
         # Loading optimimzer
@@ -184,7 +196,7 @@ class UFCPredictor:
                 self.model.parameters(),
                 **optimizer_cfg.get("args", {}),
             )
-        else:
+        else:  # pragma: no cover
             raise ValueError("Optimizer class not defined")
 
         # Loading scheduler
@@ -195,7 +207,7 @@ class UFCPredictor:
                 optimizer,
                 **scheduler_cfg.get("args", {}),
             )
-        else:
+        else:  # pragma: no cover
             scheduler = None
 
         # Loading loss
@@ -205,7 +217,7 @@ class UFCPredictor:
             loss = getattr(ufcpredictor.loss_functions, loss_cfg["class"])(
                 **loss_cfg.get("args", {}),
             )
-        else:
+        else:  # pragma: no cover
             raise ValueError("Loss class not defined")
 
         self.trainer = Trainer(
@@ -228,7 +240,7 @@ class UFCPredictor:
 
         if forecast_dataset_cfg.get("class") is not None:
             Dataset = getattr(ufcpredictor.datasets, forecast_dataset_cfg.get("class"))
-        else:
+        else:  # pragma: no cover
             raise ValueError("No dataset specified in config file")
 
         self.forecast_dataset = Dataset(
@@ -241,7 +253,7 @@ class UFCPredictor:
         Trains the model using the trainer with the specified configuration.
         """
         # Load trainer (if not already loaded)
-        if not self.trainer:
+        if not self.trainer:  # pragma: no cover
             self.load_trainer()
 
         if self.early_train:
@@ -260,7 +272,7 @@ class UFCPredictor:
         """
         Saves the trained model to the specified path in the configuration.
         """
-        if not self.model:
+        if not self.model:  # pragma: no cover
             raise ValueError(
                 "Model is not loaded. Please train the model or load it from file first."
             )
@@ -269,9 +281,11 @@ class UFCPredictor:
 
         if model_filename:
             model_filename = Path(model_filename)
-            if not (model_filename.is_absolute() or model_filename.parent != Path(".")):
+            if not (
+                model_filename.is_absolute() or model_filename.parent != Path(".")
+            ):  # pragma: no cover
                 model_filename = files(pretrained_models).joinpath(model_filename)
-        else:
+        else:  # pragma: no cover
             raise ValueError("Model filename not specified in the configuration.")
 
         torch.save(
@@ -288,19 +302,21 @@ class UFCPredictor:
             self.model = getattr(ufcpredictor.models, model_cfg["class"])(
                 **model_cfg.get("args", {}),
             )
-        else:
+        else:  # pragma: no cover
             raise ValueError("Model class not defined")
 
         model_filename = self.config.get("general", {}).get("model filename", None)
 
         if model_filename:
             model_filename = Path(model_filename)
-            if not (model_filename.is_absolute() or model_filename.parent != Path(".")):
+            if not (
+                model_filename.is_absolute() or model_filename.parent != Path(".")
+            ):  # pragma: no cover
                 model_filename = files(pretrained_models).joinpath(model_filename)
-        else:
+        else:  # pragma: no cover
             raise ValueError("Model filename not specified in the configuration.")
 
-        if not model_filename.exists():
+        if not model_filename.exists(): # pragma: no cover
             raise FileNotFoundError(f"Model file {model_filename} does not exist.")
 
         self.model.load_state_dict(torch.load(model_filename, weights_only=True))
@@ -319,7 +335,7 @@ class UFCPredictor:
             data_aggregator = getattr(
                 ufcpredictor.data_aggregator, data_aggregator_cfg.get("class")
             )(**data_aggregator_cfg.get("args", {}))
-        else:
+        else: # pragma: no cover
             raise Exception("Missing data_aggregator class")
 
         # Initialize data enhancers
@@ -344,7 +360,7 @@ class UFCPredictor:
                 data_enhancers=data_enhancers,
                 **data_processor_cfg.get("args", {}),
             )
-        else:
+        else: # pragma: no cover
             raise Exception("Missing data_processor class")
 
         # Load data in data processor

@@ -28,7 +28,6 @@ class UFCPredictor:
     device: torch.device | str
     early_train: bool = False
 
-
     data_processor: ufcpredictor.data_processor.DataProcessor | None = None
     model: ufcpredictor.models.Model | None = None
     trainer: Trainer | None = None
@@ -74,10 +73,13 @@ class UFCPredictor:
         #             self.data_processor.data["notice_days"] > 1 / minimum_notice_days
         #         ]["fight_id"]
         #     )
+        minimum_notice_days = self.config.get("filters", {}).get(
+            "minimum notice days", 1
+        )
         invalid_fights.update(
-            self.data_processor.data[self.data_processor.data["notice_days"] != 1 / 60][
-                "fight_id"
-            ]
+            self.data_processor.data[
+                self.data_processor.data["notice_days"] > 1 / minimum_notice_days
+            ]["fight_id"]
         )
 
         early_split_date = pd.to_datetime(
@@ -259,7 +261,9 @@ class UFCPredictor:
         Saves the trained model to the specified path in the configuration.
         """
         if not self.model:
-            raise ValueError("Model is not loaded. Please train the model or load it from file first.")
+            raise ValueError(
+                "Model is not loaded. Please train the model or load it from file first."
+            )
 
         model_filename = self.config.get("general", {}).get("model filename", None)
 
@@ -270,7 +274,9 @@ class UFCPredictor:
         else:
             raise ValueError("Model filename not specified in the configuration.")
 
-        torch.save(self.model.state_dict(), Path("ufcpredictor/models") / model_filename)
+        torch.save(
+            self.model.state_dict(), Path("ufcpredictor/models") / model_filename
+        )
 
     def load_model(self) -> None:
         """
@@ -293,7 +299,7 @@ class UFCPredictor:
                 model_filename = files(pretrained_models).joinpath(model_filename)
         else:
             raise ValueError("Model filename not specified in the configuration.")
-        
+
         if not model_filename.exists():
             raise FileNotFoundError(f"Model file {model_filename} does not exist.")
 

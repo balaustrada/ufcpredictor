@@ -50,7 +50,7 @@ class FighterNet(Model):
 
     def __init__(
         self,
-        input_size: int,
+        fighter_fight_statistics: list[str],
         dropout_prob: float = 0.0,
         network_shape: List[int] = [128, 256, 512, 256, 127],
     ) -> None:
@@ -59,11 +59,13 @@ class FighterNet(Model):
         probability.
 
         Args:
-            input_size: The size of the input to the model.
-            dropout_prob: The probability of dropout.
+            fighter_fight_statistics: Statistics of the fighters for the fight.
+            fight_parameters: Fight parameters for the fight, such as weight class.
             network_shape: Shape of the network layers (except input layer).
         """
         super(FighterNet, self).__init__()
+
+        input_size = len(fighter_fight_statistics)
         self.network_shape = [input_size] + network_shape
         self.fcs = nn.ModuleList(
             [
@@ -116,8 +118,8 @@ class SymmetricFightNet(Model):
 
     def __init__(
         self,
-        input_size: int,
-        input_size_f: int,
+        fighter_fight_statistics: list[str],
+        fight_parameters: list[str],
         dropout_prob: float = 0.0,
         network_shape: List[int] = [512, 128, 64, 1],
         fighter_network_shape: Optional[List[int]] = None,
@@ -127,8 +129,8 @@ class SymmetricFightNet(Model):
         probability.
 
         Args:
-            input_size: The size of the input to the model.
-            dropout_prob: The probability of dropout.
+            fighter_fight_statistics: Statistics of the fighters for the fight.
+            fight_parameters: Fight parameters for the fight, such as weight class.
             network_shape: Shape of the network layers (except input layer).
             fighter_network_shape: Shape of the network layers for the fighter
                 network (except input layer).
@@ -136,7 +138,7 @@ class SymmetricFightNet(Model):
         super(SymmetricFightNet, self).__init__()
 
         fighter_network_args: Dict[str, Any] = {
-            "input_size": input_size,
+            "fighter_fight_statistics": fighter_fight_statistics,
             "dropout_prob": dropout_prob,
         }
         if fighter_network_shape is not None:  # pragma: no cover
@@ -146,7 +148,7 @@ class SymmetricFightNet(Model):
         self.fighter_network_shape = self.fighter_net.network_shape
 
         self.network_shape = [
-            self.fighter_network_shape[-1] * 2 + 2 + input_size_f
+            self.fighter_network_shape[-1]*2 + 2 + len(fight_parameters)
         ] + network_shape
 
         self.fcs = nn.ModuleList(
@@ -229,7 +231,8 @@ class SimpleFightNet(Model):
 
     def __init__(
         self,
-        input_size: int,
+        fighter_fight_statistics: list[str],
+        fight_parameters: list[str],
         dropout_prob: float = 0.0,
         network_shape: List[int] = [1024, 512, 256, 128, 64, 1],
     ):
@@ -238,15 +241,18 @@ class SimpleFightNet(Model):
         probability.
 
         Args:
-            input_size: The size of the input to the model. This is
-                (X1 + X2 + X3 + 2) meaning the input stats for the first fighter,
-                the second fighter, the fight parameters and the odds for both
-                fighters.
+            fighter_fight_statistics: Statistics of the fighters for the fight.
+            fight_parameters: Fight parameters for the fight, such as weight class.
             dropout_prob: The probability of dropout.
             network_shape: Shape of the network layers (except input layer).
         """
         super().__init__()
 
+        input_size = (
+            2*len(fighter_fight_statistics)
+            + len(fight_parameters)
+            + 2  # odds for the fighter and opponent
+        )
         self.network_shape = [
             input_size,
         ] + network_shape

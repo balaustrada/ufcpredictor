@@ -169,7 +169,8 @@ class TestSimpleModel(unittest.TestCase):
         np.random.seed(seed)
 
         model = SimpleFightNet(
-            input_size=len(train_dataset.fighter_fight_statistics) * 2 + len(train_dataset.fight_parameters) + 2,
+            fighter_fight_statistics=train_dataset.fighter_fight_statistics,
+            fight_parameters=train_dataset.fight_parameters,
             dropout_prob=0.05,  # 0.25
         )
 

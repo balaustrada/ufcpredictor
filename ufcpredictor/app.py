@@ -46,8 +46,8 @@ def get_model_parameters(
     np.random.seed(seed)
 
     model = SymmetricFightNet(
-        input_size=len(fighter_fight_statistics),
-        input_size_f=len(fight_parameters),
+        fighter_fight_statistics=fighter_fight_statistics,
+        fight_parameters=fight_parameters,
         dropout_prob=0.35,
         # fighter_network_shape=[256, 512, 1024, 512],
         # network_shape=[2048, 1024, 512, 128, 64, 1],

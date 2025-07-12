@@ -195,6 +195,7 @@ class TestSimpleModel(unittest.TestCase):
 
         trainer.train(epochs=1, train_dataloader=early_train_dataloader)
         trainer.train(epochs=10)
+        model.eval()
 
         p1, p2 = forecast_dataset.get_single_forecast_prediction(
             fighter_name="47ffb45b4bac 6156bda3868d",
@@ -206,8 +207,8 @@ class TestSimpleModel(unittest.TestCase):
             fight_parameters_values=[5, 140],
         )
 
-        self.assertAlmostEqual(p1, 0.2658733, places=3)
-        self.assertAlmostEqual(p2, 0.7346755, places=3)
+        self.assertAlmostEqual(p1, 0.48208007, places=3)
+        self.assertAlmostEqual(p2, 0.5160773, places=3)
 
     def test_time_evolution(self):
         data_processor_kwargs = {
@@ -472,6 +473,7 @@ class TestSimpleModel(unittest.TestCase):
 
         trainer.train(epochs=1, train_dataloader=early_train_dataloader)
         trainer.train(epochs=10)
+        model.eval()
 
         p1, p2 = forecast_dataset.get_single_forecast_prediction(
             fighter_name="47ffb45b4bac 6156bda3868d",
@@ -483,8 +485,8 @@ class TestSimpleModel(unittest.TestCase):
             fight_parameters_values=[5, 140],
         )
 
-        self.assertAlmostEqual(float(p1), 0.4766078, places=3)
-        self.assertAlmostEqual(float(p2), 0.5271908, places=3)
+        self.assertAlmostEqual(float(p1), 0.5147984, places=3)
+        self.assertAlmostEqual(float(p2), 0.5147038, places=3)
 
 
 class TestModelUsingConfig(unittest.TestCase):
@@ -523,6 +525,7 @@ class TestModelUsingConfig(unittest.TestCase):
         predictor.load_trainer()
         predictor.train_model()
         predictor.load_forecast_dataset()
+        predictor.model.eval()
 
         p1, p2 = predictor.forecast_dataset.get_single_forecast_prediction(
             fighter_name="47ffb45b4bac 6156bda3868d",
@@ -534,8 +537,8 @@ class TestModelUsingConfig(unittest.TestCase):
             fight_parameters_values=[5, 140],
         )
 
-        self.assertAlmostEqual(p1, 0.5602599, places=3)
-        self.assertAlmostEqual(p2, 0.4389913, places=3)
+        self.assertAlmostEqual(p1, 0.52276415, places=3)
+        self.assertAlmostEqual(p2, 0.4773013, places=3)
 
     def test_save_model(self):
         with open(self.temp_config_file, "r") as file:
@@ -592,8 +595,8 @@ class TestModelUsingConfig(unittest.TestCase):
         )
 
         predictor.load_model()
-
         predictor.load_forecast_dataset()
+        predictor.model.eval()
 
         p1, p2 = predictor.forecast_dataset.get_single_forecast_prediction(
             fighter_name="47ffb45b4bac 6156bda3868d",
@@ -605,8 +608,8 @@ class TestModelUsingConfig(unittest.TestCase):
             fight_parameters_values=[5, 140],
         )
 
-        self.assertAlmostEqual(p1, 0.5602599, places=3)
-        self.assertAlmostEqual(p2, 0.4389913, places=3)
+        self.assertAlmostEqual(p1, 0.5227641, places=3)
+        self.assertAlmostEqual(p2, 0.4773013, places=3)
 
 
 if __name__ == "__main__":  # pragma: no cover

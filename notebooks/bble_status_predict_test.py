@@ -372,8 +372,8 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
 )
 
 trainer = Trainer(
-    train_loader=train_dataloader,
-    test_loader=test_dataloader,
+    train_dataloader=train_dataloader,
+    test_dataloader=test_dataloader,
     model=model,
     optimizer=optimizer,
     scheduler=scheduler,
@@ -385,8 +385,8 @@ trainer = Trainer(
 # %%
 trainer.train(
     epochs=10,
-    train_loader=early_train_dataloader,
-    test_loader=test_dataloader,
+    train_dataloader=early_train_dataloader,
+    test_dataloader=test_dataloader,
 )
 
 # %%

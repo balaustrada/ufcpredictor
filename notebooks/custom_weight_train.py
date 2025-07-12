@@ -248,8 +248,8 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
 )
 
 trainer = Trainer(
-    train_loader = train_dataloader,
-    test_loader = test_dataloader,
+    train_dataloader = train_dataloader,
+    test_dataloader = test_dataloader,
     model = model,
     optimizer = optimizer,
     scheduler= scheduler,
@@ -260,8 +260,8 @@ trainer = Trainer(
 
 # trainer.train(
 #     epochs=3,
-#     train_loader=early_train_dataloader,
-#     test_loader=test_dataloader,
+#     train_dataloader=early_train_dataloader,
+#     test_dataloader=test_dataloader,
 # )
 
 # %%
@@ -332,23 +332,23 @@ for weight_class in weight_classes:
     )
 
     trainer = Trainer(
-        train_loader = train_dataloader,
-        test_loader = test_dataloader,
+        train_dataloader = train_dataloader,
+        test_dataloader = test_dataloader,
         model = model,
         optimizer = optimizer,
         scheduler= scheduler,
         loss_fn =BettingLoss(),
         mlflow_tracking=False,
     )   
-    trainer.train(epochs=15, train_loader=early_train_dataloader,silent=True)
+    trainer.train(epochs=15, train_dataloader=early_train_dataloader,silent=True)
     trainer.train(epochs=10, silent=True)
 
 
     
         
     trainers[weight_class] = Trainer(
-        train_loader = wc_dataloader,
-        test_loader = wc_test_dataloader,
+        train_dataloader = wc_dataloader,
+        test_dataloader = wc_test_dataloader,
         model = model,
         optimizer = optimizer,
         scheduler= scheduler,
@@ -357,8 +357,8 @@ for weight_class in weight_classes:
     )
     trainers[weight_class].train(
         epochs=5,
-        train_loader=wc_early_dataloader,
-        test_loader=wc_test_dataloader,
+        train_dataloader=wc_early_dataloader,
+        test_dataloader=wc_test_dataloader,
         silent=True,
     )
     trainers[weight_class].train(epochs=30, silent=True)
@@ -374,7 +374,7 @@ weight_classes
 #torch.save(model.state_dict(), 'model.pth')
 
 # %%
-trainers[weight_class].test_loader.dataset
+trainers[weight_class].test_dataloader.dataset
 
 # %%
 
@@ -385,7 +385,7 @@ for weight_class in weight_classes:
     print(weight_class)
     stats.append(PredictionPlots.show_fight_prediction_detail_from_dataset(
         model=trainers[weight_class].model,
-        dataset=trainers[weight_class].test_loader.dataset,
+        dataset=trainers[weight_class].test_dataloader.dataset,
         fight_ids=test_dataset.data_processor.data["fight_id"][test_dataset.data_processor.data["weight_class"] == weight_class],
         print_info=False,
         show_plot=True,

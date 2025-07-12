@@ -11,10 +11,13 @@ from ufcpredictor.models import FighterNet, SymmetricFightNet
 
 class TestFighterNet(unittest.TestCase):
     def setUp(self):
-        self.input_size = 10  # Example input size
+        # Create 10 random strings as statistics
+        self.input_size = 10
+        fighter_fight_statistics = [f"stat_{i}" for i in range(self.input_size)]
         self.dropout_prob = 0.5
         self.model = FighterNet(
-            input_size=self.input_size, dropout_prob=self.dropout_prob
+            fighter_fight_statistics=fighter_fight_statistics,
+            dropout_prob=self.dropout_prob,
         )
 
     def test_forward_pass(self):
@@ -37,20 +40,23 @@ class TestSymmetricFightNet(unittest.TestCase):
         torch.manual_seed(seed)
         random.seed(seed)
         np.random.seed(seed)
-        self.input_size = 10  # Example input size
+        # Crate 10 random strings as statistics
+        self.fighter_fight_statistics = [f"stat_{i}" for i in range(4)]
+        self.fight_parameters = []
+        self.input_size = 10
         self.dropout_prob = 0.5
         self.model = SymmetricFightNet(
-            input_size=self.input_size,
-            input_size_f=0,
+            fighter_fight_statistics=self.fighter_fight_statistics,
+            fight_parameters=self.fight_parameters,
             dropout_prob=self.dropout_prob,
         )
 
     def test_forward_pass(self):
         # Create dummy input tensors of shape (batch_size, input_size)
         batch_size = 32
-        X1 = torch.randn(batch_size, self.input_size)
-        X2 = torch.randn(batch_size, self.input_size)
-        X3 = torch.empty(batch_size, 0)
+        X1 = torch.randn(batch_size, len(self.fighter_fight_statistics))
+        X2 = torch.randn(batch_size, len(self.fighter_fight_statistics))
+        X3 = torch.empty(batch_size, len(self.fight_parameters))
         odds1 = torch.randn(batch_size, 1)
         odds2 = torch.randn(batch_size, 1)
 
@@ -63,9 +69,9 @@ class TestSymmetricFightNet(unittest.TestCase):
     def test_symmetric_behavior(self):
         # Check if symmetric inputs produce consistent outputs
         batch_size = 32
-        X1 = torch.randn(batch_size, self.input_size)
-        X2 = torch.randn(batch_size, self.input_size)
-        X3 = torch.empty(batch_size, 0)
+        X1 = torch.randn(batch_size, len(self.fighter_fight_statistics))
+        X2 = torch.randn(batch_size, len(self.fighter_fight_statistics))
+        X3 = torch.empty(batch_size, len(self.fight_parameters))
         odds1 = torch.randn(batch_size, 1)
         odds2 = torch.randn(batch_size, 1)
 
@@ -80,9 +86,9 @@ class TestSymmetricFightNet(unittest.TestCase):
 
     def test_model_output(self):
         batch_size = 32
-        X1 = torch.randn(batch_size, self.input_size)
-        X2 = torch.randn(batch_size, self.input_size)
-        X3 = torch.empty(batch_size, 0)
+        X1 = torch.randn(batch_size, len(self.fighter_fight_statistics))
+        X2 = torch.randn(batch_size, len(self.fighter_fight_statistics))
+        X3 = torch.empty(batch_size, len(self.fight_parameters))
         odds1 = torch.randn(batch_size, 1)
         odds2 = torch.randn(batch_size, 1)
 
@@ -91,42 +97,43 @@ class TestSymmetricFightNet(unittest.TestCase):
         with torch.no_grad():
             output1 = self.model(X1, X2, X3, odds1, odds2)
 
+        print(output1)
         torch.testing.assert_close(
             output1,
             torch.tensor(
                 [
-                    [0.5053],
-                    [0.5041],
-                    [0.5051],
-                    [0.5050],
-                    [0.5054],
-                    [0.5044],
-                    [0.5040],
-                    [0.5045],
-                    [0.5040],
-                    [0.5041],
-                    [0.5042],
-                    [0.5042],
-                    [0.5047],
-                    [0.5043],
-                    [0.5047],
-                    [0.5042],
-                    [0.5039],
-                    [0.5042],
-                    [0.5054],
-                    [0.5042],
-                    [0.5055],
-                    [0.5046],
-                    [0.5050],
-                    [0.5039],
-                    [0.5041],
-                    [0.5054],
-                    [0.5049],
-                    [0.5039],
-                    [0.5044],
-                    [0.5040],
-                    [0.5052],
-                    [0.5053],
+                    [0.5216],
+                    [0.5228],
+                    [0.5233],
+                    [0.5223],
+                    [0.5226],
+                    [0.5229],
+                    [0.5208],
+                    [0.5210],
+                    [0.5224],
+                    [0.5213],
+                    [0.5212],
+                    [0.5214],
+                    [0.5210],
+                    [0.5233],
+                    [0.5217],
+                    [0.5210],
+                    [0.5212],
+                    [0.5221],
+                    [0.5210],
+                    [0.5212],
+                    [0.5211],
+                    [0.5210],
+                    [0.5228],
+                    [0.5211],
+                    [0.5213],
+                    [0.5211],
+                    [0.5214],
+                    [0.5207],
+                    [0.5210],
+                    [0.5226],
+                    [0.5211],
+                    [0.5210],
                 ],
             ),
             atol=1e-3,

@@ -222,20 +222,52 @@ len(fighter_fight_statistics)
 
 # %%
 data_processor.load_data()
-data_processor.aggregate_data()
-data_processor.add_per_minute_and_fight_stats()
+# data_processor.aggregate_data()
+# data_processor.add_per_minute_and_fight_stats()
 
 # for field in fighter_fight_statistics:
 #     if field in ["ELO", "age"]:
 #         continue
 #     self.data_aggregated[field] = (self.data_aggregated[field].rank(pct=True) * 100) ** 1.2
 
-data_processor.normalize_data()
+# data_processor.normalize_data()
+
+# %%
+import hashlib
+
+
+def simple_hash(lst):
+    return hashlib.sha256(str(lst).encode("utf-8")).hexdigest()
+
 
 # %%
 invalid_fights = set(
     data_processor.data[data_processor.data["num_fight"] < 5]["fight_id"]
 )  # The usual is 4
+print(simple_hash(invalid_fights))
+
+# %%
+
+# %% [markdown]
+# ___
+
+# %% [markdown]
+# ----
+
+# %%
+fight_ids = data_processor.data["fight_id"].unique()
+
+# %%
+print(simple_hash(data_processor.data["fight_id"]))
+
+# %%
+print(simple_hash(data_processor.data["num_fight"] < 5))
+
+# %%
+invalid_fights = set(
+    data_processor.data[data_processor.data["num_fight"] < 5]["fight_id"]
+)  # The usual is 4
+print(simple_hash(sorted(invalid_fights)))
 # invalid_fights |= set(self.data_aggregated[self.data_aggregated["event_date"] < "2013-01-01"]["fight_id"])
 
 # %%
@@ -332,12 +364,6 @@ forecast_dataset = ForecastDatasetTimeEvolution(
 )
 
 # %%
-seed = 18
-torch.manual_seed(seed)
-import random
-
-random.seed(seed)
-np.random.seed(seed)
 
 # %%
 batch_size = 64  # 64 # 2048
@@ -354,6 +380,12 @@ test_dataloader = torch.utils.data.DataLoader(
 # %%
 
 # %%
+seed = 18
+torch.manual_seed(seed)
+import random
+
+random.seed(seed)
+np.random.seed(seed)
 
 # %%
 

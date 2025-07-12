@@ -1,0 +1,145 @@
+statistics:
+  fighter fight statistics: &fighter_fight_statistics
+    - age
+    # - body_strikes_att_opponent_per_minute
+    # - body_strikes_att_per_minute
+    - body_strikes_succ_opponent_per_minute
+    - body_strikes_succ_per_minute
+    # - clinch_strikes_att_opponent_per_minute
+    # - clinch_strikes_att_per_minute
+    - clinch_strikes_succ_opponent_per_minute
+    - clinch_strikes_succ_per_minute
+    - ctrl_time_opponent_per_minute
+    - ctrl_time_per_minute
+    # - distance_strikes_att_opponent_per_minute
+    # - distance_strikes_att_per_minute
+    - distance_strikes_succ_opponent_per_minute
+    - distance_strikes_succ_per_minute
+    - fighter_height_cm
+    # - ground_strikes_att_opponent_per_minute
+    # - ground_strikes_att_per_minute
+    - ground_strikes_succ_opponent_per_minute
+    - ground_strikes_succ_per_minute
+    # - head_strikes_att_opponent_per_minute
+    # - head_strikes_att_per_minute
+    - head_strikes_succ_opponent_per_minute
+    - head_strikes_succ_per_minute
+    - knockdowns_opponent_per_minute
+    - knockdowns_per_minute
+    # - KO_opponent_per_fight
+    - KO_opponent_per_minute
+    - KO_per_fight
+    - KO_per_minute
+    # - leg_strikes_att_opponent_per_minute
+    # - leg_strikes_att_per_minute
+    - leg_strikes_succ_opponent_per_minute
+    - leg_strikes_succ_per_minute
+    - num_fight
+    # - reversals_opponent_per_minute
+    # - reversals_per_minute
+    # - strikes_att_opponent_per_minute
+    # - strikes_att_per_minute
+    - strikes_succ_opponent_per_minute
+    - strikes_succ_per_minute
+    # - Sub_opponent_per_fight
+    - Sub_opponent_per_minute
+    # - Sub_per_fight
+    - Sub_per_minute
+    - submission_att_opponent_per_minute
+    - submission_att_per_minute
+    # - takedown_att_opponent_per_minute
+    # - takedown_att_per_minute
+    - takedown_succ_opponent_per_minute
+    - takedown_succ_per_minute
+    - time_since_last_fight
+    # - total_strikes_att_opponent_per_minute
+    # - total_strikes_att_per_minute
+    - total_strikes_succ_opponent_per_minute
+    - total_strikes_succ_per_minute
+    - win_opponent_per_fight
+    - win_per_fight
+    - ELO
+  
+  fight parameters: &fight_parameters
+    - num_rounds
+    - weight
+
+
+general:
+  mlflow tracking: False
+  model filename: data_folder_replace/simple_fighter_network.pt
+
+data processor:
+    class: DataProcessor
+    args:
+      data_folder: data_folder_replace
+    
+    data aggregator: 
+      class: WeightedDataAggregator
+      args:
+        alpha: -0.0001
+    
+    data enhancers:
+      - class: SumFlexibleELO
+        args:
+          scaling_factor: 0
+          K_factor: 30
+      - class: RankedFields
+        args:
+          fields:
+            - age
+            - fighter_height_cm
+          exponents:
+            - 1.2
+            - 1.2
+
+filters:
+  minimum fight number: 5
+  minimum notice days: 0
+  early split date: 2022-01-01
+  split date: 2024-01-01
+  max date: 2024-10-30
+
+training:
+  seed: 21
+  batch size: 64
+  early train epochs: 1
+  train epochs: 10
+
+dataset:
+  class: BasicDataset
+  args:
+    fighter_fight_statistics: *fighter_fight_statistics
+    fight_parameters: *fight_parameters
+
+forecast dataset:
+  class: ForecastDataset
+  args:
+    fighter_fight_statistics: *fighter_fight_statistics
+    fight_parameters: *fight_parameters
+
+
+model:
+  class: SimpleFightNet
+  args:
+    fighter_fight_statistics: *fighter_fight_statistics
+    fight_parameters: *fight_parameters
+    dropout_prob: 0.05
+
+
+optimizer:
+  class: Adam
+  args:
+    lr: 1.3e-3
+    weight_decay: 2.e-5
+  
+scheduler:
+  class: ReduceLROnPlateau
+  args:
+    mode: min
+    factor: 0.7
+    patience: 6
+
+loss:
+  class: BettingLoss
+  args: {}

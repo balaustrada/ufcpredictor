@@ -36,8 +36,8 @@ class Trainer:
     training and testing workflow.
 
     Attributes:
-        train_loader (torch.utils.data.DataLoader): A DataLoader for the training data.
-        test_loader (torch.utils.data.DataLoader): A DataLoader for the test data.
+        train_dataloader (torch.utils.data.DataLoader): A DataLoader for the training data.
+        test_dataloader (torch.utils.data.DataLoader): A DataLoader for the test data.
         model (torch.nn.Module): The model to be trained.
         optimizer (torch.optim.Optimizer): The optimizer to be used.
         loss_fn (torch.nn.Module): The loss function to be used.
@@ -49,11 +49,11 @@ class Trainer:
 
     def __init__(
         self,
-        train_loader: torch.utils.data.DataLoader,
+        train_dataloader: torch.utils.data.DataLoader,
         model: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         loss_fn: torch.nn.Module,
-        test_loader: Optional[torch.utils.data.DataLoader] = None,
+        test_dataloader: Optional[torch.utils.data.DataLoader] = None,
         scheduler: Optional[torch.optim.lr_scheduler.ReduceLROnPlateau] = None,
         device: str | torch.device = "cpu",
         mlflow_tracking: bool = False,
@@ -62,16 +62,16 @@ class Trainer:
         Initialize the Trainer object.
 
         Args:
-            train_loader: A DataLoader for the training data.
-            test_loader: A DataLoader for the test data.
+            train_dataloader: A DataLoader for the training data.
+            test_dataloader: A DataLoader for the test data.
             model: The model to be trained.
             optimizer: The optimizer to be used.
             loss_fn: The loss function to be used.
             scheduler: The learning rate scheduler to be used.
             device: The device to be used for training. Defaults to "cpu".
         """
-        self.train_loader = train_loader
-        self.test_loader = test_loader
+        self.train_dataloader = train_dataloader
+        self.test_dataloader = test_dataloader
         self.model = model
         self.optimizer = optimizer
         self.scheduler = scheduler
@@ -94,7 +94,7 @@ class Trainer:
                 ),
             }
             data_processor = cast(
-                BasicDataset, self.train_loader.dataset
+                BasicDataset, self.train_dataloader.dataset
             ).data_processor
             data_aggregator = data_processor.data_aggregator
 
@@ -119,15 +119,15 @@ class Trainer:
                     )
 
             for set_ in "fighter_fight_statistics", "fight_parameters":
-                if hasattr(self.train_loader.dataset, set_):
-                    params[set_] = sorted(getattr(self.train_loader.dataset, set_))
+                if hasattr(self.train_dataloader.dataset, set_):
+                    params[set_] = sorted(getattr(self.train_dataloader.dataset, set_))
 
             mlflow.log_params(dict(sorted(params.items())))
 
     def train(
         self,
-        train_loader: torch.utils.data.DataLoader | None = None,
-        test_loader: torch.utils.data.DataLoader | None = None,
+        train_dataloader: torch.utils.data.DataLoader | None = None,
+        test_dataloader: torch.utils.data.DataLoader | None = None,
         epochs: int = 10,
         silent: bool = False,
     ) -> None:
@@ -135,9 +135,9 @@ class Trainer:
         Train the model for a given number of epochs.
 
         Args:
-            train_loader: The DataLoader for the training data. Defaults to the
+            train_dataloader: The DataLoader for the training data. Defaults to the
                 DataLoader passed to the Trainer constructor.
-            test_loader: The DataLoader for the test data. Defaults to the
+            test_dataloader: The DataLoader for the test data. Defaults to the
                 DataLoader passed to the Trainer constructor.
             epochs: The number of epochs to train for. Defaults to 10.
             silent: Whether to not print training progress. Defaults to False.
@@ -145,8 +145,8 @@ class Trainer:
         Returns:
             None
         """
-        if train_loader is None:
-            train_loader = self.train_loader
+        if train_dataloader is None:
+            train_dataloader = self.train_dataloader
 
         self.model.to(self.device)
 
@@ -157,7 +157,7 @@ class Trainer:
             target_preds: List[float] = []
             target_labels: List[float] = []
 
-            for X, Y, odds in tqdm(iter(train_loader), disable=silent):
+            for X, Y, odds in tqdm(iter(train_dataloader), disable=silent):
                 X = [xi.to(self.device) for xi in X]
                 odds = [oddsi.to(self.device) for oddsi in odds]
                 Y = Y.to(self.device)
@@ -173,9 +173,9 @@ class Trainer:
                 target_preds += torch.round(target_logit).detach().cpu().numpy().flatten().tolist()  # type: ignore
                 target_labels += Y.detach().cpu().numpy().flatten().tolist()
 
-                if hasattr(train_loader.dataset, "update_data_trans"):
+                if hasattr(train_dataloader.dataset, "update_data_trans"):
                     with torch.no_grad():
-                        train_loader.dataset.update_data_trans(
+                        train_dataloader.dataset.update_data_trans(
                             self.model.evolver, self.device
                         )
 
@@ -184,7 +184,7 @@ class Trainer:
             ).reshape(-1)
 
             val_loss, val_target_f1, correct, _, _ = self.test(
-                test_loader, silent=silent
+                test_dataloader, silent=silent
             )
 
             if not silent:
@@ -211,7 +211,7 @@ class Trainer:
 
     def test(
         self,
-        test_loader: torch.utils.data.DataLoader | None = None,
+        test_dataloader: torch.utils.data.DataLoader | None = None,
         silent: bool = False,
     ) -> Tuple[float, float, float, List, List]:
         """
@@ -219,7 +219,7 @@ class Trainer:
         score, proportion of correct predictions, target predictions, and target labels.
 
         Args:
-            test_loader: The DataLoader for the test data. Defaults to the DataLoader
+            test_dataloader: The DataLoader for the test data. Defaults to the DataLoader
                 passed to the Trainer constructor.
             silent: Whether to not print training progress. Defaults to False.
 
@@ -227,11 +227,11 @@ class Trainer:
             A tuple containing the validation loss, target F1 score, proportion of correct
             predictions, target predictions, and target labels.
         """
-        if test_loader is None:
-            if self.test_loader is None:
+        if test_dataloader is None:
+            if self.test_dataloader is None:
                 return 0, 0, 0, [], []
             else:
-                test_loader = self.test_loader
+                test_dataloader = self.test_dataloader
 
         self.model.eval()
         val_loss = []
@@ -240,7 +240,7 @@ class Trainer:
         target_labels: List[float] = []
 
         with torch.no_grad():
-            for X, Y, odds in tqdm(iter(test_loader), disable=silent):
+            for X, Y, odds in tqdm(iter(test_dataloader), disable=silent):
                 X = [xi.to(self.device) for xi in X]
                 odds = [oddsi.to(self.device) for oddsi in odds]
                 Y = Y.to(self.device)

@@ -53,8 +53,8 @@ class TestTrainer(unittest.TestCase):
         odds2 = torch.rand(100, 1)
 
         dataset = CustomFightDataset(X1, X2, X3, Y, odds1, odds2)
-        self.train_loader = DataLoader(dataset, batch_size=10)
-        self.test_loader = DataLoader(dataset, batch_size=10)
+        self.train_dataloader = DataLoader(dataset, batch_size=10)
+        self.test_dataloader = DataLoader(dataset, batch_size=10)
 
         # Initialize a simple model, optimizer, and loss function
         self.model = SimpleNet()
@@ -64,8 +64,8 @@ class TestTrainer(unittest.TestCase):
 
         # Initialize Trainer
         self.trainer = Trainer(
-            train_loader=self.train_loader,
-            test_loader=self.test_loader,
+            train_dataloader=self.train_dataloader,
+            test_dataloader=self.test_dataloader,
             model=self.model,
             optimizer=self.optimizer,
             loss_fn=self.loss_fn,
@@ -87,14 +87,14 @@ class TestTrainer(unittest.TestCase):
 
     def test_empty_loader(self):
         trainer = Trainer(
-            train_loader=self.train_loader,
-            test_loader=None,
+            train_dataloader=self.train_dataloader,
+            test_dataloader=None,
             model=self.model,
             optimizer=self.optimizer,
             loss_fn=self.loss_fn,
             device=self.device,
         )
-        result = trainer.test(test_loader=None)
+        result = trainer.test(test_dataloader=None)
         self.assertEqual(
             result,
             (0, 0, 0, [], []),
@@ -112,8 +112,8 @@ class TestTrainerWithScheduler(unittest.TestCase):
         odds2 = torch.rand(100, 1)
 
         dataset = CustomFightDataset(X1, X2, X3, Y, odds1, odds2)
-        self.train_loader = DataLoader(dataset, batch_size=10)
-        self.test_loader = DataLoader(dataset, batch_size=10)
+        self.train_dataloader = DataLoader(dataset, batch_size=10)
+        self.test_dataloader = DataLoader(dataset, batch_size=10)
 
         # Initialize a simple model, optimizer, and loss function
         self.model = SimpleNet()
@@ -126,8 +126,8 @@ class TestTrainerWithScheduler(unittest.TestCase):
 
         # Initialize Trainer
         self.trainer = Trainer(
-            train_loader=self.train_loader,
-            test_loader=self.test_loader,
+            train_dataloader=self.train_dataloader,
+            test_dataloader=self.test_dataloader,
             model=self.model,
             optimizer=self.optimizer,
             loss_fn=self.loss_fn,
@@ -185,7 +185,7 @@ class TestTrainerWithScheduler(unittest.TestCase):
     #     # Test the evaluation loop
     #     val_loss, val_target_f1, val_correct, _, _ = self.trainer.test()
     #     train_loss, train_target_f1, train_correct, _, _ = self.trainer.test(
-    #         self.train_loader
+    #         self.train_dataloader
     #     )
 
     #     # Ensure the F1 score is reasonable

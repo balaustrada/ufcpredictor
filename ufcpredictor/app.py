@@ -55,6 +55,13 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
     predictor = UFCPredictor(
         args.config_path,
         device="cuda" if torch.cuda.is_available() else "cpu",
+        config_override={
+            "data processor": {
+                "args": {
+                    "data_folder": args.data_folder,
+                }
+            }
+        },
     )
     predictor.load_model()
     predictor.load_forecast_dataset()

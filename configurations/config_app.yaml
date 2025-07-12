@@ -69,7 +69,7 @@ general:
 data processor:
     class: DataProcessor
     args:
-      data_folder: /home/cramirpe/UFC/UFCfightdata
+      data_folder: /home/user/data
     
     data aggregator: 
       class: WeightedDataAggregator

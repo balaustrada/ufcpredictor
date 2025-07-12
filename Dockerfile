@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:latest
+FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
 
 WORKDIR /code
 
@@ -14,9 +14,6 @@ RUN useradd -m -u 1000 user
 # Switch to the "user" user
 USER user
 
-RUN pip install ufcscraper
-RUN pip install ufcpredictor
-
 # Set home to the user's home directory
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH
@@ -28,11 +25,17 @@ WORKDIR $HOME/app
 # setting the owner to the user
 COPY --chown=user . $HOME/app
 
+# Install packaged from copied source
+RUN pip install .
+
 # Copy input data (if no HuggingFace token is provided)
 #ADD --chown=user /path/to/data/folder $HOME/app/data
 
 # Expose the port the app runs on (if needed)
 EXPOSE 7860
 
+# Make data directory
+RUN mkdir -p $HOME/app/data
+
 # Command to run your Jupyter notebook (you can change this as necessary)
-CMD ["ufcpredictor_app", "--data-folder", "data", "--port", "7860", "--server-name", "0.0.0.0", "--download-dataset"]
+CMD ["ufcpredictor_app", "--data-folder", "data", "--port", "7860", "--server-name", "0.0.0.0", "--download-dataset", "--config-path", "configurations/time_evolution.yaml"]

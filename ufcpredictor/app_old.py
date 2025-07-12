@@ -27,10 +27,6 @@ from ufcpredictor.plot_tools import PredictionPlots
 from ufcpredictor.trainer import Trainer
 from ufcpredictor.utils import convert_odds_to_decimal
 
-from ufcpredictor import UFCPredictor
-
-predictor = UFCPredictor("/home/cramirpe/UFC/ufcpredictor/config.yaml")
-
 if TYPE_CHECKING:  # pragma: no cover
     from typing import Any, Dict, List, Optional, Tuple
 
@@ -178,27 +174,76 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
             local_dir=args.data_folder,
         )
 
-    predictor = UFCPredictor(
-        args.config,
-        device="cuda" if torch.cuda.is_available() else "cpu",
+    (
+        fighter_fight_statistics,
+        fight_parameters,
+        data_processor_kwargs,
+        days_to_early_split,
+        batch_size,
+        min_num_fights,
+    ) = get_data_parameters()
+
+    data_processor_kwargs = {
+        "data_folder": args.data_folder,
+        **data_processor_kwargs,
+    }
+
+    logger.info("Loading data...")
+    data_processor = DataProcessor(**data_processor_kwargs)
+    data_processor.load_data()
+    data_processor.aggregate_data()
+    data_processor.add_per_minute_and_fight_stats()
+    data_processor.normalize_data()
+
+    logger.info("Creating dataset from loaded data...")
+    dataset = ForecastDataset(
+        data_processor=data_processor,
+        fighter_fight_statistics=fighter_fight_statistics,
+        fight_parameters=fight_parameters,
     )
-    predictor.load_model()
-    predictor.load_forecast_dataset()
-    predictor.model.eval()
 
-    # Only keep fighters with at least «minimum fight number» fights
-    counts = predictor.data_processor.data_normalized["fighter_id"].value_counts()
-    fighter_ids = counts[
-        counts >= predictor.config["filters"]["minimum fight number"]
-    ].index
-    fighter_names = [
-        predictor.data_processor.get_fighter_name(id_) for id_ in fighter_ids
-    ]
+    logger.info("Training model (testing)...")
+    model = train_model(
+        data_processor=data_processor,
+        fighter_fight_statistics=fighter_fight_statistics,
+        fight_parameters=fight_parameters,
+        days_to_early_split=days_to_early_split,
+        batch_size=batch_size,
+        min_num_fights=min_num_fights,
+        test=True,
+    )
+    logger.info("Training model (final)...")
+    model = train_model(
+        data_processor=data_processor,
+        fighter_fight_statistics=fighter_fight_statistics,
+        fight_parameters=fight_parameters,
+        days_to_early_split=days_to_early_split,
+        batch_size=batch_size,
+        min_num_fights=min_num_fights,
+        test=False,
+    )
 
-    # There might be fighters with the same name, so we need to add the id to the name
-    name_counts = Counter(fighter_names)
+    ##############################
+    ## This block here is used to determine the fighters that can enter the app
+    ##############################
+    fighter_counts = (
+        data_processor.data["fighter_name"]
+        + " ("
+        + data_processor.data["fighter_id"].astype(str)
+        + ")"
+    ).value_counts()
+    filtered_fighters = fighter_counts[fighter_counts >= 4].index
+    fighter_name_id = sorted(filtered_fighters)
+
+    # Retrieve the id by doing strip and getting things between parenthesis
+    fighter_ids = [nameid.split("(")[1].split(")")[0] for nameid in fighter_name_id]
+
+    # Retrieve names by doing something similar, also remove trailing spaces
+    names = [nameid.split("(")[0].strip() for nameid in fighter_name_id]
+    name_counts = Counter(names)
+
     show_names = []
-    for name, id_ in zip(fighter_names, fighter_ids):
+    for name, id_ in zip(names, fighter_ids):
         if name_counts[name] > 1:
             show_names.append(f"{name} ({id_})")
         else:
@@ -215,14 +260,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
             value=datetime.now().strftime("%Y-%m-%d"),
         )
 
-        fight_parameters = predictor.config.get("statistics", {}).get(
-            "fight parameters", []
-        )
-        print(fight_parameters)
-
-        fight_parameters_values = [
-            gr.Number(label=label.replace('_', ' '), value=0) for label in fight_parameters
-        ]
+        fight_parameters_values = [gr.Number(label=label, value=0) for label in fight_parameters]
 
         fighter_name = gr.Dropdown(
             label="Fighter Name",
@@ -255,8 +293,8 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
             fig, ax = plt.subplots(figsize=(6.4, 1.7))
 
             PredictionPlots.plot_single_prediction(
-                model=predictor.model,
-                dataset=predictor.forecast_dataset,
+                model=model,
+                dataset=dataset,
                 fighter_name=fighter_ids[show_names.index(fighter_name)],
                 opponent_name=fighter_ids[show_names.index(opponent_name)],
                 fight_parameters_values=list(fight_parameters_values),
@@ -365,9 +403,7 @@ def train_model(
         train_dataset, batch_size=batch_size, shuffle=True
     )
 
-    model, optimizer, scheduler = get_model_parameters(
-        fighter_fight_statistics, fight_parameters
-    )
+    model, optimizer, scheduler = get_model_parameters(fighter_fight_statistics, fight_parameters)
 
     trainer = Trainer(
         train_dataloader=train_dataloader,
@@ -411,11 +447,6 @@ def get_args() -> argparse.Namespace:
 
     parser.add_argument(
         "--data-folder",
-        type=Path,
-    )
-
-    parser.add_argument(
-        "--config",
         type=Path,
     )
 

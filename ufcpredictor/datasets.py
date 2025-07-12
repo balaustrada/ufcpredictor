@@ -403,11 +403,13 @@ class ForecastDataset(BaseDataset):
         )
 
         # Weight is the same for both fighters, so we use the first one
-        match_data = match_data.rename(
-            columns={
-                "weight_x": "weight",
-            }
-        )
+        for feature_name in self.fight_parameters:
+            if feature_name + "_x" in match_data.columns:
+                match_data = match_data.rename(
+                    columns={
+                        feature_name + "_x": feature_name,
+                    }
+                )
 
         ###############################################################
         # Now we need to fix some fields to adapt them to the match to
@@ -462,15 +464,6 @@ class ForecastDataset(BaseDataset):
             if field in self.data_processor.normalization_factors.keys():
                 match_data[field] /= self.data_processor.normalization_factors[field]
 
-       # Add fight parameters to both fighters. 
-        # TODO: Check that concatenate is the right choice (first fighters, then 
-        # opponents?)
-        # It is likely that I need to add a checker on the match_data merge
-        # to ensure that each fighter gets previous data.
-        for feature_name, stats in zip(
-            self.fight_parameters, np.asarray(fight_parameters_values).T
-        ):
-            match_data[feature_name] = np.concatenate((stats, stats))
 
         
         return match_data

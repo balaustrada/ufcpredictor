@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-import random
 import sys
 from collections import Counter
 from datetime import datetime
@@ -12,144 +11,17 @@ from typing import TYPE_CHECKING
 
 import gradio as gr
 import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 import torch
 from huggingface_hub import snapshot_download
 
-from ufcpredictor.data_aggregator import WeightedDataAggregator
-from ufcpredictor.data_enhancers import SumFlexibleELO
-from ufcpredictor.data_processor import DataProcessor
-from ufcpredictor.datasets import BasicDataset, ForecastDataset
-from ufcpredictor.loss_functions import BettingLoss
-from ufcpredictor.models import SymmetricFightNet
+from ufcpredictor import UFCPredictor
 from ufcpredictor.plot_tools import PredictionPlots
-from ufcpredictor.trainer import Trainer
 from ufcpredictor.utils import convert_odds_to_decimal
 
-from ufcpredictor import UFCPredictor
-
-predictor = UFCPredictor("/home/cramirpe/UFC/ufcpredictor/config.yaml")
-
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any, Dict, List, Optional, Tuple
-
+    from typing import Optional
 
 logger = logging.getLogger(__name__)
-
-
-def get_model_parameters(
-    fighter_fight_statistics: List[str],
-    fight_parameters: List[str],
-) -> tuple[
-    torch.nn.Module, torch.optim.Optimizer, torch.optim.lr_scheduler.ReduceLROnPlateau
-]:
-    seed = 30
-    torch.manual_seed(seed)
-    random.seed(seed)
-    np.random.seed(seed)
-
-    model = SymmetricFightNet(
-        fighter_fight_statistics=fighter_fight_statistics,
-        fight_parameters=fight_parameters,
-        dropout_prob=0.35,
-        # fighter_network_shape=[256, 512, 1024, 512],
-        # network_shape=[2048, 1024, 512, 128, 64, 1],
-    )
-    optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=2e-5)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.7, patience=2
-    )
-    return model, optimizer, scheduler
-
-
-def get_data_parameters() -> Tuple[List[str], List[str], Dict[str, Any], int, int, int]:
-    data_processor_kwargs = {
-        "data_aggregator": WeightedDataAggregator(),
-        "data_enhancers": [
-            SumFlexibleELO(
-                scaling_factor=0.5,
-                K_factor=40,
-            )
-        ],
-    }
-    days_to_early_split = 1825
-    min_num_fights = 4
-    batch_size = 128
-
-    # fight_parameters = ["num_rounds", "weight"]
-    fight_parameters: List[str] = []
-
-    fighter_fight_statistics = [
-        "age",
-        # "body_strikes_att_opponent_per_minute",
-        # "body_strikes_att_per_minute",
-        "body_strikes_succ_opponent_per_minute",
-        "body_strikes_succ_per_minute",
-        # "clinch_strikes_att_opponent_per_minute",
-        # "clinch_strikes_att_per_minute",
-        "clinch_strikes_succ_opponent_per_minute",
-        "clinch_strikes_succ_per_minute",
-        "ctrl_time_opponent_per_minute",
-        "ctrl_time_per_minute",
-        # "distance_strikes_att_opponent_per_minute",
-        # "distance_strikes_att_per_minute",
-        "distance_strikes_succ_opponent_per_minute",
-        "distance_strikes_succ_per_minute",
-        "fighter_height_cm",
-        # "ground_strikes_att_opponent_per_minute",
-        # "ground_strikes_att_per_minute",
-        "ground_strikes_succ_opponent_per_minute",
-        "ground_strikes_succ_per_minute",
-        # "head_strikes_att_opponent_per_minute",
-        # "head_strikes_att_per_minute",
-        "head_strikes_succ_opponent_per_minute",
-        "head_strikes_succ_per_minute",
-        "knockdowns_opponent_per_minute",
-        "knockdowns_per_minute",
-        # "KO_opponent_per_fight",
-        "KO_opponent_per_minute",
-        "KO_per_fight",
-        "KO_per_minute",
-        # "leg_strikes_att_opponent_per_minute",
-        # "leg_strikes_att_per_minute",
-        "leg_strikes_succ_opponent_per_minute",
-        "leg_strikes_succ_per_minute",
-        "num_fight",
-        # "reversals_opponent_per_minute",
-        # "reversals_per_minute",
-        # "strikes_att_opponent_per_minute",
-        # "strikes_att_per_minute",
-        "strikes_succ_opponent_per_minute",
-        "strikes_succ_per_minute",
-        # "Sub_opponent_per_fight",
-        "Sub_opponent_per_minute",
-        # "Sub_per_fight",
-        "Sub_per_minute",
-        "submission_att_opponent_per_minute",
-        "submission_att_per_minute",
-        # "takedown_att_opponent_per_minute",
-        # "takedown_att_per_minute",
-        "takedown_succ_opponent_per_minute",
-        "takedown_succ_per_minute",
-        "time_since_last_fight",
-        # "total_strikes_att_opponent_per_minute",
-        # "total_strikes_att_per_minute",
-        "total_strikes_succ_opponent_per_minute",
-        "total_strikes_succ_per_minute",
-        "win_opponent_per_fight",
-        "win_per_fight",
-        "ELO",
-    ]
-
-    return (
-        fighter_fight_statistics,
-        fight_parameters,
-        data_processor_kwargs,
-        days_to_early_split,
-        batch_size,
-        min_num_fights,
-    )
 
 
 def main(args: Optional[argparse.Namespace] = None) -> None:
@@ -179,7 +51,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         )
 
     predictor = UFCPredictor(
-        args.config,
+        args.config_path,
         device="cuda" if torch.cuda.is_available() else "cpu",
     )
     predictor.load_model()
@@ -221,7 +93,8 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
         print(fight_parameters)
 
         fight_parameters_values = [
-            gr.Number(label=label.replace('_', ' '), value=0) for label in fight_parameters
+            gr.Number(label=label.replace("_", " "), value=0)
+            for label in fight_parameters
         ]
 
         fighter_name = gr.Dropdown(
@@ -297,98 +170,6 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
     demo.launch(server_name=args.server_name, server_port=args.port)
 
 
-def train_model(
-    data_processor: DataProcessor,
-    fighter_fight_statistics: List[str],
-    fight_parameters: List[str],
-    days_to_early_split: int,
-    batch_size: int,
-    min_num_fights: int,
-    test: bool,
-) -> torch.nn.Module:
-    invalid_fights = set(
-        data_processor.data_aggregated[
-            data_processor.data_aggregated["num_fight"] < min_num_fights
-        ]["fight_id"]
-    )  # The usual is 4
-    # Early split date should be today - 5 years
-    early_split_date = (
-        datetime.now() - pd.Timedelta(days=days_to_early_split)
-    ).strftime("%Y-%m-%d")
-    early_train_fights = data_processor.data["fight_id"]
-    train_fights = data_processor.data["fight_id"][
-        data_processor.data["event_date"] >= early_split_date
-    ]
-    # Use last 3 months as test
-    if test:
-        test_split_date = (datetime.now() - pd.Timedelta(days=90)).strftime("%Y-%m-%d")
-        test_fights = data_processor.data["fight_id"][
-            data_processor.data["event_date"] >= test_split_date
-        ]
-        test_fights = set(test_fights) - set(invalid_fights)
-        train_fights = set(train_fights) - set(test_fights)
-
-    train_fights = set(train_fights) - set(invalid_fights)
-    early_train_fights = set(early_train_fights) - set(invalid_fights)
-
-    early_train_dataset = BasicDataset(
-        data_processor,
-        list(early_train_fights),
-        fighter_fight_statistics=fighter_fight_statistics,
-        fight_parameters=fight_parameters,
-    )
-
-    train_dataset = BasicDataset(
-        data_processor,
-        list(train_fights),
-        fighter_fight_statistics=fighter_fight_statistics,
-        fight_parameters=fight_parameters,
-    )
-
-    if test:
-        test_dataset = BasicDataset(
-            data_processor,
-            list(test_fights),
-            fighter_fight_statistics=fighter_fight_statistics,
-            fight_parameters=fight_parameters,
-        )
-        test_dataloader = torch.utils.data.DataLoader(
-            test_dataset, batch_size=batch_size, shuffle=False
-        )
-    else:
-        test_dataloader = None
-
-    early_train_dataloader = torch.utils.data.DataLoader(
-        early_train_dataset, batch_size=batch_size, shuffle=True
-    )
-    train_dataloader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=batch_size, shuffle=True
-    )
-
-    model, optimizer, scheduler = get_model_parameters(
-        fighter_fight_statistics, fight_parameters
-    )
-
-    trainer = Trainer(
-        train_dataloader=train_dataloader,
-        test_dataloader=test_dataloader,
-        model=model,
-        optimizer=optimizer,
-        scheduler=scheduler,
-        loss_fn=BettingLoss(),
-    )
-
-    trainer.train(
-        epochs=5,
-        train_dataloader=early_train_dataloader,
-        test_dataloader=test_dataloader,
-    )
-
-    trainer.train(epochs=30)
-
-    return trainer.model
-
-
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
@@ -415,7 +196,7 @@ def get_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "--config",
+        "--config-path",
         type=Path,
     )
 

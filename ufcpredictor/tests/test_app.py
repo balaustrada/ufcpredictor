@@ -1,13 +1,12 @@
 import os
+import shutil
 import unittest
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from ufcpredictor.app import (  # Replace 'your_module_name' with the actual module name
-    get_args,
-    main,
-)
+    get_args, main)
 
 THIS_DIR = Path(__file__).parent
 
@@ -47,8 +46,26 @@ class TestApp(unittest.TestCase):
         mock_Button,
         mock_Blocks,
     ):
+        config_file = THIS_DIR / "test_files" / "config_simple.yaml"
+        # copy file into /tmp and edit it to modify lines
+
+        temp_config_file = Path("/tmp/config_simple.yaml")
+        shutil.copy(config_file, temp_config_file)
+
+        # use read the file as read fieldata = file.read() then use
+        # .replace(pattern, replacement) then save
+        with open(temp_config_file, "r") as file:
+            filedata = file.read()
+
+        # Replace the data_folder line
+        filedata = filedata.replace("data_folder_replace", f"{THIS_DIR / 'test_files'}")
+
+        with open(temp_config_file, "w") as file:
+            file.write(filedata)
+
         with patch("ufcpredictor.app.get_args") as mock_get_args:
             mock_get_args.return_value = MagicMock(
+                config_path=temp_config_file,
                 log_level="INFO",
                 download_dataset=True,
                 data_folder=Path(THIS_DIR / "test_files"),
@@ -101,7 +118,7 @@ class TestApp(unittest.TestCase):
             patch_ = result_container[0].axes[0].patches[0]
 
             self.assertAlmostEqual(0, patch_.get_x())
-            self.assertAlmostEqual(-4.37, patch_.get_width(), places=1)
+            self.assertAlmostEqual(0.039, patch_.get_width(), places=4)
             self.assertAlmostEqual(-0.35, patch_.get_y())
             self.assertAlmostEqual(0.7, patch_.get_height())
 

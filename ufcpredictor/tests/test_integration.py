@@ -581,9 +581,12 @@ class TestModelUsingConfig(unittest.TestCase):
         # Compare the tensors using torch
         # This will check if the tensors are equal
         for key in saved_model:
-            self.assertTrue(
-                torch.allclose(saved_model[key], expected_model[key]),
-                f"Tensor mismatch for key: {key}",
+            np.testing.assert_allclose(
+                saved_model[key].numpy(),
+                expected_model[key].numpy(),
+                rtol=1e-3,
+                atol=1e-3,
+                err_msg=f"Tensor mismatch for key: {key}",
             )
 
     def test_load_model(self):

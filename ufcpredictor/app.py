@@ -18,8 +18,10 @@ from ufcpredictor import UFCPredictor
 from ufcpredictor.plot_tools import PredictionPlots
 from ufcpredictor.utils import convert_odds_to_decimal
 
-if TYPE_CHECKING:  # pragma: no cover
-    from typing import Optional
+if TYPE_CHECKING:  # pragma: no coverp
+    from typing import cast, Optional
+
+    from ufcpredictor.datasets import ForecastDataset
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +131,7 @@ def main(args: Optional[argparse.Namespace] = None) -> None:
 
             PredictionPlots.plot_single_prediction(
                 model=predictor.model,
-                dataset=predictor.forecast_dataset,
+                dataset=cast(ForecastDataset, predictor.forecast_dataset),
                 fighter_name=fighter_ids[show_names.index(fighter_name)],
                 opponent_name=fighter_ids[show_names.index(opponent_name)],
                 fight_parameters_values=list(fight_parameters_values),

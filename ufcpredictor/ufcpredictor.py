@@ -17,30 +17,39 @@ from ufcpredictor.trainer import Trainer
 from ufcpredictor import pretrained_models
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import List
+    from typing import Optional
 
 
 logger = logging.getLogger(__name__)
 
 
 class UFCPredictor:
-    config: Path | str
+    config_path: Path | str
+    config: dict
     device: torch.device
     early_train: bool = False
 
-    data_processor: ufcpredictor.data_processor.DataProcessor | None = None
-    model: ufcpredictor.models.Model | None = None
-    trainer: Trainer | None = None
+    data_processor: ufcpredictor.data_processor.DataProcessor
+    early_train_dataset: Optional[ufcpredictor.datasets.Dataset] = None
+    train_dataset: Optional[ufcpredictor.datasets.Dataset] = None
+    test_dataset: Optional[ufcpredictor.datasets.Dataset] = None
+    forecast_dataset: Optional[ufcpredictor.datasets.Dataset]
 
-    def __init__(self, config: Path | str, device: torch.device | str = "cpu") -> None:
+    early_train_dataloader: Optional[torch.utils.data.DataLoader] = None
+    train_dataloader: Optional[torch.utils.data.DataLoader] = None
+    test_dataloader: Optional[torch.utils.data.DataLoader] = None
+    model: ufcpredictor.models.Model
+    trainer: Trainer
+
+    def __init__(self, config_path: Path | str, device: torch.device | str = "cpu") -> None:
         """
         Initializes the UFCPredictor instance.
 
         Args:
-            config: Path or string representing the configuration file.
+            config_path: Path or string representing the configuration file.
             device: Device to run the model on, e.g., "cpu" or "cuda".
         """
-        self.config = yaml.safe_load(Path(config).read_text())
+        self.config = yaml.safe_load(Path(config_path).read_text())
 
         self.device = torch.device(device)
         if (
@@ -54,8 +63,6 @@ class UFCPredictor:
         """
         Loads the trainer with the datasets, model, optimizer, scheduler, and loss function.
         """
-        fight_ids = self.data_processor.data["fight_id"].unique()
-
         if self.config.get("filters", {}).get("minimum fight number", 0) > 0:
             invalid_fights = set(
                 self.data_processor.data[self.data_processor.data["num_fight"] < 5][
@@ -97,7 +104,7 @@ class UFCPredictor:
 
         include_test = split_date != max_date
 
-        if early_split_date is not None:
+        if early_split_date:
             early_train_fights = self.data_processor.data["fight_id"][
                 self.data_processor.data["event_date"] < split_date
             ]
@@ -155,7 +162,7 @@ class UFCPredictor:
 
         batch_size = self.config["training"]["batch size"]
 
-        if self.early_train:
+        if self.early_train_dataset:
             self.early_train_dataloader = torch.utils.data.DataLoader(
                 self.early_train_dataset, batch_size=batch_size, shuffle=True
             )
@@ -164,12 +171,10 @@ class UFCPredictor:
             self.train_dataset, batch_size=batch_size, shuffle=True
         )
 
-        if include_test:
+        if self.test_dataset:
             self.test_dataloader = torch.utils.data.DataLoader(
                 self.test_dataset, batch_size=batch_size, shuffle=False
             )
-        else:  # pragma: no cover
-            self.test_dataloader = None
 
         # Setting random seed for reproducibility
         seed = self.config["training"]["seed"]

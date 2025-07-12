@@ -519,7 +519,7 @@ class TestModelUsingConfig(unittest.TestCase):
 
     def test_it_with_module(self):
         predictor = UFCPredictor(
-            config="/tmp/config_simple.yaml",
+            config_path="/tmp/config_simple.yaml",
             device="cpu",
         )
         predictor.load_trainer()
@@ -557,7 +557,7 @@ class TestModelUsingConfig(unittest.TestCase):
             file.write(filedata)
 
         predictor = UFCPredictor(
-            config="/tmp/config_simple.yaml",
+            config_path="/tmp/config_simple.yaml",
             device="cpu",
         )
         predictor.load_trainer()
@@ -590,7 +590,7 @@ class TestModelUsingConfig(unittest.TestCase):
 
     def test_load_model(self):
         predictor = UFCPredictor(
-            config="/tmp/config_simple.yaml",
+            config_path="/tmp/config_simple.yaml",
             device="cpu",
         )
 

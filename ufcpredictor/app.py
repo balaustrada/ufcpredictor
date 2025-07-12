@@ -7,7 +7,7 @@ import sys
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import cast, TYPE_CHECKING
 
 import gradio as gr
 import matplotlib.pyplot as plt
@@ -19,7 +19,7 @@ from ufcpredictor.plot_tools import PredictionPlots
 from ufcpredictor.utils import convert_odds_to_decimal
 
 if TYPE_CHECKING:  # pragma: no coverp
-    from typing import cast, Optional
+    from typing import Optional
 
     from ufcpredictor.datasets import ForecastDataset
 

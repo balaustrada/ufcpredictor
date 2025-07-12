@@ -18,6 +18,9 @@ scikit-learn = "^1.5.2"
 torch = "^2.5.1"
 tqdm = "^4.67.0"
 ufcscraper = "^0.2.0"
+google-api-python-client = "^2.176.0"
+google-auth-oauthlib = "^1.2.2"
+importlib-resources = "^6.5.2"
 
 [tool.poetry.group.dev.dependencies]
 python-semantic-release = "^9.14.0"

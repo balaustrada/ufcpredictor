@@ -582,9 +582,7 @@ class TestModelUsingConfig(unittest.TestCase):
         # This will check if the tensors are equal
         for key in saved_model:
             self.assertTrue(
-                torch.equal(
-                    saved_model[key], expected_model[key]
-                ),
+                torch.equal(saved_model[key], expected_model[key]),
                 f"Tensor mismatch for key: {key}",
             )
 

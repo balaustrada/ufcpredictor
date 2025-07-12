@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from google.auth.transport.requests import Request
-from google.oauth2.service_account import Credentials 
+from google.oauth2.service_account import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -50,8 +50,9 @@ class SheetsReader:
     def authenticate(self) -> None:
         """Authenticates the user and initializes the service."""
         self.creds = Credentials.from_service_account_file(  # type: ignore[no-untyped-call]
-            self.creds_file, scopes=self.scopes,
-        )   
+            self.creds_file,
+            scopes=self.scopes,
+        )
 
         self.service = build("sheets", "v4", credentials=self.creds)
 

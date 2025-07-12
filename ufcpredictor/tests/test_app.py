@@ -6,7 +6,9 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from ufcpredictor.app import (  # Replace 'your_module_name' with the actual module name
-    get_args, main)
+    get_args,
+    main,
+)
 
 THIS_DIR = Path(__file__).parent
 

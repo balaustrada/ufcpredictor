@@ -21,6 +21,7 @@ from ufcpredictor.datasets import DatasetWithTimeEvolution
 if TYPE_CHECKING:  # pragma: no cover
     from typing import Any, Dict, List, Optional, Tuple
 
+
 class Model(nn.Module, ABC):
     """
     Base class for all models in the ufcpredictor package.
@@ -29,12 +30,14 @@ class Model(nn.Module, ABC):
     models in the ufcpredictor package. It can be extended to create custom models
     for predicting fight outcomes.
     """
+
     # shouldn't be instantiated directly, should raise error
     def __init__(self) -> None:
         """
         Initialize the Model class.
         """
         super(Model, self).__init__()
+
 
 class FighterNet(Model):
     """
@@ -148,7 +151,7 @@ class SymmetricFightNet(Model):
         self.fighter_network_shape = self.fighter_net.network_shape
 
         self.network_shape = [
-            self.fighter_network_shape[-1]*2 + 2 + len(fight_parameters)
+            self.fighter_network_shape[-1] * 2 + 2 + len(fight_parameters)
         ] + network_shape
 
         self.fcs = nn.ModuleList(
@@ -249,7 +252,7 @@ class SimpleFightNet(Model):
         super().__init__()
 
         input_size = (
-            2*len(fighter_fight_statistics)
+            2 * len(fighter_fight_statistics)
             + len(fight_parameters)
             + 2  # odds for the fighter and opponent
         )
@@ -352,7 +355,9 @@ class SimpleFightNetWithTimeEvolution(Model):
         self.state_size = state_size
 
         self.network_shape = [
-            2*len(fighter_fight_statistics) + 2 * len(fight_parameters) + 2 * state_size,
+            2 * len(fighter_fight_statistics)
+            + 2 * len(fight_parameters)
+            + 2 * state_size,
         ] + network_shape
 
         self.num_past_fights = num_past_fights
@@ -413,7 +418,17 @@ class SimpleFightNetWithTimeEvolution(Model):
         if invert:  # pragma: no cover
             X1, X2 = X2, X1
             odds1, odds2 = odds2, odds1
-            fighter_prev_data, opponent_prev_data, fighter_prev_opponents_data, opponent_prev_opponents_data = (opponent_prev_data, fighter_prev_data, opponent_prev_opponents_data, fighter_prev_opponents_data)
+            (
+                fighter_prev_data,
+                opponent_prev_data,
+                fighter_prev_opponents_data,
+                opponent_prev_opponents_data,
+            ) = (
+                opponent_prev_data,
+                fighter_prev_data,
+                opponent_prev_opponents_data,
+                fighter_prev_opponents_data,
+            )
 
         # odds1 = odds1 / odds1
         # odds2 = odds2 / odds2
@@ -423,7 +438,7 @@ class SimpleFightNetWithTimeEvolution(Model):
         S2 = torch.zeros(X2.shape[0], self.state_size).to(X1.device)
 
         for i in range(self.num_past_fights):
-            ff = fighter_prev_data[:, i, :]    
+            ff = fighter_prev_data[:, i, :]
             of = opponent_prev_data[:, i, :]
             fo = fighter_prev_opponents_data[:, i, :]
             oo = opponent_prev_opponents_data[:, i, :]
@@ -488,7 +503,9 @@ class FighterStateEvolver(Model):
         super().__init__()
 
         # Calculate the input dimension
-        input_dim = 2 * state_size + 2 * len(fighter_fight_statistics) + len(fight_parameters)
+        input_dim = (
+            2 * state_size + 2 * len(fighter_fight_statistics) + len(fight_parameters)
+        )
 
         self.state_size = state_size
         self.fighter_fight_statistics = fighter_fight_statistics
@@ -548,4 +565,3 @@ class FighterStateEvolver(Model):
         X2_new = self.output_X2(hidden_output)
 
         return X1_new, X2_new
- 

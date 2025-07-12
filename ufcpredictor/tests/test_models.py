@@ -133,7 +133,7 @@ class TestSymmetricFightNet(unittest.TestCase):
                     [0.5210],
                     [0.5226],
                     [0.5211],
-                    [0.5210]
+                    [0.5210],
                 ],
             ),
             atol=1e-3,

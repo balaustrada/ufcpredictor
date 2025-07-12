@@ -41,7 +41,9 @@ class UFCPredictor:
     model: ufcpredictor.models.Model
     trainer: Trainer
 
-    def __init__(self, config_path: Path | str, device: torch.device | str = "cpu") -> None:
+    def __init__(
+        self, config_path: Path | str, device: torch.device | str = "cpu"
+    ) -> None:
         """
         Initializes the UFCPredictor instance.
 
@@ -321,7 +323,7 @@ class UFCPredictor:
         else:  # pragma: no cover
             raise ValueError("Model filename not specified in the configuration.")
 
-        if not model_filename.exists(): # pragma: no cover
+        if not model_filename.exists():  # pragma: no cover
             raise FileNotFoundError(f"Model file {model_filename} does not exist.")
 
         self.model.load_state_dict(torch.load(model_filename, weights_only=True))
@@ -340,7 +342,7 @@ class UFCPredictor:
             data_aggregator = getattr(
                 ufcpredictor.data_aggregator, data_aggregator_cfg.get("class")
             )(**data_aggregator_cfg.get("args", {}))
-        else: # pragma: no cover
+        else:  # pragma: no cover
             raise Exception("Missing data_aggregator class")
 
         # Initialize data enhancers
@@ -365,7 +367,7 @@ class UFCPredictor:
                 data_enhancers=data_enhancers,
                 **data_processor_cfg.get("args", {}),
             )
-        else: # pragma: no cover
+        else:  # pragma: no cover
             raise Exception("Missing data_processor class")
 
         # Load data in data processor

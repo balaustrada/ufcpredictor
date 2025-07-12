@@ -18,7 +18,7 @@ from ufcpredictor import UFCPredictor
 from ufcpredictor.plot_tools import PredictionPlots
 from ufcpredictor.utils import convert_odds_to_decimal
 
-if TYPE_CHECKING:  # pragma: no coverp
+if TYPE_CHECKING:  # pragma: no cover
     from typing import Optional
 
     from ufcpredictor.datasets import ForecastDataset

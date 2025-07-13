@@ -34,7 +34,7 @@ jobs:
         poetry install
     - name: Test with unittest
       run: |
-        poetry run python -m coverage run --source ufcpredictor -m unittest discover ufcpredictor/tests
+        poetry run python -m coverage run --source ufcpredictor -m unittest discover tests
     - name: Coveralls GitHub Action
       uses: coverallsapp/github-action@v2.3.0
             

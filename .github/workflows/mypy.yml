@@ -17,8 +17,7 @@ jobs:
         pip install mypy types-requests types-python-dateutil types-PyYAML
     - name: mypy
       run: |
-        mypy --exclude ufcpredictor/tests \
-             --ignore-missing-imports \
+        mypy --ignore-missing-imports \
              --disallow-untyped-calls \
              --disallow-untyped-defs \
              --disallow-incomplete-defs ufcpredictor

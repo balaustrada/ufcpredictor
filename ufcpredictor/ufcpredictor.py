@@ -306,7 +306,7 @@ class UFCPredictor:
             raise ValueError("Model filename not specified in the configuration.")
 
         torch.save(
-            self.model.state_dict(), Path("ufcpredictor/models") / model_filename
+            self.model.state_dict(), model_filename
         )
 
     def load_model(self) -> None:

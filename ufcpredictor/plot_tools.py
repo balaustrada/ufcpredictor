@@ -240,14 +240,14 @@ class PredictionPlots:
                 created.
             parse_id : If True, the id of the fighters is parsed instead of the name.
         """
-        p1, p2 = dataset.get_single_forecast_prediction(
-            fighter_name,
-            opponent_name,
-            event_date,
-            odds1,
-            odds2,
+        p1, p2 = dataset.get_forecast_prediction(
+            [fighter_name,],
+            [opponent_name,],
+            [event_date,],
+            [odds1,],
+            [odds2,],
             model,
-            fight_parameters_values,
+            [fight_parameters_values,],
             parse_id,
         )
 
@@ -266,6 +266,9 @@ class PredictionPlots:
 
         prediction = ((p1 + p2) - 1) * 100
         shift = np.abs(p1 - p2) * 2 * 100
+
+        prediction = prediction.reshape(-1)[0]
+        shift = shift.reshape(-1)[0]
 
         red = "tab:red"
         blue = "tab:blue"

@@ -108,7 +108,7 @@ def convert_odds_to_moneyline(
     return np.round(odds).astype(int)
 
 
-def merge_dicts(dict1: Dict, dict2: Dict) -> Dict:
+def merge_dicts(dict1: dict, dict2: dict) -> dict:
     """Merges two dictionaries recursively preserving values in dict2"""
     result = copy.deepcopy(dict1)
 

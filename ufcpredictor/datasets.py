@@ -131,6 +131,7 @@ class BaseDataset(Dataset):
         fight_ids: Optional[List[str]] = None,
         fighter_fight_statistics: Optional[List[str]] = None,
         fight_parameters: Optional[List[str]] = None,
+        flip_fights: bool = True,
     ) -> None:
         """
         Constructor for BaseDataset.
@@ -143,7 +144,10 @@ class BaseDataset(Dataset):
                 If None, use default columns defined in cls.fighter_fight_statistics.
             fight_parameters: The list of fight parameters to include in the model.
                 If None, use an empty list.
-
+            flip_fights: Whether to flip the fights in the dataset. If True,
+                the fights are flipped so that dataset will return sometimes 
+                fighter1 vs fighter2 and sometimes fighter2 vs fighter1. This is
+                useful to train the model with both perspectives of the fight.
         Raises:
             ValueError: If any column is not found in the normalized data.
         """
@@ -155,6 +159,8 @@ class BaseDataset(Dataset):
 
         if fight_parameters is not None:
             self.fight_parameters = fight_parameters
+
+        self.flip_fights = flip_fights
 
         not_found = []
         for column in (
@@ -475,21 +481,19 @@ class ForecastDataset(BaseDataset):
 
         return match_data
 
-    def get_forecast_prediction(
+    def get_forecast_prediction_data(
         self,
         fighter_names: List[str],
         opponent_names: List[str],
         event_dates: List[str | datetime.date],
         fighter_odds: List[float],
         opponent_odds: List[float],
-        model: nn.Module,
         fight_parameters_values: List[List[float]] = [],
         parse_ids: bool = False,
-        device: str | torch.device = "cpu",
     ) -> Tuple[NDArray, NDArray]:
         """
-        Make a prediction for a given list of matches. Either providing the names of
-        the fighters and their opponents, or providing the ids of the fighters and
+        Load data for prediction for a given list of matches. Either providing the names 
+        of the fighters and their opponents, or providing the ids of the fighters and
         their opponents.
 
         Args:
@@ -498,11 +502,9 @@ class ForecastDataset(BaseDataset):
             event_dates: The list of event dates.
             fighter_odds: The list of fighter odds.
             opponent_odds: The list of opponent odds.
-            model: The model to make the prediction with.
             parse_ids: Whether to parse the ids of the fighters and opponents. Ids
                 are parsed in fields "fighter_names" and "opponent_names"if True,
                 and names are parsed if False.
-            device: The device to use for the prediction.
 
         Returns:
             A tuple of two numpy arrays, each one evaluating the model switching
@@ -580,7 +582,51 @@ class ForecastDataset(BaseDataset):
             torch.FloatTensor(np.asarray(opponent_odds)).reshape(-1, 1),  # Odds2
         ]
 
-        X1, X2, X3, odds1, odds2 = data
+        return data
+
+    def get_forecast_prediction(
+        self,
+        fighter_names: List[str],
+        opponent_names: List[str],
+        event_dates: List[str | datetime.date],
+        fighter_odds: List[float],
+        opponent_odds: List[float],
+        model: nn.Module,
+        fight_parameters_values: List[List[float]] = [],
+        parse_ids: bool = False,
+        device: str | torch.device = "cpu",
+    ) -> Tuple[NDArray, NDArray]:
+        """
+        Make a prediction for a given list of matches. Either providing the names of
+        the fighters and their opponents, or providing the ids of the fighters and
+        their opponents.
+
+        Args:
+            fighters_names: The list of fighters names.
+            opponent_names: The list of opponent names.
+            event_dates: The list of event dates.
+            fighter_odds: The list of fighter odds.
+            opponent_odds: The list of opponent odds.
+            model: The model to make the prediction with.
+            parse_ids: Whether to parse the ids of the fighters and opponents. Ids
+                are parsed in fields "fighter_names" and "opponent_names"if True,
+                and names are parsed if False.
+            device: The device to use for the prediction.
+
+        Returns:
+            A tuple of two numpy arrays, each one evaluating the model switching
+            between the two fighters. For symmetric models, they should be the same.
+        """
+        X1, X2, X3, odds1, odds2 = self.get_forecast_prediction_data(
+            fighter_names=fighter_names,
+            opponent_names=opponent_names,
+            event_dates=event_dates,
+            fighter_odds=fighter_odds,
+            opponent_odds=opponent_odds,
+            fight_parameters_values=fight_parameters_values,
+            parse_ids=parse_ids,
+        )
+
         X1, X2, X3, odds1, odds2, model = (
             X1.to(device),
             X2.to(device),
@@ -624,7 +670,7 @@ class BasicDataset(BaseDataset):
         """
         X1, X2, X3, winner, odds_1, odds_2 = [x[idx] for x in self.data]
 
-        if np.random.random() >= 0.5:
+        if self.flip_fights and np.random.random() >= 0.5:
             X1, X2 = X2, X1
             winner = 1 - winner
             odds_1, odds_2 = odds_2, odds_1
@@ -735,7 +781,7 @@ class DatasetWithTimeEvolution(BaseDataset):
         next_f1_positions: For each fighter/fight pair, it defines the location in
             the fighter_history_tensor of the next fight of the fighter.
         next_f2_positions: For each fighter/fight pair, it defines the location in
-            the fighter_history_tensor of the next fight of the opponent.
+            the fighter_history_tensor of the class Datasetnext fight of the opponent.
     """
 
     fighter_history_tensor: torch.Tensor
@@ -769,6 +815,7 @@ class DatasetWithTimeEvolution(BaseDataset):
         previous_fights_parameters: Optional[List[str]] = None,
         state_size: Optional[int] = None,
         num_past_fights: Optional[int] = None,
+        flip_fights: bool = True,
     ) -> None:
         """
         Constructor for ForecastDataset.
@@ -793,6 +840,10 @@ class DatasetWithTimeEvolution(BaseDataset):
             num_past_fights: The number of past fights to consider for each fighter
                 when defining the state of the fighters in the current fight. If
                 None, use the default value defined in cls.num_past_fights.
+            flip_fights: Whether to flip the fights in the dataset. If True,
+                the fights are flipped so that dataset will return sometimes 
+                fighter1 vs fighter2 and sometimes fighter2 vs fighter1. This is
+                useful to train the model with both perspectives of the fight.
 
         Raises:
             ValueError: If some columns are not found in the normalized data.
@@ -803,6 +854,8 @@ class DatasetWithTimeEvolution(BaseDataset):
         self.fighter_fight_statistics = (
             fighter_fight_statistics or self.fighter_fight_statistics
         )
+
+        self.flip_fights = flip_fights
 
         self.fight_parameters = fight_parameters or self.fight_parameters
 
@@ -1236,7 +1289,7 @@ class DatasetWithTimeEvolution(BaseDataset):
             x[idx] for x in self.data
         ]
 
-        if np.random.random() >= 0.5:
+        if self.flip_fights and np.random.random() >= 0.5:
             X1, X2 = X2, X1
             winner = 1 - winner
             odds_1, odds_2 = odds_2, odds_1
@@ -1521,21 +1574,19 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
 
         return p1[0][0], p2[0][0]
 
-    def get_forecast_prediction(
+    def get_forecast_prediction_data(
         self,
         fighter_names: List[str],
         opponent_names: List[str],
         event_dates: List[str | datetime.date],
         fighter_odds: List[float],
         opponent_odds: List[float],
-        model: nn.Module,
         fight_parameters_values: List[List[float]] = [],
         parse_ids: bool = False,
-        device: str | torch.device = "cpu",
     ) -> Tuple[NDArray, NDArray]:
         """
-        Make a prediction for a given list of matches. Either providing the names of
-        the fighters and their opponents, or providing the ids of the fighters and
+        Load data for prediction for a given list of matches. Either providing the names 
+        of the fighters and their opponents, or providing the ids of the fighters and
         their opponents.
 
         Args:
@@ -1544,11 +1595,9 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
             event_dates: The list of event dates.
             fighter_odds: The list of fighter odds.
             opponent_odds: The list of opponent odds.
-            model: The model to make the prediction with.
             parse_ids: Whether to parse the ids of the fighters and opponents. Ids
                 are parsed in fields "fighter_names" and "opponent_names"if True,
                 and names are parsed if False.
-            device: The device to use for the prediction.
 
         Returns:
             A tuple of two numpy arrays, each one evaluating the model switching
@@ -1699,6 +1748,51 @@ class ForecastDatasetTimeEvolution(ForecastDataset, DatasetWithTimeEvolution):
                 )
             ),
         ]
+
+        return data 
+    
+    def get_forecast_prediction(
+        self,
+        fighter_names: List[str],
+        opponent_names: List[str],
+        event_dates: List[str | datetime.date],
+        fighter_odds: List[float],
+        opponent_odds: List[float],
+        model: nn.Module,
+        fight_parameters_values: List[List[float]] = [],
+        parse_ids: bool = False,
+        device: str | torch.device = "cpu",
+    ) -> Tuple[NDArray, NDArray]:
+        """
+        Make a prediction for a given list of matches. Either providing the names of
+        the fighters and their opponents, or providing the ids of the fighters and
+        their opponents.
+
+        Args:
+            fighters_names: The list of fighters names.
+            opponent_names: The list of opponent names.
+            event_dates: The list of event dates.
+            fighter_odds: The list of fighter odds.
+            opponent_odds: The list of opponent odds.
+            model: The model to make the prediction with.
+            parse_ids: Whether to parse the ids of the fighters and opponents. Ids
+                are parsed in fields "fighter_names" and "opponent_names"if True,
+                and names are parsed if False.
+            device: The device to use for the prediction.
+
+        Returns:
+            A tuple of two numpy arrays, each one evaluating the model switching
+            between the two fighters. For symmetric models, they should be the same.
+        """
+        data = self.get_forecast_prediction_data(
+            fighter_names=fighter_names,
+            opponent_names=opponent_names,
+            event_dates=event_dates,
+            fighfighter_odds=fighter_odds,
+            opponent_odds=opponent_odds,
+            fight_parameters_values=fight_parameters_values,
+            parse_ids=parse_ids,
+        )
 
         (
             X1,

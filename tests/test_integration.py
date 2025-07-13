@@ -197,14 +197,14 @@ class TestSimpleModel(unittest.TestCase):
         trainer.train(epochs=10)
         model.eval()
 
-        p1, p2 = forecast_dataset.get_single_forecast_prediction(
-            fighter_name="47ffb45b4bac 6156bda3868d",
-            opponent_name="5e228b7c95fd f1140f24a3a9",
-            event_date="2024-11-11",
-            odds1=1.1,
-            odds2=1.2,
+        p1, p2 = forecast_dataset.get_forecast_prediction(
+            fighter_names=["47ffb45b4bac 6156bda3868d"],
+            opponent_names=["5e228b7c95fd f1140f24a3a9"],
+            event_dates=["2024-11-11"],
+            fighter_odds=[1.1],
+            opponent_odds=[1.2],
             model=model,
-            fight_parameters_values=[5, 140],
+            fight_parameters_values=[[5, 140],],
         )
 
         self.assertAlmostEqual(p1, 0.48208007, places=3)
@@ -475,14 +475,14 @@ class TestSimpleModel(unittest.TestCase):
         trainer.train(epochs=10)
         model.eval()
 
-        p1, p2 = forecast_dataset.get_single_forecast_prediction(
-            fighter_name="47ffb45b4bac 6156bda3868d",
-            opponent_name="5e228b7c95fd f1140f24a3a9",
-            event_date="2024-11-11",
-            odds1=1.1,
-            odds2=1.2,
+        p1, p2 = forecast_dataset.get_forecast_prediction(
+            fighter_names=["47ffb45b4bac 6156bda3868d",],
+            opponent_names=["5e228b7c95fd f1140f24a3a9",],
+            event_dates=["2024-11-11",],
+            fighter_odds=[1.1,],
+            opponent_odds=[1.2,],
             model=model,
-            fight_parameters_values=[5, 140],
+            fight_parameters_values=[[5, 140],],
         )
 
         self.assertAlmostEqual(float(p1), 0.5147984, places=3)
@@ -527,14 +527,14 @@ class TestModelUsingConfig(unittest.TestCase):
         predictor.load_forecast_dataset()
         predictor.model.eval()
 
-        p1, p2 = predictor.forecast_dataset.get_single_forecast_prediction(
-            fighter_name="47ffb45b4bac 6156bda3868d",
-            opponent_name="5e228b7c95fd f1140f24a3a9",
-            event_date="2024-11-11",
-            odds1=1.1,
-            odds2=1.2,
+        p1, p2 = predictor.forecast_dataset.get_forecast_prediction(
+            fighter_names=["47ffb45b4bac 6156bda3868d",],
+            opponent_names=["5e228b7c95fd f1140f24a3a9",],
+            event_dates=["2024-11-11",],
+            fighter_odds=[1.1,],
+            opponent_odds=[1.2,],
             model=predictor.model,
-            fight_parameters_values=[5, 140],
+            fight_parameters_values=[[5, 140],],
         )
 
         self.assertAlmostEqual(p1, 0.52276415, places=3)
@@ -599,17 +599,17 @@ class TestModelUsingConfig(unittest.TestCase):
         predictor.load_forecast_dataset()
         predictor.model.eval()
 
-        p1, p2 = predictor.forecast_dataset.get_single_forecast_prediction(
-            fighter_name="47ffb45b4bac 6156bda3868d",
-            opponent_name="5e228b7c95fd f1140f24a3a9",
-            event_date="2024-11-11",
-            odds1=1.1,
-            odds2=1.2,
+        p1, p2 = predictor.forecast_dataset.get_forecast_prediction(
+            fighter_names=["47ffb45b4bac 6156bda3868d",],
+            opponent_names=["5e228b7c95fd f1140f24a3a9",],
+            event_dates=["2024-11-11",],
+            fighter_odds=[1.1,],
+            opponent_odds=[1.2,],
             model=predictor.model,
-            fight_parameters_values=[5, 140],
+            fight_parameters_values=[[5, 140],],
         )
 
-        self.assertAlmostEqual(p1, 0.5227641, places=3)
+        self.assertAlmostEqual(p1, 0.52276415, places=3)
         self.assertAlmostEqual(p2, 0.4773013, places=3)
 
 

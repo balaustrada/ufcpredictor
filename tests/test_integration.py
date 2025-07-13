@@ -197,14 +197,14 @@ class TestSimpleModel(unittest.TestCase):
         trainer.train(epochs=10)
         model.eval()
 
-        p1, p2 = forecast_dataset.get_single_forecast_prediction(
-            fighter_name="47ffb45b4bac 6156bda3868d",
-            opponent_name="5e228b7c95fd f1140f24a3a9",
-            event_date="2024-11-11",
-            odds1=1.1,
-            odds2=1.2,
+        p1, p2 = forecast_dataset.get_forecast_prediction(
+            fighter_names=["47ffb45b4bac 6156bda3868d"],
+            opponent_names=["5e228b7c95fd f1140f24a3a9"],
+            event_dates=["2024-11-11"],
+            fighter_odds=[1.1],
+            opponent_odds=[1.2],
             model=model,
-            fight_parameters_values=[5, 140],
+            fight_parameters_values=[[5, 140],],
         )
 
         self.assertAlmostEqual(p1, 0.48208007, places=3)
@@ -475,14 +475,14 @@ class TestSimpleModel(unittest.TestCase):
         trainer.train(epochs=10)
         model.eval()
 
-        p1, p2 = forecast_dataset.get_single_forecast_prediction(
-            fighter_name="47ffb45b4bac 6156bda3868d",
-            opponent_name="5e228b7c95fd f1140f24a3a9",
-            event_date="2024-11-11",
-            odds1=1.1,
-            odds2=1.2,
+        p1, p2 = forecast_dataset.get_forecast_prediction(
+            fighter_names=["47ffb45b4bac 6156bda3868d",],
+            opponent_names=["5e228b7c95fd f1140f24a3a9",],
+            event_dates=["2024-11-11",],
+            fighter_odds=[1.1,],
+            opponent_odds=[1.2,],
             model=model,
-            fight_parameters_values=[5, 140],
+            fight_parameters_values=[[5, 140],],
         )
 
         self.assertAlmostEqual(float(p1), 0.5147984, places=3)
@@ -527,14 +527,14 @@ class TestModelUsingConfig(unittest.TestCase):
         predictor.load_forecast_dataset()
         predictor.model.eval()
 
-        p1, p2 = predictor.forecast_dataset.get_single_forecast_prediction(
-            fighter_name="47ffb45b4bac 6156bda3868d",
-            opponent_name="5e228b7c95fd f1140f24a3a9",
-            event_date="2024-11-11",
-            odds1=1.1,
-            odds2=1.2,
+        p1, p2 = predictor.forecast_dataset.get_forecast_prediction(
+            fighter_names=["47ffb45b4bac 6156bda3868d",],
+            opponent_names=["5e228b7c95fd f1140f24a3a9",],
+            event_dates=["2024-11-11",],
+            fighter_odds=[1.1,],
+            opponent_odds=[1.2,],
             model=predictor.model,
-            fight_parameters_values=[5, 140],
+            fight_parameters_values=[[5, 140],],
         )
 
         self.assertAlmostEqual(p1, 0.52276415, places=3)
@@ -599,18 +599,242 @@ class TestModelUsingConfig(unittest.TestCase):
         predictor.load_forecast_dataset()
         predictor.model.eval()
 
-        p1, p2 = predictor.forecast_dataset.get_single_forecast_prediction(
-            fighter_name="47ffb45b4bac 6156bda3868d",
-            opponent_name="5e228b7c95fd f1140f24a3a9",
-            event_date="2024-11-11",
-            odds1=1.1,
-            odds2=1.2,
+        p1, p2 = predictor.forecast_dataset.get_forecast_prediction(
+            fighter_names=["47ffb45b4bac 6156bda3868d",],
+            opponent_names=["5e228b7c95fd f1140f24a3a9",],
+            event_dates=["2024-11-11",],
+            fighter_odds=[1.1,],
+            opponent_odds=[1.2,],
             model=predictor.model,
-            fight_parameters_values=[5, 140],
+            fight_parameters_values=[[5, 140],],
         )
 
-        self.assertAlmostEqual(p1, 0.5227641, places=3)
+        self.assertAlmostEqual(p1, 0.52276415, places=3)
         self.assertAlmostEqual(p2, 0.4773013, places=3)
+
+
+class TestForecast(unittest.TestCase):
+    def setUp(self):
+        # Config file is under THIS_DIR / "test_files" / "config_simple.yaml"
+        # I need to copy this file, and change inside of it the data_folder to point
+        # to THIS_DIR / "test_files" it appears twice in the file
+
+        config_file = THIS_DIR / "test_files" / "config_forecast.yaml"
+        # copy file into /tmp and edit it to modify lines
+
+        self.temp_config_file = Path("/tmp/config_forecast.yaml")
+        shutil.copy(config_file, self.temp_config_file)
+
+        # use read the file as read fieldata = file.read() then use
+        # .replace(pattern, replacement) then save
+        with open(self.temp_config_file, "r") as file:
+            filedata = file.read()
+
+        # Replace the data_folder line
+        filedata = filedata.replace("data_folder_replace", f"{THIS_DIR / 'test_files'}")
+
+        with open(self.temp_config_file, "w") as file:
+            file.write(filedata)
+
+    def tearDown(self):
+        # Remove the temporary config file if it exists
+        if self.temp_config_file.exists():
+            self.temp_config_file.unlink()
+
+    def test_forecast_matches(self):
+        predictor = UFCPredictor(
+            config_path=self.temp_config_file,
+            device="cpu",
+            config_override={
+                "dataset": {
+                    "args": {
+                        "flip_fights": False,
+                    }
+                }
+            },
+        )
+
+        predictor.load_trainer()
+        predictor.load_forecast_dataset()
+
+        fight_data = predictor.test_dataset.fight_data
+        idx = fight_data.index.get_indexer(
+            fight_data[
+                (fight_data["fight_id"] == "ca138ae8c178")
+                & (fight_data["fighter_id_x"] == "09829bacca9f")
+            ].index
+        )[0]
+
+        X, Y, odds = predictor.test_dataset[idx]
+
+        X = [xi.unsqueeze(0).to(predictor.device) for xi in X]
+        odds = [oi.unsqueeze(0).to(predictor.device) for oi in odds]
+        Y = Y.unsqueeze(0).to(predictor.device)
+
+        X1, X2, Xf, odds1, odds2 = (
+            predictor.forecast_dataset.get_forecast_prediction_data(
+                fighter_names=[
+                    "09829bacca9f",
+                ],  # fight id ca138ae8c178
+                opponent_names=[
+                    "86deb910d7d6",
+                ],
+                event_dates=[
+                    "2024-10-07",
+                ],
+                fighter_odds=[
+                    2.1500,
+                ],
+                opponent_odds=[
+                    1.6451613,
+                ],
+                fight_parameters_values=[
+                    [3, 185],
+                ],
+                parse_ids=True,
+            )
+        )
+
+        np.testing.assert_allclose(
+            X1.cpu().numpy(),
+            X[0].cpu().numpy(),
+        )
+        np.testing.assert_allclose(
+            X2.cpu().numpy(),
+            X[1].cpu().numpy(),
+        )
+        np.testing.assert_allclose(
+            Xf.cpu().numpy(),
+            X[2].cpu().numpy(),
+        )
+        np.testing.assert_allclose(
+            odds1.cpu().numpy(),
+            odds[0].cpu().numpy(),
+        )
+        np.testing.assert_allclose(
+            odds2.cpu().numpy(),
+            odds[1].cpu().numpy(),
+        )
+
+
+class TestForecastTimeEvolution(unittest.TestCase):
+    def setUp(self):
+        # Config file is under THIS_DIR / "test_files" / "config_simple.yaml"
+        # I need to copy this file, and change inside of it the data_folder to point
+        # to THIS_DIR / "test_files" it appears twice in the file
+
+        config_file = THIS_DIR / "test_files" / "config_forecast_te.yaml"
+        # copy file into /tmp and edit it to modify lines
+
+        self.temp_config_file = Path("/tmp/config_forecast_te.yaml")
+        shutil.copy(config_file, self.temp_config_file)
+
+        # use read the file as read fieldata = file.read() then use
+        # .replace(pattern, replacement) then save
+        with open(self.temp_config_file, "r") as file:
+            filedata = file.read()
+
+        # Replace the data_folder line
+        filedata = filedata.replace("data_folder_replace", f"{THIS_DIR / 'test_files'}")
+
+        with open(self.temp_config_file, "w") as file:
+            file.write(filedata)
+
+    def tearDown(self):
+        # Remove the temporary config file if it exists
+        if self.temp_config_file.exists():
+            self.temp_config_file.unlink()
+
+    def test_forecast_matches(self):
+        predictor = UFCPredictor(
+            config_path=self.temp_config_file,
+            device="cpu",
+            config_override={
+                "dataset": {
+                    "args": {
+                        "flip_fights": False,
+                    }
+                }
+            },
+        )
+
+        predictor.load_trainer()
+        predictor.load_forecast_dataset()
+
+        fight_data = predictor.test_dataset.fight_data
+        idx = fight_data.index.get_indexer(
+            fight_data[
+                (fight_data["fight_id"] == "ca138ae8c178")
+                & (fight_data["fighter_id_x"] == "09829bacca9f")
+            ].index
+        )[0]
+
+        X, Y, odds = predictor.test_dataset[idx]
+
+        X = [xi.unsqueeze(0).to(predictor.device) for xi in X]
+        odds = [oi.unsqueeze(0).to(predictor.device) for oi in odds]
+        Y = Y.unsqueeze(0).to(predictor.device)
+
+        X1, X2, Xf, odds1, odds2, fpd, opd, fpo, opo = (
+            predictor.forecast_dataset.get_forecast_prediction_data(
+                fighter_names=[
+                    "09829bacca9f",
+                ],  # fight id ca138ae8c178
+                opponent_names=[
+                    "86deb910d7d6",
+                ],
+                event_dates=[
+                    "2024-10-07",
+                ],
+                fighter_odds=[
+                    2.1500,
+                ],
+                opponent_odds=[
+                    1.6451613,
+                ],
+                fight_parameters_values=[
+                    [3, 185],
+                ],
+                parse_ids=True,
+            )
+        )
+
+        np.testing.assert_allclose(
+            X1.cpu().numpy(),
+            X[0].cpu().numpy(),
+        )
+        np.testing.assert_allclose(
+            X2.cpu().numpy(),
+            X[1].cpu().numpy(),
+        )
+        np.testing.assert_allclose(
+            Xf.cpu().numpy(),
+            X[2].cpu().numpy(),
+        )
+        np.testing.assert_allclose(
+            fpd.cpu().numpy(),
+            X[3].cpu().numpy(),
+        )
+        np.testing.assert_allclose(
+            opd.cpu().numpy(),
+            X[4].cpu().numpy(),
+        )
+        np.testing.assert_allclose(
+            fpo.cpu().numpy(),
+            X[5].cpu().numpy(),
+        )
+        np.testing.assert_allclose(
+            opo.cpu().numpy(),
+            X[6].cpu().numpy(),
+        )
+        np.testing.assert_allclose(
+            odds1.cpu().numpy(),
+            odds[0].cpu().numpy(),
+        )
+        np.testing.assert_allclose(
+            odds2.cpu().numpy(),
+            odds[1].cpu().numpy(),
+        )
 
 
 if __name__ == "__main__":  # pragma: no cover

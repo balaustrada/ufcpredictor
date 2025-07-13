@@ -6,6 +6,9 @@ from . import (
     loss_functions,
     models,
     optimizers,
+    pretrained_models,
+    trainer,
+    utils,
     schedulers,
 )
 

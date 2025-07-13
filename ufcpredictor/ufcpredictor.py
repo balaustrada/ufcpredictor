@@ -1,20 +1,19 @@
 from __future__ import annotations
 
+import logging
+import os
 import random
 from datetime import datetime
 from pathlib import Path
-import logging
 from typing import TYPE_CHECKING
-from importlib_resources import files
 
 import numpy as np
 import pandas as pd
 import torch
 import yaml
+from importlib_resources import files
 
 import ufcpredictor
-from ufcpredictor.trainer import Trainer
-from ufcpredictor import pretrained_models
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import Optional
@@ -39,10 +38,13 @@ class UFCPredictor:
     train_dataloader: Optional[torch.utils.data.DataLoader] = None
     test_dataloader: Optional[torch.utils.data.DataLoader] = None
     model: ufcpredictor.models.Model
-    trainer: Trainer
+    trainer: ufcpredictor.trainer.Trainer
 
     def __init__(
-        self, config_path: Path | str, device: torch.device | str = "cpu"
+        self,
+        config_path: Path | str,
+        device: torch.device | str = "cpu",
+        config_override: dict = {},
     ) -> None:
         """
         Initializes the UFCPredictor instance.
@@ -50,8 +52,14 @@ class UFCPredictor:
         Args:
             config_path: Path or string representing the configuration file.
             device: Device to run the model on, e.g., "cpu" or "cuda".
+            config_override: Dictionary to override specific configuration parameters.
         """
         self.config = yaml.safe_load(Path(config_path).read_text())
+
+        self.config = ufcpredictor.utils.merge_dicts(
+            self.config,
+            config_override,
+        )
 
         self.device = torch.device(device)
         if (
@@ -227,7 +235,7 @@ class UFCPredictor:
         else:  # pragma: no cover
             raise ValueError("Loss class not defined")
 
-        self.trainer = Trainer(
+        self.trainer = ufcpredictor.trainer.Trainer(
             train_dataloader=self.train_dataloader,
             test_dataloader=self.test_dataloader,
             model=self.model,
@@ -291,12 +299,14 @@ class UFCPredictor:
             if not (
                 model_filename.is_absolute() or model_filename.parent != Path(".")
             ):  # pragma: no cover
-                model_filename = files(pretrained_models).joinpath(model_filename)
+                model_filename = files(ufcpredictor.pretrained_models).joinpath(
+                    model_filename
+                )
         else:  # pragma: no cover
             raise ValueError("Model filename not specified in the configuration.")
 
         torch.save(
-            self.model.state_dict(), Path("ufcpredictor/models") / model_filename
+            self.model.state_dict(), model_filename
         )
 
     def load_model(self) -> None:
@@ -319,14 +329,18 @@ class UFCPredictor:
             if not (
                 model_filename.is_absolute() or model_filename.parent != Path(".")
             ):  # pragma: no cover
-                model_filename = files(pretrained_models).joinpath(model_filename)
+                model_filename = files(ufcpredictor.pretrained_models).joinpath(
+                    model_filename
+                )
         else:  # pragma: no cover
             raise ValueError("Model filename not specified in the configuration.")
 
         if not model_filename.exists():  # pragma: no cover
             raise FileNotFoundError(f"Model file {model_filename} does not exist.")
 
-        self.model.load_state_dict(torch.load(model_filename, weights_only=True))
+        self.model.load_state_dict(
+            torch.load(model_filename, weights_only=True, map_location=self.device)
+        )
 
     def load_data_processor(self) -> None:
         """

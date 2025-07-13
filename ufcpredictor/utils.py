@@ -114,7 +114,9 @@ def merge_dicts(dict1: dict, dict2: dict) -> dict:
 
     for key, value in dict2.items():
         if isinstance(value, collections.abc.Mapping):
-            if not isinstance(result.get(key, {}), collections.abc.Mapping):
+            if not isinstance(
+                result.get(key, {}), collections.abc.Mapping
+            ):  # pragma: no cover
                 result[key] = dict()
             result[key] = merge_dicts(result.get(key, {}), value)  # type: ignore
         else:

@@ -241,13 +241,25 @@ class PredictionPlots:
             parse_id : If True, the id of the fighters is parsed instead of the name.
         """
         p1, p2 = dataset.get_forecast_prediction(
-            [fighter_name,],
-            [opponent_name,],
-            [event_date,],
-            [odds1,],
-            [odds2,],
+            [
+                fighter_name,
+            ],
+            [
+                opponent_name,
+            ],
+            [
+                event_date,
+            ],
+            [
+                odds1,
+            ],
+            [
+                odds2,
+            ],
             model,
-            [fight_parameters_values,],
+            [
+                fight_parameters_values,
+            ],
             parse_id,
         )
 

@@ -305,9 +305,7 @@ class UFCPredictor:
         else:  # pragma: no cover
             raise ValueError("Model filename not specified in the configuration.")
 
-        torch.save(
-            self.model.state_dict(), model_filename
-        )
+        torch.save(self.model.state_dict(), model_filename)
 
     def load_model(self) -> None:
         """

@@ -52,6 +52,22 @@ class BettingLoss(nn.Module):
             A tensor or float between 0 and 20 representing the bet.
         """
         return prediction * 2 * self.max_bet
+    
+        # confidence = prediction * 2  # can be negative
+        # max_bet = self.max_bet
+        # base = 2.72
+
+        # threshold = 0.3
+        # growth = 2
+        # base = 5  # math.e
+
+        # scale = (torch.abs(confidence) - threshold)* growth
+        # max_scale = (1 - threshold)*growth
+        # magnitude = (base**scale - 1) / (base**max_scale - 1)
+
+        # bet = max_bet * torch.sign(confidence) * magnitude
+        # return bet
+
 
     def forward(
         self,
@@ -79,49 +95,49 @@ class BettingLoss(nn.Module):
         Returns:
             A tensor with the computed betting loss.
         """
-        msk = torch.round(predictions) == targets
+        # msk = torch.round(predictions) == targets
 
-        return_fighter_1 = self.get_bet(0.5 - predictions) * odds_1
-        return_fighter_2 = self.get_bet(predictions - 0.5) * odds_2
+        # return_fighter_1 = self.get_bet(0.5 - predictions) * odds_1
+        # return_fighter_2 = self.get_bet(predictions - 0.5) * odds_2
 
-        losses = torch.where(
-            torch.round(predictions) == 0,
-            self.get_bet(0.5 - predictions),
-            self.get_bet(predictions - 0.5),
-        )
+        # losses = torch.where(
+        #     torch.round(predictions) == 0,
+        #     self.get_bet(0.5 - predictions),
+        #     self.get_bet(predictions - 0.5),
+        # )
 
-        earnings = torch.zeros_like(losses)
-        earnings[msk & (targets == 0)] = return_fighter_1[msk & (targets == 0)]
-        earnings[msk & (targets == 1)] = return_fighter_2[msk & (targets == 1)]
+        # earnings = torch.zeros_like(losses)
+        # earnings[msk & (targets == 0)] = return_fighter_1[msk & (targets == 0)]
+        # earnings[msk & (targets == 1)] = return_fighter_2[msk & (targets == 1)]
 
-        return (losses - earnings).mean()
+        # return (losses - earnings).mean()
 
         # return F.binary_cross_entropy(predictions, targets.float())
 
-        # # Soft approximation of rounding using sigmoid
-        # sharpness = 3  # increase for sharper transition
-        # soft_pred_1 = torch.sigmoid(sharpness * (0.5 - predictions))  # approximates prediction < 0.5
-        # soft_pred_2 = torch.sigmoid(sharpness * (predictions - 0.5))  # approximates prediction > 0.5
+        # Soft approximation of rounding using sigmoid
+        sharpness = 2  # increase for sharper transition
+        soft_pred_1 = torch.sigmoid(sharpness * (0.5 - predictions))  # approximates prediction < 0.5
+        soft_pred_2 = torch.sigmoid(sharpness * (predictions - 0.5))  # approximates prediction > 0.5
 
-        # # Betting amounts
-        # bet_1 = self.get_bet(0.5 - predictions)
-        # bet_2 = self.get_bet(predictions - 0.5)
+        # Betting amounts
+        bet_1 = self.get_bet(0.5 - predictions)
+        bet_2 = self.get_bet(predictions - 0.5)
 
-        # # Total loss (total amount bet)
-        # losses = bet_1 * soft_pred_1 + bet_2 * soft_pred_2
+        # Total loss (total amount bet)
+        losses = bet_1 * soft_pred_1 + bet_2 * soft_pred_2
 
-        # # Soft masks for correct prediction
-        # soft_correct = torch.sigmoid(sharpness * (1.0 - torch.abs(predictions - targets)))
+        # Soft masks for correct prediction
+        soft_correct = torch.sigmoid(sharpness * (1.0 - torch.abs(predictions - targets)))
 
-        # # Target masks (0 or 1)
-        # target_is_0 = (1 - targets).float()
-        # target_is_1 = targets.float()
+        # Target masks (0 or 1)
+        target_is_0 = (1 - targets).float()
+        target_is_1 = targets.float()
 
-        # # Earnings (softly weighted by match quality)
-        # earnings_1 = bet_1 * odds_1 * soft_correct * target_is_0
-        # earnings_2 = bet_2 * odds_2 * soft_correct * target_is_1
+        # Earnings (softly weighted by match quality)
+        earnings_1 = bet_1 * odds_1 * soft_correct * target_is_0
+        earnings_2 = bet_2 * odds_2 * soft_correct * target_is_1
 
-        # # Total earnings (note: no hard indexing!)
-        # earnings = earnings_1 + earnings_2
+        # Total earnings (note: no hard indexing!)
+        earnings = earnings_1 + earnings_2
 
-        # return (losses - earnings).mean()
+        return (losses - earnings).mean()

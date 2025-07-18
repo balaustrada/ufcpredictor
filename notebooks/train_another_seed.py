@@ -193,7 +193,7 @@ filters:
   max date: 2025-11-11
 
 training:
-  seed: 3
+  seed: 102
   batch size: 64
   early train epochs: 10
   train epochs: 10
@@ -275,20 +275,21 @@ predictor.config["training"]["seed"]
 self = predictor
 
 # %%
-self.trainer.train(
+predictor.trainer.train(
     epochs=20,
-    train_dataloader=self.early_train_dataloader,
-    test_dataloader=self.test_dataloader,
+    train_dataloader=predictor.early_train_dataloader,
+    test_dataloader=predictor.test_dataloader,
 )
 
 # %%
-self.trainer.train(
+predictor.trainer.train(
     epochs=5,
-    test_dataloader=self.test_dataloader,
+    test_dataloader=predictor.test_dataloader,
 )
 
 # %%
 import jupyter_black
+
 
 jupyter_black.load()
 
@@ -313,8 +314,34 @@ from ufcpredictor.plot_tools import PredictionPlots
 
 from itertools import combinations
 
-
 # %%
+import math
+
+
+def bet_strategy(
+    confidence: float,
+    max_bet: float,
+    odds: float = None,
+):
+    use = 2
+    match use:
+        case 1:
+            return confidence**4 * max_bet
+        case 2:
+            threshold = 0.3
+            growth = 2
+            base = 5  # math.e
+
+            scale = (confidence - threshold) * growth
+            return max(max_bet * (base**scale - 1) / (base - 1), 0)
+        case 3:
+            bankroll = max_bet
+            edge = confidence**2 * (odds - 1) - (1 - confidence**2)
+            return max(bankroll * edge / (odds - 1), 0)
+        case _:
+            raise ValueError
+
+
 def simulate_betting(
     predictor: UFCPredictor,
     ax1,
@@ -392,7 +419,11 @@ def simulate_betting(
 
                 parlay_correct = parlay_df["correct"].prod()
 
-                parlay_bet = parlay_confidence * max_bet / 10 * parlay_df["bet"].sum()
+                # Here, the /10 corrects for the 10 used in
+                # show_fight_prediction_detail_from_dataset,
+
+                # parlay_bet = parlay_confidence * max_bet / 10 * parlay_df["bet"].sum()
+                parlay_bet = bet_strategy(parlay_confidence, max_bet, parlay_odds)
                 parlay_win = parlay_correct * parlay_odds * parlay_bet
 
                 date_bet += parlay_bet
@@ -443,6 +474,180 @@ def simulate_betting(
 
     ax.legend()
     ax.grid()
+
+
+# %%
+
+# %%
+
+# %% [markdown]
+# ## Forecasts
+
+# %%
+from ufcpredictor.utils import (
+    pad_or_truncate,
+    convert_odds_to_decimal,
+    convert_odds_to_moneyline,
+)
+from ufcpredictor.utils_sheets import read_fights_sheet
+from datetime import datetime
+
+# %%
+credentials_file = "/home/cramirpe/UFC/reader_creds.json"
+spreadsheet_id = "1sBdtiCPPJyMupocgZsaNLZaX4rGoC4XIOs6k0la3cpk"
+
+fields_to_extract = {
+    "Date": "datetime64[D]",
+    "Fighter Name": str,
+    "Opponent Name": str,
+    "Fighter Odds": int,
+    "Opponent Odds": int,
+    "Weight": int,
+    "Rounds": int,
+}
+
+(
+    event_dates,
+    fighter_names,
+    opponent_names,
+    fighter_odds,
+    opponent_odds,
+    weight,
+    rounds,
+) = read_fights_sheet(
+    spreadsheet_id=spreadsheet_id,
+    creds_file=credentials_file,
+    fields_to_read=fields_to_extract.keys(),
+    dtypes_=list(fields_to_extract.values()),
+)
+
+fighter_odds = convert_odds_to_decimal(fighter_odds)
+opponent_odds = convert_odds_to_decimal(opponent_odds)
+
+event_dates = list(event_dates)
+fight_parameters_values = [[w, r] for w, r in zip(weight, rounds)]
+
+# %%
+predictor.load_forecast_dataset()
+self = predictor.forecast_dataset
+forecast_dataset = self
+
+fighter_ids = [self.data_processor.get_fighter_id(x) for x in fighter_names]
+opponent_ids = [self.data_processor.get_fighter_id(x) for x in opponent_names]
+
+
+counts = self.data_processor.data_normalized["fighter_id"].value_counts()
+fighter_counts = pd.Series(fighter_ids + opponent_ids).map(counts).fillna(0).astype(int)
+fighter_counts = pd.DataFrame(
+    {
+        "name": [
+            self.data_processor.get_fighter_name(id_)
+            for id_ in fighter_ids + opponent_ids
+        ],
+        "count": fighter_counts,
+    }
+)
+
+print(fighter_counts.sort_values(by="count"))
+invalid_fighters = fighter_counts[fighter_counts["count"] <= 3]["name"].to_list()
+invalid_fighters_count = fighter_counts[fighter_counts["count"] <= 3]["count"].to_list()
+
+# %%
+p1, p2 = forecast_dataset.get_forecast_prediction(
+    fighter_names,
+    opponent_names,
+    event_dates,
+    fighter_odds,
+    opponent_odds,
+    predictor.model,
+    fight_parameters_values,
+    parse_ids=False,
+    device=predictor.device,
+)
+
+# %%
+value = (p1 + p2) / 2
+confidence = abs((value - 0.5) * 2)
+
+# %%
+max_bet = 40
+confidence = abs(p1 + p2 - 1).numpy().reshape(-1)
+
+bet = np.asarray([bet_strategy(c, max_bet) for c in confidence])
+bet = bet.flatten().round(2)
+
+# %%
+bet.sum()
+
+# %%
+# Readjust to max_bet
+bet = bet * max_bet / bet.sum()
+
+# %%
+bet.sum()
+
+# %%
+import sys
+
+
+# %%
+for f, o, fightfeat, p1h, p2h, beth, fodds, oodds in zip(
+    fighter_names,
+    opponent_names,
+    fight_parameters_values,
+    p1,
+    p2,
+    bet,
+    fighter_odds,
+    opponent_odds,
+):
+    fodds = convert_odds_to_moneyline(fodds)
+    oodds = convert_odds_to_moneyline(oodds)
+
+    if f in invalid_fighters:
+        f_inv = "NOT ENOUGH FIGHTS"
+        fc = invalid_fighters_count[invalid_fighters.index(f)]
+    else:
+        f_inv = ""
+        fc = ""
+
+    if o in invalid_fighters:
+        o_inv = "NOT ENOUGH FIGHTS"
+        oc = invalid_fighters_count[invalid_fighters.index(o)]
+    else:
+        o_inv = ""
+        oc = ""
+
+    print(
+        f"\t{f}({fodds:d})\t{f_inv}  {fc}\n\t{o}({oodds:d})\t{o_inv}  {oc}\n\t{fightfeat[0]:d}\t{fightfeat[1]:d}\n\t{(p1h[0] + p2h[0]) / 2:.5f}+-{abs(p1h[0]-p2h[0]):.5f}\n"
+        f"\tSuggested bet: {beth:.2f}\n"
+    )
+
+# %%
+bet.sum()
+
+# %%
+bets = []
+for f, o, fightfeat, p1h, p2h, beth, fodds, oodds in zip(
+    fighter_names,
+    opponent_names,
+    fight_parameters_values,
+    p1,
+    p2,
+    bet,
+    fighter_odds,
+    opponent_odds,
+):
+    fodds = convert_odds_to_moneyline(fodds)
+    oodds = convert_odds_to_moneyline(oodds)
+
+    if f in invalid_fighters or o in invalid_fighters:
+        bets.append(-1)
+    else:
+        bets.append((p1h[0] + p2h[0]) / 2)
+
+# %%
+[print(f"{bet:.3f}") for bet in bets]
 
 # %%
 

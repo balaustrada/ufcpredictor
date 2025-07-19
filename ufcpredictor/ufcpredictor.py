@@ -339,6 +339,7 @@ class UFCPredictor:
         self.model.load_state_dict(
             torch.load(model_filename, weights_only=True, map_location=self.device)
         )
+        self.model.eval()
 
     def load_data_processor(self) -> None:
         """

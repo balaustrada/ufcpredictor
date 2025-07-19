@@ -195,7 +195,7 @@ filters:
 training:
   seed: 102
   batch size: 64
-  early train epochs: 10
+  early train epochs: 20
   train epochs: 10
 
 dataset:
@@ -259,7 +259,8 @@ Path("/tmp/config.yaml").write_text(config)
 i = 2
 print("Loading model for seed: ", i, end="\r")
 predictor = UFCPredictor(
-    "/tmp/config.yaml",
+    "/home/cramirpe/UFC/ufcpredictor/configurations/time_evolution_simpler.yaml",
+    # "/tmp/config.yaml",
     device="cpu",
 )
 
@@ -288,6 +289,9 @@ predictor.trainer.train(
 )
 
 # %%
+predictor.load_model()
+
+# %%
 import jupyter_black
 
 
@@ -304,8 +308,6 @@ simulate_betting(
     max_max_bet=50,
     max_parlay_size=2,
 )
-
-# %%
 
 # %%
 import matplotlib.pyplot as plt
@@ -477,8 +479,6 @@ def simulate_betting(
     ax.legend()
     ax.grid()
 
-
-# %%
 
 # %%
 

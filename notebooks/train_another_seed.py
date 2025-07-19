@@ -247,7 +247,7 @@ scheduler:
     patience: 5
 
 loss:
-  class: BettingLoss
+  class: BettingLossSoft
   args: {}
 """
 )

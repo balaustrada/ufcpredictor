@@ -95,25 +95,53 @@ class BettingLoss(nn.Module):
         Returns:
             A tensor with the computed betting loss.
         """
-        # msk = torch.round(predictions) == targets
+        msk = torch.round(predictions) == targets
 
-        # return_fighter_1 = self.get_bet(0.5 - predictions) * odds_1
-        # return_fighter_2 = self.get_bet(predictions - 0.5) * odds_2
+        return_fighter_1 = self.get_bet(0.5 - predictions) * odds_1
+        return_fighter_2 = self.get_bet(predictions - 0.5) * odds_2
 
-        # losses = torch.where(
-        #     torch.round(predictions) == 0,
-        #     self.get_bet(0.5 - predictions),
-        #     self.get_bet(predictions - 0.5),
-        # )
+        losses = torch.where(
+            torch.round(predictions) == 0,
+            self.get_bet(0.5 - predictions),
+            self.get_bet(predictions - 0.5),
+        )
 
-        # earnings = torch.zeros_like(losses)
-        # earnings[msk & (targets == 0)] = return_fighter_1[msk & (targets == 0)]
-        # earnings[msk & (targets == 1)] = return_fighter_2[msk & (targets == 1)]
+        earnings = torch.zeros_like(losses)
+        earnings[msk & (targets == 0)] = return_fighter_1[msk & (targets == 0)]
+        earnings[msk & (targets == 1)] = return_fighter_2[msk & (targets == 1)]
 
-        # return (losses - earnings).mean()
+        return (losses - earnings).mean()
 
         # return F.binary_cross_entropy(predictions, targets.float())
 
+class BettingLossSoft(BettingLoss):
+
+    def forward(
+        self,
+        predictions: torch.Tensor,
+        targets: torch.Tensor,
+        odds_1: torch.Tensor,
+        odds_2: torch.Tensor,
+    ) -> torch.Tensor:
+        """
+        Computes the betting loss for the given predictions and targets.
+
+        This function takes a tensor of predictions between 0 and 1, a tensor of
+        targets (0 or 1), and two tensors of odds. It returns a tensor with the
+        computed betting loss, which is the mean of the losses minus the earnings,
+        this is the net profit.
+
+        The betting loss returned is the negative profit.
+
+        Args:
+            predictions: A tensor of predictions between 0 and 1.
+            targets: A tensor of targets (0 or 1).
+            odds_1: A tensor of odds for fighter 1.
+            odds_2: A tensor of odds for fighter 2.
+
+        Returns:
+            A tensor with the computed betting loss.
+        """
         # Soft approximation of rounding using sigmoid
         sharpness = 2  # increase for sharper transition
         soft_pred_1 = torch.sigmoid(sharpness * (0.5 - predictions))  # approximates prediction < 0.5

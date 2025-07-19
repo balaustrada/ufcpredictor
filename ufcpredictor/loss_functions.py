@@ -52,6 +52,22 @@ class BettingLoss(nn.Module):
             A tensor or float between 0 and 20 representing the bet.
         """
         return prediction * 2 * self.max_bet
+    
+        # confidence = prediction * 2  # can be negative
+        # max_bet = self.max_bet
+        # base = 2.72
+
+        # threshold = 0.3
+        # growth = 2
+        # base = 5  # math.e
+
+        # scale = (torch.abs(confidence) - threshold)* growth
+        # max_scale = (1 - threshold)*growth
+        # magnitude = (base**scale - 1) / (base**max_scale - 1)
+
+        # bet = max_bet * torch.sign(confidence) * magnitude
+        # return bet
+
 
     def forward(
         self,
@@ -98,30 +114,58 @@ class BettingLoss(nn.Module):
 
         # return F.binary_cross_entropy(predictions, targets.float())
 
-        # # Soft approximation of rounding using sigmoid
-        # sharpness = 3  # increase for sharper transition
-        # soft_pred_1 = torch.sigmoid(sharpness * (0.5 - predictions))  # approximates prediction < 0.5
-        # soft_pred_2 = torch.sigmoid(sharpness * (predictions - 0.5))  # approximates prediction > 0.5
+class BettingLossSoft(BettingLoss):
 
-        # # Betting amounts
-        # bet_1 = self.get_bet(0.5 - predictions)
-        # bet_2 = self.get_bet(predictions - 0.5)
+    def forward(
+        self,
+        predictions: torch.Tensor,
+        targets: torch.Tensor,
+        odds_1: torch.Tensor,
+        odds_2: torch.Tensor,
+    ) -> torch.Tensor:
+        """
+        Computes the betting loss for the given predictions and targets.
 
-        # # Total loss (total amount bet)
-        # losses = bet_1 * soft_pred_1 + bet_2 * soft_pred_2
+        This function takes a tensor of predictions between 0 and 1, a tensor of
+        targets (0 or 1), and two tensors of odds. It returns a tensor with the
+        computed betting loss, which is the mean of the losses minus the earnings,
+        this is the net profit.
 
-        # # Soft masks for correct prediction
-        # soft_correct = torch.sigmoid(sharpness * (1.0 - torch.abs(predictions - targets)))
+        The betting loss returned is the negative profit.
 
-        # # Target masks (0 or 1)
-        # target_is_0 = (1 - targets).float()
-        # target_is_1 = targets.float()
+        Args:
+            predictions: A tensor of predictions between 0 and 1.
+            targets: A tensor of targets (0 or 1).
+            odds_1: A tensor of odds for fighter 1.
+            odds_2: A tensor of odds for fighter 2.
 
-        # # Earnings (softly weighted by match quality)
-        # earnings_1 = bet_1 * odds_1 * soft_correct * target_is_0
-        # earnings_2 = bet_2 * odds_2 * soft_correct * target_is_1
+        Returns:
+            A tensor with the computed betting loss.
+        """
+        # Soft approximation of rounding using sigmoid
+        sharpness = 2  # increase for sharper transition
+        soft_pred_1 = torch.sigmoid(sharpness * (0.5 - predictions))  # approximates prediction < 0.5
+        soft_pred_2 = torch.sigmoid(sharpness * (predictions - 0.5))  # approximates prediction > 0.5
 
-        # # Total earnings (note: no hard indexing!)
-        # earnings = earnings_1 + earnings_2
+        # Betting amounts
+        bet_1 = self.get_bet(0.5 - predictions)
+        bet_2 = self.get_bet(predictions - 0.5)
 
-        # return (losses - earnings).mean()
+        # Total loss (total amount bet)
+        losses = bet_1 * soft_pred_1 + bet_2 * soft_pred_2
+
+        # Soft masks for correct prediction
+        soft_correct = torch.sigmoid(sharpness * (1.0 - torch.abs(predictions - targets)))
+
+        # Target masks (0 or 1)
+        target_is_0 = (1 - targets).float()
+        target_is_1 = targets.float()
+
+        # Earnings (softly weighted by match quality)
+        earnings_1 = bet_1 * odds_1 * soft_correct * target_is_0
+        earnings_2 = bet_2 * odds_2 * soft_correct * target_is_1
+
+        # Total earnings (note: no hard indexing!)
+        earnings = earnings_1 + earnings_2
+
+        return (losses - earnings).mean()

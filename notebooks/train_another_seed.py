@@ -159,7 +159,7 @@ statistics:
 general:
   state size: &state_size 6
   mlflow tracking: False
-  model filename: tmp.pt
+  model filename: time_evolution_simpler.pt
 
 data processor:
     class: DataProcessor
@@ -188,8 +188,8 @@ data processor:
 filters:
   minimum fight number: 5
   minimum notice days: 60
-  early split date: 2018-01-01
-  split date: 2023-08-01
+  early split date: 2015-01-01
+  split date: 2023-08-01 #2024-07-01
   max date: 2025-11-11
 
 training:
@@ -236,15 +236,15 @@ model:
 optimizer:
   class: Adam
   args:
-    lr: 1.3e-3
+    lr: 1.4e-3
     # weight_decay: 1.e-5
   
-# scheduler:
-#   class: ReduceLROnPlateau
-#   args:
-#     mode: min
-#     factor: 0.7
-#     patience: 2
+scheduler:
+  class: ReduceLROnPlateau
+  args:
+    mode: min
+    factor: 0.9
+    patience: 5
 
 loss:
   class: BettingLoss
@@ -283,7 +283,7 @@ predictor.trainer.train(
 
 # %%
 predictor.trainer.train(
-    epochs=5,
+    epochs=10,
     test_dataloader=predictor.test_dataloader,
 )
 
@@ -301,7 +301,8 @@ simulate_betting(
     initial_cash=100,
     max_bet_prop=0.2,
     min_max_bet=20,
-    max_parlay_size=1,
+    max_max_bet=50,
+    max_parlay_size=2,
 )
 
 # %%
@@ -349,6 +350,7 @@ def simulate_betting(
     max_parlay_size=1,
     max_bet_prop=0.4,  # Max bet in proportion with available cash
     min_max_bet=20,  # Minimum maximum bet (even if cash is lower)
+    max_max_bet=None,
 ):
     stats = PredictionPlots.show_fight_prediction_detail_from_dataset(
         model=predictor.model,
@@ -404,9 +406,9 @@ def simulate_betting(
     print("Max bet: ", df["bet"].max())
 
     for i, (date, group) in enumerate(df.groupby("event_date")):
-        max_bet = (
-            max(cash[-1] * max_bet_prop, min_max_bet) / df["confidence"].max()
-        )  # In principle max(confidence) = 1
+        max_bet = max(cash[-1] * max_bet_prop, min_max_bet)
+        if max_max_bet is not None:
+            max_bet = min(max_bet, max_max_bet)
 
         date_bet = 0
         date_win = 0
@@ -566,89 +568,48 @@ p1, p2 = forecast_dataset.get_forecast_prediction(
 )
 
 # %%
-value = (p1 + p2) / 2
-confidence = abs((value - 0.5) * 2)
+value = ((p1 + p2) / 2).reshape(-1)
+confidence = abs((p1 + p2 - 1)).reshape(-1)
+
+predicted_names = np.where(value > 0.5, opponent_names, fighter_names)
+odds = np.where(value > 0.5, opponent_odds, fighter_odds)
 
 # %%
-max_bet = 40
-confidence = abs(p1 + p2 - 1).numpy().reshape(-1)
+max_bet = 9.67
+max_parlay_size = 4
+min_parlay_size = 1
 
-bet = np.asarray([bet_strategy(c, max_bet) for c in confidence])
-bet = bet.flatten().round(2)
+
+parlay_names = []
+parlay_bets = []
+parlay_confidences = []
+parlay_odds = []
+for combination_size in range(min_parlay_size, max_parlay_size + 1):
+    for combination in combinations(range(len(confidence)), combination_size):
+        parlay_names.append([str(predicted_names[i]) for i in combination])
+        parlay_confidence = np.prod([confidence[i] for i in combination])
+        parlay_odds_h = np.prod([odds[i] for i in combination])
+
+        parlay_bets.append(bet_strategy(parlay_confidence, max_bet, parlay_odds_h))
+        parlay_confidences.append(parlay_confidence)
+        parlay_odds.append(parlay_odds_h)
+
+parlay_names = [",   ".join(parlay_name) for parlay_name in parlay_names]
+parlay_odds_american = [convert_odds_to_moneyline(odd) for odd in parlay_odds]
 
 # %%
-bet.sum()
-
-# %%
-# Readjust to max_bet
-bet = bet * max_bet / bet.sum()
-
-# %%
-bet.sum()
-
-# %%
-import sys
-
-
-# %%
-for f, o, fightfeat, p1h, p2h, beth, fodds, oodds in zip(
-    fighter_names,
-    opponent_names,
-    fight_parameters_values,
-    p1,
-    p2,
-    bet,
-    fighter_odds,
-    opponent_odds,
-):
-    fodds = convert_odds_to_moneyline(fodds)
-    oodds = convert_odds_to_moneyline(oodds)
-
-    if f in invalid_fighters:
-        f_inv = "NOT ENOUGH FIGHTS"
-        fc = invalid_fighters_count[invalid_fighters.index(f)]
-    else:
-        f_inv = ""
-        fc = ""
-
-    if o in invalid_fighters:
-        o_inv = "NOT ENOUGH FIGHTS"
-        oc = invalid_fighters_count[invalid_fighters.index(o)]
-    else:
-        o_inv = ""
-        oc = ""
-
-    print(
-        f"\t{f}({fodds:d})\t{f_inv}  {fc}\n\t{o}({oodds:d})\t{o_inv}  {oc}\n\t{fightfeat[0]:d}\t{fightfeat[1]:d}\n\t{(p1h[0] + p2h[0]) / 2:.5f}+-{abs(p1h[0]-p2h[0]):.5f}\n"
-        f"\tSuggested bet: {beth:.2f}\n"
+bet_df = pd.DataFrame(
+    dict(
+        names=parlay_names,
+        confidence=parlay_confidences,
+        odds=parlay_odds,
+        odds_american=parlay_odds_american,
+        bet=parlay_bets,
     )
+).sort_values(by="bet")
+bet_df["bet"] = bet_df["bet"] / bet_df["bet"].sum() * max_bet
 
-# %%
-bet.sum()
-
-# %%
-bets = []
-for f, o, fightfeat, p1h, p2h, beth, fodds, oodds in zip(
-    fighter_names,
-    opponent_names,
-    fight_parameters_values,
-    p1,
-    p2,
-    bet,
-    fighter_odds,
-    opponent_odds,
-):
-    fodds = convert_odds_to_moneyline(fodds)
-    oodds = convert_odds_to_moneyline(oodds)
-
-    if f in invalid_fighters or o in invalid_fighters:
-        bets.append(-1)
-    else:
-        bets.append((p1h[0] + p2h[0]) / 2)
-
-# %%
-[print(f"{bet:.3f}") for bet in bets]
-
-# %%
+with pd.option_context("display.max_rows", None):
+    display(bet_df)
 
 # %%
